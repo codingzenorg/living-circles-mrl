@@ -5,6 +5,7 @@ __pycache__/
 .env
 .python-version
 runs/
+.codex
 .codex-session
 .notes
 .DS_Store
