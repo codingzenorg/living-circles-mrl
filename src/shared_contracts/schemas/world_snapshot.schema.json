@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codingzen.org/living-circles/contracts/world-snapshot.schema.json",
+  "title": "WorldSnapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "tick", "world", "player"],
+  "properties": {
+    "type": {
+      "const": "world_snapshot"
+    },
+    "tick": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "world": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "x", "y", "radius", "energy"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "energy": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

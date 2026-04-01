@@ -1,0 +1,11 @@
+{
+  "name": "living-circles-mrl",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "scripts": {
+    "test:contracts": "node --test tests/contracts/*.test.mjs"
+  }
+}
