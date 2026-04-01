@@ -77,3 +77,12 @@ The semantic placeholders in `docs/semantics/` are intentionally empty. They are
 - Keep domain specifics out of the starter and in the adopting repository.
 - Keep the MRL loop generic and move language or architecture assumptions into packs.
 - Prefer one small slice over broad scaffolding.
+
+## Licensing
+
+This repository uses split licensing.
+
+- Code under `src/` and `tests/` is licensed under `MPL-2.0`.
+- MRL artifacts, prompts, planning material, and documentation in `docs/` and the repository root are licensed under `MIT`, unless a file states otherwise.
+
+See `LICENSE`, `LICENSES/MPL-2.0.txt`, and `LICENSES/MIT.txt`.
