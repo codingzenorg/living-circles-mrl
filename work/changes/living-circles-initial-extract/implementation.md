@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_same_shape_fight_resolution.md`
+`docs/slices/demo_dual_interaction_visibility.md`
 
 ## Implemented Shape
 
@@ -11,9 +11,10 @@
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
 - authoritative food initialization and consumption inside the Go world model
-- one deterministic autonomous circle participating under the same movement and energy rules
+- two deterministic autonomous circles participating under the same movement and energy rules in the default demo world
 - explicit shape identity and current interaction classification in snapshots
 - deterministic same-shape fight resolution with loser removal
+- default demo visibility for both same-shape and different-shape interaction paths
 
 ## Runtime Contract
 
@@ -54,8 +55,16 @@
   "autonomous_circles": [
     {
       "id": "circle-2",
-      "shape": "square",
+      "shape": "triangle",
       "x": 268,
+      "y": 300,
+      "radius": 12,
+      "energy": 99
+    },
+    {
+      "id": "circle-3",
+      "shape": "square",
+      "x": 532,
       "y": 300,
       "radius": 12,
       "energy": 99
@@ -84,9 +93,9 @@
 ## Deliberate Simplifications
 
 - one player-controlled circle only
-- one autonomous circle only
-- deterministic autonomous movement policy moving right on every tick
-- deterministic shape assignment: player `triangle`, autonomous circle `square`
+- exactly two autonomous circles in the default demo world
+- deterministic autonomous movement policy: first autonomous circle moves right, second moves left
+- deterministic shape assignment in the default demo world: player `triangle`, same-shape autonomous `triangle`, different-shape autonomous `square`
 - deterministic fixed food placement
 - no food respawn
 - different-shape reproduction remains classification-only
@@ -102,14 +111,14 @@ The slice needed these implementation choices not fully specified in the refined
 - when player energy reaches zero, movement stops and energy clamps at zero
 - food grants a fixed energy recovery amount of `10`
 - player energy clamps to a maximum of `100`
-- the autonomous circle follows a fixed deterministic direction: right on every tick
-- same-shape overlap maps to `fight_candidate`; different-shape overlap maps to `reproduce_candidate`
+- autonomous circles follow deterministic index-based directions so the default demo exposes both interaction paths
+- same-shape overlap resolves as `fight_resolved`; different-shape overlap maps to `reproduce_candidate`
 - same-shape fights resolve in one tick using: higher energy wins, then larger radius, then player wins exact ties
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
 
 ## Validation Targets
 
-- deterministic server tests for fight winner selection, loser removal, and unresolved reproduction classification
+- deterministic server tests for default dual-circle composition, fight winner selection, loser removal, and unresolved reproduction classification
 - contract test for explicit snapshot shape including resolved fight outcomes
-- integration test for WebSocket snapshots with same-shape fight resolution
+- integration tests for WebSocket snapshots with default dual-circle visibility and same-shape fight resolution

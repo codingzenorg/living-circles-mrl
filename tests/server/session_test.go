@@ -71,16 +71,20 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 		t.Fatalf("unexpected second food placement: %+v", snapshot.Foods[1])
 	}
 
-	if len(snapshot.AutonomousCircles) != 1 {
-		t.Fatalf("expected one autonomous circle, got %d", len(snapshot.AutonomousCircles))
+	if len(snapshot.AutonomousCircles) != 2 {
+		t.Fatalf("expected two autonomous circles, got %d", len(snapshot.AutonomousCircles))
 	}
 
 	if snapshot.Player.Shape != simulation.DefaultPlayerShape {
 		t.Fatalf("expected player shape %q, got %q", simulation.DefaultPlayerShape, snapshot.Player.Shape)
 	}
 
-	if snapshot.AutonomousCircles[0].Shape != simulation.DefaultAutoShape {
-		t.Fatalf("expected autonomous shape %q, got %q", simulation.DefaultAutoShape, snapshot.AutonomousCircles[0].Shape)
+	if snapshot.AutonomousCircles[0].Shape != snapshot.Player.Shape {
+		t.Fatalf("expected first autonomous circle to match player shape %q, got %q", snapshot.Player.Shape, snapshot.AutonomousCircles[0].Shape)
+	}
+
+	if snapshot.AutonomousCircles[1].Shape != simulation.DefaultAutoShape {
+		t.Fatalf("expected second autonomous shape %q, got %q", simulation.DefaultAutoShape, snapshot.AutonomousCircles[1].Shape)
 	}
 }
 
@@ -122,7 +126,10 @@ func TestAutonomousCircleMovesWithoutPlayerInput(t *testing.T) {
 	after := session.Advance()
 
 	if after.AutonomousCircles[0].X == before.AutonomousCircles[0].X && after.AutonomousCircles[0].Y == before.AutonomousCircles[0].Y {
-		t.Fatalf("expected autonomous circle to move, before=%+v after=%+v", before.AutonomousCircles[0], after.AutonomousCircles[0])
+		t.Fatalf("expected first autonomous circle to move, before=%+v after=%+v", before.AutonomousCircles[0], after.AutonomousCircles[0])
+	}
+	if after.AutonomousCircles[1].X == before.AutonomousCircles[1].X && after.AutonomousCircles[1].Y == before.AutonomousCircles[1].Y {
+		t.Fatalf("expected second autonomous circle to move, before=%+v after=%+v", before.AutonomousCircles[1], after.AutonomousCircles[1])
 	}
 }
 
@@ -132,7 +139,10 @@ func TestAutonomousCircleConsumesEnergyWhenMoving(t *testing.T) {
 	after := session.Advance()
 
 	if after.AutonomousCircles[0].Energy >= before.AutonomousCircles[0].Energy {
-		t.Fatalf("expected autonomous circle energy to decrease, before=%v after=%v", before.AutonomousCircles[0].Energy, after.AutonomousCircles[0].Energy)
+		t.Fatalf("expected first autonomous circle energy to decrease, before=%v after=%v", before.AutonomousCircles[0].Energy, after.AutonomousCircles[0].Energy)
+	}
+	if after.AutonomousCircles[1].Energy >= before.AutonomousCircles[1].Energy {
+		t.Fatalf("expected second autonomous circle energy to decrease, before=%v after=%v", before.AutonomousCircles[1].Energy, after.AutonomousCircles[1].Energy)
 	}
 }
 
@@ -147,6 +157,52 @@ func TestAutonomousCircleCanConsumeFoodAndRecoverEnergy(t *testing.T) {
 
 	if secondTick.AutonomousCircles[0].Energy <= firstTick.AutonomousCircles[0].Energy {
 		t.Fatalf("expected autonomous circle energy recovery, before=%v after=%v", firstTick.AutonomousCircles[0].Energy, secondTick.AutonomousCircles[0].Energy)
+	}
+}
+
+func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
+	session := simulation.NewSession()
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		session.ApplyIntent(simulation.Vector{X: -1, Y: 0})
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected same-shape interaction in default world")
+	}
+	if snapshot.Interaction.Kind != "fight_resolved" {
+		t.Fatalf("expected fight_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.TargetID != simulation.DefaultAutonomousID {
+		t.Fatalf("expected fight against %q, got %q", simulation.DefaultAutonomousID, snapshot.Interaction.TargetID)
+	}
+}
+
+func TestDefaultWorldSupportsDifferentShapeClassificationPath(t *testing.T) {
+	session := simulation.NewSession()
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected different-shape interaction in default world")
+	}
+	if snapshot.Interaction.Kind != "reproduce_candidate" {
+		t.Fatalf("expected reproduce_candidate, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+		t.Fatalf("expected reproduce candidate against %q, got %q", simulation.DefaultSecondaryID, snapshot.Interaction.TargetID)
 	}
 }
 

@@ -57,11 +57,11 @@ function draw(snapshot) {
   }
 
   for (const circle of snapshot.autonomous_circles) {
-    drawCircle(circle, false);
+    drawCircle(circle, false, snapshot.player);
   }
 
   if (snapshot.player) {
-    drawCircle(snapshot.player, true);
+    drawCircle(snapshot.player, true, snapshot.player);
     energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)}`;
   } else {
     energyNode.textContent = "Energy: defeated";
@@ -71,7 +71,8 @@ function draw(snapshot) {
   tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}`;
 }
 
-function drawCircle(circle, isPlayer) {
+function drawCircle(circle, isPlayer, player) {
+  const matchesPlayerShape = !isPlayer && player && circle.shape === player.shape;
   const color = circle.shape === "triangle" ? "#3b8ea5" : "#8c6bb1";
   context.fillStyle = color;
 
@@ -90,9 +91,19 @@ function drawCircle(circle, isPlayer) {
     context.fill();
   }
 
+  if (matchesPlayerShape) {
+    context.strokeStyle = "#b63b29";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.arc(circle.x, circle.y, circle.radius + 5, 0, Math.PI * 2);
+    context.stroke();
+  }
+
   context.fillStyle = "#17313a";
   context.font = "16px Georgia";
-  const label = isPlayer ? `${circle.id} (${circle.shape})` : `${circle.id} ${circle.shape}`;
+  const label = isPlayer
+    ? `${circle.id} (${circle.shape})`
+    : `${circle.id} ${matchesPlayerShape ? "match" : "other"} (${circle.shape})`;
   context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
 }
 

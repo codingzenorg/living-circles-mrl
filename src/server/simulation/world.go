@@ -7,6 +7,7 @@ const (
 	DefaultWorldHeight  = 600.0
 	DefaultPlayerRadius = 12.0
 	DefaultAutonomousID = "circle-2"
+	DefaultSecondaryID  = "circle-3"
 	DefaultPlayerEnergy = 100.0
 	DefaultMaxEnergy    = 100.0
 	DefaultMoveSpeed    = 8.0
@@ -85,18 +86,22 @@ type World struct {
 }
 
 type Config struct {
-	PlayerShape      string
-	AutonomousShape  string
-	PlayerEnergy     float64
-	AutonomousEnergy float64
+	PlayerShape               string
+	AutonomousShape           string
+	SecondaryAutonomousShape  string
+	PlayerEnergy              float64
+	AutonomousEnergy          float64
+	SecondaryAutonomousEnergy float64
 }
 
 func NewWorld() *World {
 	return NewWorldWithConfig(Config{
-		PlayerShape:      DefaultPlayerShape,
-		AutonomousShape:  DefaultAutoShape,
-		PlayerEnergy:     DefaultPlayerEnergy,
-		AutonomousEnergy: DefaultPlayerEnergy,
+		PlayerShape:               DefaultPlayerShape,
+		AutonomousShape:           DefaultPlayerShape,
+		SecondaryAutonomousShape:  DefaultAutoShape,
+		PlayerEnergy:              DefaultPlayerEnergy,
+		AutonomousEnergy:          DefaultPlayerEnergy,
+		SecondaryAutonomousEnergy: DefaultPlayerEnergy,
 	})
 }
 
@@ -110,6 +115,27 @@ func NewWorldWithShapes(playerShape, autonomousShape string) *World {
 }
 
 func NewWorldWithConfig(config Config) *World {
+	autonomousCircles := []AutonomousCircle{
+		{
+			ID:     DefaultAutonomousID,
+			Shape:  config.AutonomousShape,
+			X:      DefaultWorldWidth/2 - 140,
+			Y:      DefaultWorldHeight / 2,
+			Radius: DefaultPlayerRadius,
+			Energy: config.AutonomousEnergy,
+		},
+	}
+	if config.SecondaryAutonomousShape != "" {
+		autonomousCircles = append(autonomousCircles, AutonomousCircle{
+			ID:     DefaultSecondaryID,
+			Shape:  config.SecondaryAutonomousShape,
+			X:      DefaultWorldWidth/2 + 140,
+			Y:      DefaultWorldHeight / 2,
+			Radius: DefaultPlayerRadius,
+			Energy: config.SecondaryAutonomousEnergy,
+		})
+	}
+
 	return &World{
 		bounds: Bounds{
 			Width:  DefaultWorldWidth,
@@ -123,16 +149,7 @@ func NewWorldWithConfig(config Config) *World {
 			Radius: DefaultPlayerRadius,
 			Energy: config.PlayerEnergy,
 		},
-		autonomousCircles: []AutonomousCircle{
-			{
-				ID:     DefaultAutonomousID,
-				Shape:  config.AutonomousShape,
-				X:      DefaultWorldWidth/2 - 140,
-				Y:      DefaultWorldHeight / 2,
-				Radius: DefaultPlayerRadius,
-				Energy: config.AutonomousEnergy,
-			},
-		},
+		autonomousCircles: autonomousCircles,
 		foods: []Food{
 			{ID: "food-1", X: DefaultWorldWidth/2 + 32, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
 			{ID: "food-2", X: DefaultWorldWidth/2 - 108, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
@@ -268,6 +285,9 @@ func overlaps(ax, ay, ar, bx, by, br float64) bool {
 }
 
 func autonomousIntent(tick int64, index int) Vector {
+	if index%2 == 1 {
+		return Vector{X: -1, Y: 0}
+	}
 	return Vector{X: 1, Y: 0}
 }
 
