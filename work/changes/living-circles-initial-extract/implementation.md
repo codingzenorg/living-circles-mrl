@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_food_collection_and_energy_recovery.md`
+`docs/slices/initial_autonomous_circle_participation.md`
 
 ## Implemented Shape
 
@@ -11,6 +11,7 @@
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
 - authoritative food initialization and consumption inside the Go world model
+- one deterministic autonomous circle participating under the same movement and energy rules
 
 ## Runtime Contract
 
@@ -47,6 +48,15 @@
     "radius": 12,
     "energy": 99
   },
+  "autonomous_circles": [
+    {
+      "id": "circle-2",
+      "x": 268,
+      "y": 300,
+      "radius": 12,
+      "energy": 99
+    }
+  ],
   "foods": [
     {
       "id": "food-1",
@@ -61,6 +71,8 @@
 ## Deliberate Simplifications
 
 - one player-controlled circle only
+- one autonomous circle only
+- deterministic autonomous movement policy based on a fixed direction cycle
 - deterministic fixed food placement
 - no food respawn
 - no collisions between circles, fight, reproduction, death, or continuity logic
@@ -75,11 +87,12 @@ The slice needed these implementation choices not fully specified in the refined
 - when player energy reaches zero, movement stops and energy clamps at zero
 - food grants a fixed energy recovery amount of `10`
 - player energy clamps to a maximum of `100`
+- the autonomous circle follows a fixed deterministic direction: right on every tick
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
 
 ## Validation Targets
 
-- deterministic server tests for food initialization, movement, energy drain, food consumption, and energy caps
-- contract test for explicit snapshot shape including foods
-- integration test for WebSocket movement, food removal, and energy recovery flow
+- deterministic server tests for player and autonomous movement, shared food consumption, and energy caps
+- contract test for explicit snapshot shape including autonomous circles and foods
+- integration test for WebSocket snapshots with autonomous participation and food recovery flow

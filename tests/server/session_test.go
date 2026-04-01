@@ -66,6 +66,14 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.Foods[0].ID != "food-1" || snapshot.Foods[0].X != 432 || snapshot.Foods[0].Y != 300 {
 		t.Fatalf("unexpected first food placement: %+v", snapshot.Foods[0])
 	}
+
+	if snapshot.Foods[1].ID != "food-2" || snapshot.Foods[1].X != 292 || snapshot.Foods[1].Y != 300 {
+		t.Fatalf("unexpected second food placement: %+v", snapshot.Foods[1])
+	}
+
+	if len(snapshot.AutonomousCircles) != 1 {
+		t.Fatalf("expected one autonomous circle, got %d", len(snapshot.AutonomousCircles))
+	}
 }
 
 func TestOverlappingFoodRemovesItAndRestoresEnergy(t *testing.T) {
@@ -97,5 +105,39 @@ func TestFoodRecoveryRespectsEnergyCap(t *testing.T) {
 
 	if snapshot.Player.Energy != simulation.DefaultMaxEnergy {
 		t.Fatalf("expected food recovery to clamp to max energy, got %v", snapshot.Player.Energy)
+	}
+}
+
+func TestAutonomousCircleMovesWithoutPlayerInput(t *testing.T) {
+	session := simulation.NewSession()
+	before := session.Snapshot()
+	after := session.Advance()
+
+	if after.AutonomousCircles[0].X == before.AutonomousCircles[0].X && after.AutonomousCircles[0].Y == before.AutonomousCircles[0].Y {
+		t.Fatalf("expected autonomous circle to move, before=%+v after=%+v", before.AutonomousCircles[0], after.AutonomousCircles[0])
+	}
+}
+
+func TestAutonomousCircleConsumesEnergyWhenMoving(t *testing.T) {
+	session := simulation.NewSession()
+	before := session.Snapshot()
+	after := session.Advance()
+
+	if after.AutonomousCircles[0].Energy >= before.AutonomousCircles[0].Energy {
+		t.Fatalf("expected autonomous circle energy to decrease, before=%v after=%v", before.AutonomousCircles[0].Energy, after.AutonomousCircles[0].Energy)
+	}
+}
+
+func TestAutonomousCircleCanConsumeFoodAndRecoverEnergy(t *testing.T) {
+	session := simulation.NewSession()
+	firstTick := session.Advance()
+	secondTick := session.Advance()
+
+	if len(secondTick.Foods) >= len(firstTick.Foods) {
+		t.Fatalf("expected autonomous food consumption, before=%d after=%d", len(firstTick.Foods), len(secondTick.Foods))
+	}
+
+	if secondTick.AutonomousCircles[0].Energy <= firstTick.AutonomousCircles[0].Energy {
+		t.Fatalf("expected autonomous circle energy recovery, before=%v after=%v", firstTick.AutonomousCircles[0].Energy, secondTick.AutonomousCircles[0].Energy)
 	}
 }

@@ -39,6 +39,9 @@ func TestClientReceivesInitialSnapshotAndMovementUpdate(t *testing.T) {
 	if len(initial.Foods) == 0 {
 		t.Fatal("expected initial snapshot to include food items")
 	}
+	if len(initial.AutonomousCircles) != 1 {
+		t.Fatalf("expected one autonomous circle, got %d", len(initial.AutonomousCircles))
+	}
 
 	message := map[string]any{
 		"type": "movement_intent",
@@ -64,12 +67,17 @@ func TestClientReceivesInitialSnapshotAndMovementUpdate(t *testing.T) {
 			continue
 		}
 
+		if snapshot.AutonomousCircles[0].X == initial.AutonomousCircles[0].X && snapshot.AutonomousCircles[0].Y == initial.AutonomousCircles[0].Y {
+			previous = snapshot
+			continue
+		}
+
 		if len(snapshot.Foods) < len(initial.Foods) {
 			if snapshot.Player.X <= initial.Player.X {
 				t.Fatalf("expected player x to increase, before=%v after=%v", initial.Player.X, snapshot.Player.X)
 			}
-			if snapshot.Player.Energy <= previous.Player.Energy {
-				t.Fatalf("expected energy recovery after food consumption, previous=%v current=%v", previous.Player.Energy, snapshot.Player.Energy)
+			if snapshot.AutonomousCircles[0].Energy <= previous.AutonomousCircles[0].Energy {
+				t.Fatalf("expected autonomous energy recovery after food consumption, previous=%v current=%v", previous.AutonomousCircles[0].Energy, snapshot.AutonomousCircles[0].Energy)
 			}
 			return
 		}
