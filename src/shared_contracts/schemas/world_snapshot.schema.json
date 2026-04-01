@@ -4,7 +4,7 @@
   "title": "WorldSnapshot",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "tick", "world", "player"],
+  "required": ["type", "tick", "world", "player", "foods"],
   "properties": {
     "type": {
       "const": "world_snapshot"
@@ -49,6 +49,29 @@
         "energy": {
           "type": "number",
           "minimum": 0
+        }
+      }
+    },
+    "foods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "x", "y", "radius"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "radius": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
         }
       }
     }

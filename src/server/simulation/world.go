@@ -7,8 +7,11 @@ const (
 	DefaultWorldHeight  = 600.0
 	DefaultPlayerRadius = 12.0
 	DefaultPlayerEnergy = 100.0
+	DefaultMaxEnergy    = 100.0
 	DefaultMoveSpeed    = 8.0
 	DefaultMoveCost     = 1.0
+	DefaultFoodRadius   = 6.0
+	DefaultFoodEnergy   = 10.0
 )
 
 type Bounds struct {
@@ -29,18 +32,29 @@ type PlayerCircle struct {
 	Energy float64 `json:"energy"`
 }
 
+type Food struct {
+	ID     string  `json:"id"`
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Radius float64 `json:"radius"`
+}
+
 type Snapshot struct {
 	Type   string       `json:"type"`
 	Tick   int64        `json:"tick"`
 	World  Bounds       `json:"world"`
 	Player PlayerCircle `json:"player"`
+	Foods  []Food       `json:"foods"`
 }
 
 type World struct {
-	bounds   Bounds
-	player   PlayerCircle
-	moveCost float64
-	speed    float64
+	bounds    Bounds
+	player    PlayerCircle
+	foods     []Food
+	moveCost  float64
+	speed     float64
+	maxEnergy float64
+	foodGain  float64
 }
 
 func NewWorld() *World {
@@ -56,8 +70,15 @@ func NewWorld() *World {
 			Radius: DefaultPlayerRadius,
 			Energy: DefaultPlayerEnergy,
 		},
-		moveCost: DefaultMoveCost,
-		speed:    DefaultMoveSpeed,
+		foods: []Food{
+			{ID: "food-1", X: DefaultWorldWidth/2 + 32, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
+			{ID: "food-2", X: DefaultWorldWidth/2 - 96, Y: DefaultWorldHeight/2 - 48, Radius: DefaultFoodRadius},
+			{ID: "food-3", X: DefaultWorldWidth/2 + 120, Y: DefaultWorldHeight/2 + 84, Radius: DefaultFoodRadius},
+		},
+		moveCost:  DefaultMoveCost,
+		speed:     DefaultMoveSpeed,
+		maxEnergy: DefaultMaxEnergy,
+		foodGain:  DefaultFoodEnergy,
 	}
 }
 
@@ -71,6 +92,8 @@ func (w *World) Advance(tick int64, intent Vector) Snapshot {
 		}
 	}
 
+	w.consumeOverlappingFood()
+
 	return w.Snapshot(tick)
 }
 
@@ -80,7 +103,22 @@ func (w *World) Snapshot(tick int64) Snapshot {
 		Tick:   tick,
 		World:  w.bounds,
 		Player: w.player,
+		Foods:  append([]Food(nil), w.foods...),
 	}
+}
+
+func (w *World) consumeOverlappingFood() {
+	remaining := make([]Food, 0, len(w.foods))
+	for _, food := range w.foods {
+		if overlaps(w.player.X, w.player.Y, w.player.Radius, food.X, food.Y, food.Radius) {
+			w.player.Energy = math.Min(w.maxEnergy, w.player.Energy+w.foodGain)
+			continue
+		}
+
+		remaining = append(remaining, food)
+	}
+
+	w.foods = remaining
 }
 
 func normalize(vector Vector) Vector {
@@ -97,4 +135,8 @@ func normalize(vector Vector) Vector {
 
 func clamp(value, minimum, maximum float64) float64 {
 	return math.Min(maximum, math.Max(minimum, value))
+}
+
+func overlaps(ax, ay, ar, bx, by, br float64) bool {
+	return math.Hypot(ax-bx, ay-by) <= ar+br
 }

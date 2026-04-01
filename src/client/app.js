@@ -41,6 +41,13 @@ function draw(snapshot) {
   context.lineWidth = 2;
   context.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
 
+  context.fillStyle = "#d85f3d";
+  for (const food of snapshot.foods) {
+    context.beginPath();
+    context.arc(food.x, food.y, food.radius, 0, Math.PI * 2);
+    context.fill();
+  }
+
   context.fillStyle = "#3b8ea5";
   context.beginPath();
   context.arc(snapshot.player.x, snapshot.player.y, snapshot.player.radius, 0, Math.PI * 2);
@@ -51,7 +58,7 @@ function draw(snapshot) {
   context.fillText(snapshot.player.id, snapshot.player.x - 28, snapshot.player.y - snapshot.player.radius - 10);
 
   energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)}`;
-  tickNode.textContent = `Tick: ${snapshot.tick}`;
+  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length}`;
 }
 
 function setStatus(message) {

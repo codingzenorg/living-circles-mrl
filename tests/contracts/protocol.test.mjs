@@ -22,5 +22,6 @@ test("world snapshot schema remains explicit and parseable", async () => {
   const schema = JSON.parse(file);
 
   assert.equal(schema.properties.type.const, MESSAGE_TYPES.worldSnapshot);
-  assert.deepEqual(schema.required, ["type", "tick", "world", "player"]);
+  assert.deepEqual(schema.required, ["type", "tick", "world", "player", "foods"]);
+  assert.deepEqual(schema.properties.foods.items.required, ["id", "x", "y", "radius"]);
 });

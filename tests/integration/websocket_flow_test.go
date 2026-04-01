@@ -36,6 +36,10 @@ func TestClientReceivesInitialSnapshotAndMovementUpdate(t *testing.T) {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
 
+	if len(initial.Foods) == 0 {
+		t.Fatal("expected initial snapshot to include food items")
+	}
+
 	message := map[string]any{
 		"type": "movement_intent",
 		"direction": map[string]float64{
@@ -49,6 +53,7 @@ func TestClientReceivesInitialSnapshotAndMovementUpdate(t *testing.T) {
 
 	_ = connection.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 
+	previous := initial
 	for {
 		var snapshot simulation.Snapshot
 		if err := connection.ReadJSON(&snapshot); err != nil {
@@ -59,12 +64,16 @@ func TestClientReceivesInitialSnapshotAndMovementUpdate(t *testing.T) {
 			continue
 		}
 
-		if snapshot.Player.X <= initial.Player.X {
-			t.Fatalf("expected player x to increase, before=%v after=%v", initial.Player.X, snapshot.Player.X)
+		if len(snapshot.Foods) < len(initial.Foods) {
+			if snapshot.Player.X <= initial.Player.X {
+				t.Fatalf("expected player x to increase, before=%v after=%v", initial.Player.X, snapshot.Player.X)
+			}
+			if snapshot.Player.Energy <= previous.Player.Energy {
+				t.Fatalf("expected energy recovery after food consumption, previous=%v current=%v", previous.Player.Energy, snapshot.Player.Energy)
+			}
+			return
 		}
-		if snapshot.Player.Energy >= initial.Player.Energy {
-			t.Fatalf("expected energy to decrease, before=%v after=%v", initial.Player.Energy, snapshot.Player.Energy)
-		}
-		return
+
+		previous = snapshot
 	}
 }
