@@ -64,3 +64,42 @@ Keep one universal Python starter and treat every other shape as an undocumented
 
 ### Notes
 Future pack additions should live under `docs/packs/` and should be referenced by slice documents when the runtime topology matters.
+
+## DEC-0002 - Adopt Polyglot Client Server For Living Circles
+
+- Date: 2026-04-01
+- Status: accepted
+- Owners: both
+
+### Context
+The initial extraction and first slice definition established that Living Circles is intended as:
+
+- a JavaScript browser game
+- rendered with 2D canvas
+- connected over WebSocket
+- to an authoritative Go simulation server
+
+Keeping `python_ddd_monolith` as the selected pack would leave the repository architecture misaligned with the extracted product shape before the first executable slice.
+
+### Decision
+This repository now adopts `polyglot_client_server` as its selected pack.
+
+The repository should therefore:
+
+- treat the browser client and Go server as first-class runtimes
+- keep semantics shared under `docs/semantics/`
+- make runtime contracts explicit under a shared contract boundary
+- design early slices around server authority and client/server interaction rather than a fake single-runtime abstraction
+
+### Consequences
+It becomes easier to refine and build slices that match the intended game shape from the start. It also means:
+
+- `architecture.md` must describe a client/server layout rather than a Python monolith
+- `src/` and `tests/` should evolve toward client, server, integration, and contract structure
+- deterministic behavior must be preserved across a runtime boundary, not only inside one process
+
+### Alternatives considered
+Keep `python_ddd_monolith` temporarily and treat the extracted client/server topology as only an implementation detail to revisit later. This was rejected because it would encourage the first code to be scaffolded against the wrong authority model and wrong layout.
+
+### Notes
+This decision does not force full multiplayer scope or complex network realism in the first slice. Early slices should still remain small, deterministic, and behavior-focused.

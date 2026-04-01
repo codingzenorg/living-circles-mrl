@@ -28,12 +28,12 @@ The MRL core defines:
 
 Implementation shape is selected through a pack.
 
-This repository currently adopts the `python_ddd_monolith` pack. Other repositories may instead adopt:
+This repository currently adopts the `polyglot_client_server` pack. Other repositories may instead adopt:
 
 - `typescript_application`
 - `go_service`
 - `event_sourced_domain`
-- `polyglot_client_server`
+- `python_ddd_monolith`
 
 If a repository changes pack, record the decision in `decisions.md` and update this document so it describes the selected shape rather than pretending to be a universal MRL rule.
 
@@ -41,141 +41,103 @@ If a repository changes pack, record the decision in `decisions.md` and update t
 
 ## Core Intent
 
-Within this repository, the system should behave like a **DDD-inspired modular monolith**.
+Within this repository, the system should behave like a **multi-runtime client/server system with explicit contracts**.
 
 It should prefer:
 
 - explicit use cases over generic service blobs
-- domain models with behavior over anemic data containers
-- ports and adapters over direct framework coupling
-- deterministic local simulation over distributed complexity
+- server authority over simulation truth
+- explicit contracts across runtime boundaries
+- thin clients for input and rendering
+- deterministic simulation behavior where practical
 - testability and inspectability over premature realism
 
 This project is a **refinement environment**, not a microservices platform.
 
-That statement is local to this selected pack. MRL as a workflow does not require a modular monolith and can support multi-process or multi-runtime systems when the model requires them.
+That statement is local to this selected pack. MRL as a workflow does not require a client/server topology and can support single-runtime monoliths or other shapes when the model requires them.
 
 ---
 
 ## Architectural Style For This Pack
 
-The project follows a layered approach:
+The project follows an explicit client/server split with a shared contract boundary:
 
 ```text
-Tests -----------------> Use Cases -----------------> Domain Models
-Interfaces/API Facade -> Use Cases -----------------> Repositories (ports)
-                                          ---------> Message Bus (port)
-                                          ---------> External APIs (ports)
+Browser Client -----------------> Shared Contracts <----------------- Go Server
+Input + Canvas Rendering                                       Authoritative Simulation
 ```
 
 A more explicit view:
 
 ```text
-src/app/
-  domain/
-    models/
-    services/
-    events/
-    value_objects/
+src/
+  client/
+    canvas/
+    input/
+    connection/
 
-  application/
-    use_cases/
-    ports/
-    dto/
+  server/
+    simulation/
+    application/
+    transport/
+    contracts_adapter/
 
-  interfaces/
-    api_facade/
-
-  infrastructure/
-    sqlite/
-    repositories/
-    message_bus/
-    fakes/
-    clock/
-    ids/
+  shared_contracts/
+    messages/
+    schemas/
 
 tests/
-  unit/
+  client/
+  server/
   integration/
+  contracts/
 ```
 
 This is a pack-specific example, not a required layout for every MRL repository.
 
 ### Layer responsibilities
 
-#### 1. Tests
-Tests are the main executable specification.
+#### 1. Client runtime
+The browser client is responsible for:
+
+- capturing player input
+- maintaining the WebSocket connection
+- rendering authoritative world snapshots on a 2D canvas
+
+The client should stay thin. It must not silently become the authority for simulation outcomes.
+
+#### 2. Shared contracts
+Shared contracts define the message shapes crossing the runtime boundary.
+
+They should make explicit:
+
+- movement intent sent from client to server
+- world snapshots sent from server to client
+- any sequence, tick, or correlation fields needed for deterministic reasoning
+
+The contract layer should stay small and explicit rather than becoming a generic protocol framework.
+
+#### 3. Server runtime
+The Go server is responsible for:
+
+- authoritative world state
+- simulation ticks
+- movement application
+- collision handling when future slices introduce it
+- rule resolution
+- snapshot broadcasting
+
+This is where the main business behavior should live for the shared world.
+
+#### 4. Tests
+Tests remain the main executable specification.
 
 They should validate:
 
-- domain invariants
-- use-case behavior
-- persistence boundaries
-- event/message emission
-- frontend-derived workflows
-
-#### 2. Application layer
-The application layer contains **use cases**.
-
-A use case:
-
-- receives an intention/request
-- loads domain objects through repositories
-- coordinates domain behavior
-- calls services when needed
-- persists resulting state
-- publishes domain/integration messages when needed
-- returns a result DTO
-
-A use case should **not** contain raw SQL, HTTP details, or framework-specific logic.
-
-#### 3. Domain layer
-The domain layer contains the business model.
-
-It should include:
-
-- entities
-- aggregates
-- value objects
-- domain services
-- domain events
-
-The domain layer is where invariants and rules live.
-
-Examples:
-
-- order status transitions
-- inventory constraints
-- checkout eligibility
-- cart-to-order conversion rules
-- return eligibility constraints
-
-The domain should avoid direct dependency on SQLite, HTTP clients, real queues mechanisms, or UI concerns.
-
-#### 4. Interfaces layer
-The interface layer exposes use cases in a convenient shape.
-
-For this project, an **API facade** is acceptable as a boundary adapter. It can:
-
-- translate frontend-like requests into use-case inputs
-- compose response DTOs
-- simulate endpoints if needed
-
-This layer should stay thin.
-
-#### 5. Infrastructure layer
-Infrastructure implements ports required by the application/domain.
-
-Examples:
-
-- SQLite repositories
-- SQLite-backed message bus
-- in-memory message bus
-- local fake external APIs
-- test clocks
-- ID generators
-
-Infrastructure exists to support the model, not define it.
+- server-side domain invariants and simulation rules
+- contract stability across runtimes
+- end-to-end client/server flows
+- deterministic behavior of tick-driven updates
 
 ---
 
@@ -198,6 +160,15 @@ In those cases:
 
 The pack may still define local boundaries for each runtime, but the semantic model stays shared unless the business itself diverges.
 
+For Living Circles, this guidance is not hypothetical. The extracted product shape is already:
+
+- JavaScript browser client
+- 2D canvas rendering
+- WebSocket communication
+- authoritative Go simulation server
+
+The repository should therefore make runtime boundaries explicit from the beginning rather than treating them as a future optimization.
+
 ---
 
 ## Design Principles
@@ -218,24 +189,21 @@ The frontend may inspire workflows, but implementation should be organized aroun
 
 Examples:
 
-- `CreateCart`
-- `AddItemToCart`
-- `PlaceOrder`
-- `RequestReturn`
-- `CancelOrder`
+- `RunAuthoritativeMovementSession`
+- `AdvanceSimulationTick`
+- `ApplyMovementIntent`
+- `BroadcastWorldSnapshot`
 
 ### 3. Ports and adapters
 External dependencies must be behind ports.
 
 Typical ports:
 
-- `OrderRepository`
-- `CartRepository`
-- `MessageBus`
+- `WorldStateRepository`
+- `MovementIntentChannel`
+- `SnapshotBroadcaster`
 - `Clock`
 - `IdGenerator`
-- `InventoryGateway`
-- `PricingGateway`
 
 This allows infrastructure replacement without changing the model.
 
