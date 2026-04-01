@@ -13,6 +13,8 @@ const (
 	DefaultMoveCost     = 1.0
 	DefaultFoodRadius   = 6.0
 	DefaultFoodEnergy   = 10.0
+	DefaultPlayerShape  = "triangle"
+	DefaultAutoShape    = "square"
 )
 
 type Bounds struct {
@@ -27,6 +29,7 @@ type Vector struct {
 
 type PlayerCircle struct {
 	ID     string  `json:"id"`
+	Shape  string  `json:"shape"`
 	X      float64 `json:"x"`
 	Y      float64 `json:"y"`
 	Radius float64 `json:"radius"`
@@ -35,10 +38,18 @@ type PlayerCircle struct {
 
 type AutonomousCircle struct {
 	ID     string  `json:"id"`
+	Shape  string  `json:"shape"`
 	X      float64 `json:"x"`
 	Y      float64 `json:"y"`
 	Radius float64 `json:"radius"`
 	Energy float64 `json:"energy"`
+}
+
+type InteractionClassification struct {
+	Active   bool   `json:"active"`
+	Kind     string `json:"kind"`
+	SourceID string `json:"source_id"`
+	TargetID string `json:"target_id"`
 }
 
 type Food struct {
@@ -49,12 +60,13 @@ type Food struct {
 }
 
 type Snapshot struct {
-	Type              string             `json:"type"`
-	Tick              int64              `json:"tick"`
-	World             Bounds             `json:"world"`
-	Player            PlayerCircle       `json:"player"`
-	AutonomousCircles []AutonomousCircle `json:"autonomous_circles"`
-	Foods             []Food             `json:"foods"`
+	Type              string                     `json:"type"`
+	Tick              int64                      `json:"tick"`
+	World             Bounds                     `json:"world"`
+	Player            PlayerCircle               `json:"player"`
+	AutonomousCircles []AutonomousCircle         `json:"autonomous_circles"`
+	Interaction       *InteractionClassification `json:"interaction"`
+	Foods             []Food                     `json:"foods"`
 }
 
 type World struct {
@@ -69,6 +81,10 @@ type World struct {
 }
 
 func NewWorld() *World {
+	return NewWorldWithShapes(DefaultPlayerShape, DefaultAutoShape)
+}
+
+func NewWorldWithShapes(playerShape, autonomousShape string) *World {
 	return &World{
 		bounds: Bounds{
 			Width:  DefaultWorldWidth,
@@ -76,6 +92,7 @@ func NewWorld() *World {
 		},
 		player: PlayerCircle{
 			ID:     "player-1",
+			Shape:  playerShape,
 			X:      DefaultWorldWidth / 2,
 			Y:      DefaultWorldHeight / 2,
 			Radius: DefaultPlayerRadius,
@@ -84,6 +101,7 @@ func NewWorld() *World {
 		autonomousCircles: []AutonomousCircle{
 			{
 				ID:     DefaultAutonomousID,
+				Shape:  autonomousShape,
 				X:      DefaultWorldWidth/2 - 140,
 				Y:      DefaultWorldHeight / 2,
 				Radius: DefaultPlayerRadius,
@@ -118,6 +136,7 @@ func (w *World) Snapshot(tick int64) Snapshot {
 		World:             w.bounds,
 		Player:            w.player,
 		AutonomousCircles: append([]AutonomousCircle(nil), w.autonomousCircles...),
+		Interaction:       w.classifyInteraction(),
 		Foods:             append([]Food(nil), w.foods...),
 	}
 }
@@ -208,4 +227,26 @@ func overlaps(ax, ay, ar, bx, by, br float64) bool {
 
 func autonomousIntent(tick int64, index int) Vector {
 	return Vector{X: 1, Y: 0}
+}
+
+func (w *World) classifyInteraction() *InteractionClassification {
+	for _, circle := range w.autonomousCircles {
+		if !overlaps(w.player.X, w.player.Y, w.player.Radius, circle.X, circle.Y, circle.Radius) {
+			continue
+		}
+
+		kind := "reproduce_candidate"
+		if w.player.Shape == circle.Shape {
+			kind = "fight_candidate"
+		}
+
+		return &InteractionClassification{
+			Active:   true,
+			Kind:     kind,
+			SourceID: w.player.ID,
+			TargetID: circle.ID,
+		}
+	}
+
+	return nil
 }

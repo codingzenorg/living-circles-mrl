@@ -56,24 +56,40 @@ function draw(snapshot) {
     context.fill();
   }
 
-  context.fillStyle = "#8c6bb1";
   for (const circle of snapshot.autonomous_circles) {
+    drawCircle(circle, false);
+  }
+
+  drawCircle(snapshot.player, true);
+
+  energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)}`;
+  const interaction = snapshot.interaction ? snapshot.interaction.kind : "none";
+  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}`;
+}
+
+function drawCircle(circle, isPlayer) {
+  const color = circle.shape === "triangle" ? "#3b8ea5" : "#8c6bb1";
+  context.fillStyle = color;
+
+  if (circle.shape === "triangle") {
+    context.beginPath();
+    context.moveTo(circle.x, circle.y - circle.radius);
+    context.lineTo(circle.x - circle.radius, circle.y + circle.radius);
+    context.lineTo(circle.x + circle.radius, circle.y + circle.radius);
+    context.closePath();
+    context.fill();
+  } else if (circle.shape === "square") {
+    context.fillRect(circle.x - circle.radius, circle.y - circle.radius, circle.radius * 2, circle.radius * 2);
+  } else {
     context.beginPath();
     context.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
     context.fill();
   }
 
-  context.fillStyle = "#3b8ea5";
-  context.beginPath();
-  context.arc(snapshot.player.x, snapshot.player.y, snapshot.player.radius, 0, Math.PI * 2);
-  context.fill();
-
   context.fillStyle = "#17313a";
   context.font = "16px Georgia";
-  context.fillText(snapshot.player.id, snapshot.player.x - 28, snapshot.player.y - snapshot.player.radius - 10);
-
-  energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)}`;
-  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length}`;
+  const label = isPlayer ? `${circle.id} (${circle.shape})` : `${circle.id} ${circle.shape}`;
+  context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
 }
 
 function setStatus(message) {

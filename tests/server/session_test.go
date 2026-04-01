@@ -74,6 +74,14 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if len(snapshot.AutonomousCircles) != 1 {
 		t.Fatalf("expected one autonomous circle, got %d", len(snapshot.AutonomousCircles))
 	}
+
+	if snapshot.Player.Shape != simulation.DefaultPlayerShape {
+		t.Fatalf("expected player shape %q, got %q", simulation.DefaultPlayerShape, snapshot.Player.Shape)
+	}
+
+	if snapshot.AutonomousCircles[0].Shape != simulation.DefaultAutoShape {
+		t.Fatalf("expected autonomous shape %q, got %q", simulation.DefaultAutoShape, snapshot.AutonomousCircles[0].Shape)
+	}
 }
 
 func TestOverlappingFoodRemovesItAndRestoresEnergy(t *testing.T) {
@@ -139,5 +147,52 @@ func TestAutonomousCircleCanConsumeFoodAndRecoverEnergy(t *testing.T) {
 
 	if secondTick.AutonomousCircles[0].Energy <= firstTick.AutonomousCircles[0].Energy {
 		t.Fatalf("expected autonomous circle energy recovery, before=%v after=%v", firstTick.AutonomousCircles[0].Energy, secondTick.AutonomousCircles[0].Energy)
+	}
+}
+
+func TestSameShapeOverlapProducesFightCandidate(t *testing.T) {
+	session := simulation.NewSessionWithShapes("triangle", "triangle")
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected active interaction classification")
+	}
+	if snapshot.Interaction.Kind != "fight_candidate" {
+		t.Fatalf("expected fight_candidate, got %q", snapshot.Interaction.Kind)
+	}
+}
+
+func TestDifferentShapeOverlapProducesReproduceCandidate(t *testing.T) {
+	session := simulation.NewSessionWithShapes("triangle", "square")
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected active interaction classification")
+	}
+	if snapshot.Interaction.Kind != "reproduce_candidate" {
+		t.Fatalf("expected reproduce_candidate, got %q", snapshot.Interaction.Kind)
+	}
+}
+
+func TestNonOverlappingCirclesHaveNoInteractionClassification(t *testing.T) {
+	session := simulation.NewSession()
+	snapshot := session.Snapshot()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no interaction classification, got %+v", snapshot.Interaction)
 	}
 }

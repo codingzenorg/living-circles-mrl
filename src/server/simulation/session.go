@@ -15,6 +15,12 @@ func NewSession() *Session {
 	}
 }
 
+func NewSessionWithShapes(playerShape, autonomousShape string) *Session {
+	return &Session{
+		world: NewWorldWithShapes(playerShape, autonomousShape),
+	}
+}
+
 func (s *Session) ApplyIntent(intent Vector) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

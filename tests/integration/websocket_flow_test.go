@@ -13,7 +13,7 @@ import (
 	"github.com/codingzen/living-circles-mrl/src/server/transport"
 )
 
-func TestClientReceivesInitialSnapshotAndMovementUpdate(t *testing.T) {
+func TestClientReceivesInitialSnapshotAndInteractionClassification(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())
 	defer httpServer.Close()
@@ -42,11 +42,14 @@ func TestClientReceivesInitialSnapshotAndMovementUpdate(t *testing.T) {
 	if len(initial.AutonomousCircles) != 1 {
 		t.Fatalf("expected one autonomous circle, got %d", len(initial.AutonomousCircles))
 	}
+	if initial.Player.Shape == "" || initial.AutonomousCircles[0].Shape == "" {
+		t.Fatal("expected circle shapes in initial snapshot")
+	}
 
 	message := map[string]any{
 		"type": "movement_intent",
 		"direction": map[string]float64{
-			"x": 1,
+			"x": -1,
 			"y": 0,
 		},
 	}
@@ -54,9 +57,8 @@ func TestClientReceivesInitialSnapshotAndMovementUpdate(t *testing.T) {
 		t.Fatalf("write movement intent: %v", err)
 	}
 
-	_ = connection.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
 
-	previous := initial
 	for {
 		var snapshot simulation.Snapshot
 		if err := connection.ReadJSON(&snapshot); err != nil {
@@ -67,21 +69,18 @@ func TestClientReceivesInitialSnapshotAndMovementUpdate(t *testing.T) {
 			continue
 		}
 
-		if snapshot.AutonomousCircles[0].X == initial.AutonomousCircles[0].X && snapshot.AutonomousCircles[0].Y == initial.AutonomousCircles[0].Y {
-			previous = snapshot
-			continue
-		}
-
-		if len(snapshot.Foods) < len(initial.Foods) {
-			if snapshot.Player.X <= initial.Player.X {
-				t.Fatalf("expected player x to increase, before=%v after=%v", initial.Player.X, snapshot.Player.X)
+		if snapshot.Interaction != nil {
+			expectedKind := "reproduce_candidate"
+			if snapshot.Player.Shape == snapshot.AutonomousCircles[0].Shape {
+				expectedKind = "fight_candidate"
 			}
-			if snapshot.AutonomousCircles[0].Energy <= previous.AutonomousCircles[0].Energy {
-				t.Fatalf("expected autonomous energy recovery after food consumption, previous=%v current=%v", previous.AutonomousCircles[0].Energy, snapshot.AutonomousCircles[0].Energy)
+			if snapshot.Player.X >= initial.Player.X {
+				t.Fatalf("expected player to move left toward interaction, before=%v after=%v", initial.Player.X, snapshot.Player.X)
+			}
+			if snapshot.Interaction.Kind != expectedKind {
+				t.Fatalf("expected interaction kind %q, got %q", expectedKind, snapshot.Interaction.Kind)
 			}
 			return
 		}
-
-		previous = snapshot
 	}
 }
