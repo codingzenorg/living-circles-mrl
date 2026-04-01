@@ -60,9 +60,13 @@ function draw(snapshot) {
     drawCircle(circle, false);
   }
 
-  drawCircle(snapshot.player, true);
+  if (snapshot.player) {
+    drawCircle(snapshot.player, true);
+    energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)}`;
+  } else {
+    energyNode.textContent = "Energy: defeated";
+  }
 
-  energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)}`;
   const interaction = snapshot.interaction ? snapshot.interaction.kind : "none";
   tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}`;
 }

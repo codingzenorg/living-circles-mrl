@@ -13,8 +13,13 @@ import (
 	"github.com/codingzen/living-circles-mrl/src/server/transport"
 )
 
-func TestClientReceivesInitialSnapshotAndInteractionClassification(t *testing.T) {
-	server := transport.NewServer()
+func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:      "triangle",
+		AutonomousShape:  "triangle",
+		PlayerEnergy:     100,
+		AutonomousEnergy: 80,
+	}))
 	httpServer := httptest.NewServer(server.Handler())
 	defer httpServer.Close()
 
@@ -70,15 +75,17 @@ func TestClientReceivesInitialSnapshotAndInteractionClassification(t *testing.T)
 		}
 
 		if snapshot.Interaction != nil {
-			expectedKind := "reproduce_candidate"
-			if snapshot.Player.Shape == snapshot.AutonomousCircles[0].Shape {
-				expectedKind = "fight_candidate"
-			}
-			if snapshot.Player.X >= initial.Player.X {
+			if snapshot.Player != nil && snapshot.Player.X >= initial.Player.X {
 				t.Fatalf("expected player to move left toward interaction, before=%v after=%v", initial.Player.X, snapshot.Player.X)
 			}
-			if snapshot.Interaction.Kind != expectedKind {
-				t.Fatalf("expected interaction kind %q, got %q", expectedKind, snapshot.Interaction.Kind)
+			if snapshot.Interaction.Kind != "fight_resolved" {
+				t.Fatalf("expected fight_resolved, got %q", snapshot.Interaction.Kind)
+			}
+			if snapshot.Interaction.WinnerID != "player-1" {
+				t.Fatalf("expected player to win resolved fight, got %q", snapshot.Interaction.WinnerID)
+			}
+			if len(snapshot.AutonomousCircles) != 0 {
+				t.Fatalf("expected autonomous circle to be removed after fight, got %d", len(snapshot.AutonomousCircles))
 			}
 			return
 		}

@@ -47,9 +47,12 @@ type AutonomousCircle struct {
 
 type InteractionClassification struct {
 	Active   bool   `json:"active"`
+	Resolved bool   `json:"resolved"`
 	Kind     string `json:"kind"`
 	SourceID string `json:"source_id"`
 	TargetID string `json:"target_id"`
+	WinnerID string `json:"winner_id"`
+	LoserID  string `json:"loser_id"`
 }
 
 type Food struct {
@@ -63,7 +66,7 @@ type Snapshot struct {
 	Type              string                     `json:"type"`
 	Tick              int64                      `json:"tick"`
 	World             Bounds                     `json:"world"`
-	Player            PlayerCircle               `json:"player"`
+	Player            *PlayerCircle              `json:"player"`
 	AutonomousCircles []AutonomousCircle         `json:"autonomous_circles"`
 	Interaction       *InteractionClassification `json:"interaction"`
 	Foods             []Food                     `json:"foods"`
@@ -71,41 +74,63 @@ type Snapshot struct {
 
 type World struct {
 	bounds            Bounds
-	player            PlayerCircle
+	player            *PlayerCircle
 	autonomousCircles []AutonomousCircle
 	foods             []Food
 	moveCost          float64
 	speed             float64
 	maxEnergy         float64
 	foodGain          float64
+	lastInteraction   *InteractionClassification
+}
+
+type Config struct {
+	PlayerShape      string
+	AutonomousShape  string
+	PlayerEnergy     float64
+	AutonomousEnergy float64
 }
 
 func NewWorld() *World {
-	return NewWorldWithShapes(DefaultPlayerShape, DefaultAutoShape)
+	return NewWorldWithConfig(Config{
+		PlayerShape:      DefaultPlayerShape,
+		AutonomousShape:  DefaultAutoShape,
+		PlayerEnergy:     DefaultPlayerEnergy,
+		AutonomousEnergy: DefaultPlayerEnergy,
+	})
 }
 
 func NewWorldWithShapes(playerShape, autonomousShape string) *World {
+	return NewWorldWithConfig(Config{
+		PlayerShape:      playerShape,
+		AutonomousShape:  autonomousShape,
+		PlayerEnergy:     DefaultPlayerEnergy,
+		AutonomousEnergy: DefaultPlayerEnergy,
+	})
+}
+
+func NewWorldWithConfig(config Config) *World {
 	return &World{
 		bounds: Bounds{
 			Width:  DefaultWorldWidth,
 			Height: DefaultWorldHeight,
 		},
-		player: PlayerCircle{
+		player: &PlayerCircle{
 			ID:     "player-1",
-			Shape:  playerShape,
+			Shape:  config.PlayerShape,
 			X:      DefaultWorldWidth / 2,
 			Y:      DefaultWorldHeight / 2,
 			Radius: DefaultPlayerRadius,
-			Energy: DefaultPlayerEnergy,
+			Energy: config.PlayerEnergy,
 		},
 		autonomousCircles: []AutonomousCircle{
 			{
 				ID:     DefaultAutonomousID,
-				Shape:  autonomousShape,
+				Shape:  config.AutonomousShape,
 				X:      DefaultWorldWidth/2 - 140,
 				Y:      DefaultWorldHeight / 2,
 				Radius: DefaultPlayerRadius,
-				Energy: DefaultPlayerEnergy,
+				Energy: config.AutonomousEnergy,
 			},
 		},
 		foods: []Food{
@@ -121,22 +146,36 @@ func NewWorldWithShapes(playerShape, autonomousShape string) *World {
 }
 
 func (w *World) Advance(tick int64, intent Vector) Snapshot {
+	w.lastInteraction = nil
 	w.player = w.advanceCircle(w.player, intent)
 	w.advanceAutonomousCircles(tick)
 
 	w.consumeOverlappingFood()
+	w.resolveCircleInteractions()
 
 	return w.Snapshot(tick)
 }
 
 func (w *World) Snapshot(tick int64) Snapshot {
+	var player *PlayerCircle
+	if w.player != nil {
+		copy := *w.player
+		player = &copy
+	}
+
+	var interaction *InteractionClassification
+	if w.lastInteraction != nil {
+		copy := *w.lastInteraction
+		interaction = &copy
+	}
+
 	return Snapshot{
 		Type:              "world_snapshot",
 		Tick:              tick,
 		World:             w.bounds,
-		Player:            w.player,
+		Player:            player,
 		AutonomousCircles: append([]AutonomousCircle(nil), w.autonomousCircles...),
-		Interaction:       w.classifyInteraction(),
+		Interaction:       interaction,
 		Foods:             append([]Food(nil), w.foods...),
 	}
 }
@@ -144,7 +183,7 @@ func (w *World) Snapshot(tick int64) Snapshot {
 func (w *World) consumeOverlappingFood() {
 	remaining := make([]Food, 0, len(w.foods))
 	for _, food := range w.foods {
-		if overlaps(w.player.X, w.player.Y, w.player.Radius, food.X, food.Y, food.Radius) {
+		if w.player != nil && overlaps(w.player.X, w.player.Y, w.player.Radius, food.X, food.Y, food.Radius) {
 			w.player.Energy = math.Min(w.maxEnergy, w.player.Energy+w.foodGain)
 			continue
 		}
@@ -169,7 +208,10 @@ func (w *World) consumeOverlappingFood() {
 	w.foods = remaining
 }
 
-func (w *World) advanceCircle(circle PlayerCircle, intent Vector) PlayerCircle {
+func (w *World) advanceCircle(circle *PlayerCircle, intent Vector) *PlayerCircle {
+	if circle == nil {
+		return nil
+	}
 	if circle.Energy <= 0 {
 		return circle
 	}
@@ -229,24 +271,79 @@ func autonomousIntent(tick int64, index int) Vector {
 	return Vector{X: 1, Y: 0}
 }
 
-func (w *World) classifyInteraction() *InteractionClassification {
+func (w *World) resolveCircleInteractions() {
+	if w.player == nil {
+		return
+	}
+
 	for _, circle := range w.autonomousCircles {
 		if !overlaps(w.player.X, w.player.Y, w.player.Radius, circle.X, circle.Y, circle.Radius) {
 			continue
 		}
 
-		kind := "reproduce_candidate"
-		if w.player.Shape == circle.Shape {
-			kind = "fight_candidate"
+		if w.player.Shape != circle.Shape {
+			w.lastInteraction = &InteractionClassification{
+				Active:   true,
+				Resolved: false,
+				Kind:     "reproduce_candidate",
+				SourceID: w.player.ID,
+				TargetID: circle.ID,
+			}
+			return
 		}
 
-		return &InteractionClassification{
-			Active:   true,
-			Kind:     kind,
-			SourceID: w.player.ID,
-			TargetID: circle.ID,
+		w.resolveFight(circle.ID)
+		return
+	}
+}
+
+func (w *World) resolveFight(opponentID string) {
+	opponentIndex := -1
+	for index, circle := range w.autonomousCircles {
+		if circle.ID == opponentID {
+			opponentIndex = index
+			break
 		}
 	}
 
-	return nil
+	if opponentIndex == -1 || w.player == nil {
+		return
+	}
+
+	opponent := w.autonomousCircles[opponentIndex]
+	winnerID, loserID := determineFightOutcome(*w.player, opponent)
+
+	w.lastInteraction = &InteractionClassification{
+		Active:   false,
+		Resolved: true,
+		Kind:     "fight_resolved",
+		SourceID: w.player.ID,
+		TargetID: opponent.ID,
+		WinnerID: winnerID,
+		LoserID:  loserID,
+	}
+
+	if loserID == w.player.ID {
+		w.player = nil
+		return
+	}
+
+	w.autonomousCircles = append(w.autonomousCircles[:opponentIndex], w.autonomousCircles[opponentIndex+1:]...)
+}
+
+func determineFightOutcome(player PlayerCircle, opponent AutonomousCircle) (string, string) {
+	if player.Energy > opponent.Energy {
+		return player.ID, opponent.ID
+	}
+	if opponent.Energy > player.Energy {
+		return opponent.ID, player.ID
+	}
+	if player.Radius > opponent.Radius {
+		return player.ID, opponent.ID
+	}
+	if opponent.Radius > player.Radius {
+		return opponent.ID, player.ID
+	}
+
+	return player.ID, opponent.ID
 }

@@ -29,31 +29,38 @@
       }
     },
     "player": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "shape", "x", "y", "radius", "energy"],
-      "properties": {
-        "id": {
-          "type": "string"
+      "anyOf": [
+        {
+          "type": "null"
         },
-        "shape": {
-          "type": "string"
-        },
-        "x": {
-          "type": "number"
-        },
-        "y": {
-          "type": "number"
-        },
-        "radius": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "energy": {
-          "type": "number",
-          "minimum": 0
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "shape", "x", "y", "radius", "energy"],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "shape": {
+              "type": "string"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "radius": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "energy": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
         }
-      }
+      ]
     },
     "autonomous_circles": {
       "type": "array",
@@ -99,12 +106,18 @@
               "type": "boolean"
             },
             "kind": {
-              "enum": ["fight_candidate", "reproduce_candidate"]
+              "enum": ["reproduce_candidate", "fight_resolved"]
             },
             "source_id": {
               "type": "string"
             },
             "target_id": {
+              "type": "string"
+            },
+            "winner_id": {
+              "type": "string"
+            },
+            "loser_id": {
               "type": "string"
             }
           }

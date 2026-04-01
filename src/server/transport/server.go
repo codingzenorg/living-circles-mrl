@@ -31,9 +31,17 @@ type Server struct {
 }
 
 func NewServer() *Server {
+	return NewServerWithSession(simulation.NewSession())
+}
+
+func NewServerWithShapes(playerShape, autonomousShape string) *Server {
+	return NewServerWithSession(simulation.NewSessionWithShapes(playerShape, autonomousShape))
+}
+
+func NewServerWithSession(session *simulation.Session) *Server {
 	server := &Server{
 		mux:       http.NewServeMux(),
-		session:   simulation.NewSession(),
+		session:   session,
 		tickEvery: 100 * time.Millisecond,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(*http.Request) bool { return true },

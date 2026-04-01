@@ -164,8 +164,14 @@ func TestSameShapeOverlapProducesFightCandidate(t *testing.T) {
 	if snapshot.Interaction == nil {
 		t.Fatal("expected active interaction classification")
 	}
-	if snapshot.Interaction.Kind != "fight_candidate" {
-		t.Fatalf("expected fight_candidate, got %q", snapshot.Interaction.Kind)
+	if snapshot.Interaction.Kind != "fight_resolved" {
+		t.Fatalf("expected fight_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.WinnerID != "player-1" {
+		t.Fatalf("expected player to win tie-break fight, got winner %q", snapshot.Interaction.WinnerID)
+	}
+	if len(snapshot.AutonomousCircles) != 0 {
+		t.Fatalf("expected losing autonomous circle to be removed, got %d autonomous circles", len(snapshot.AutonomousCircles))
 	}
 }
 
@@ -194,5 +200,56 @@ func TestNonOverlappingCirclesHaveNoInteractionClassification(t *testing.T) {
 
 	if snapshot.Interaction != nil {
 		t.Fatalf("expected no interaction classification, got %+v", snapshot.Interaction)
+	}
+}
+
+func TestHigherEnergyCircleWinsFight(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:      "triangle",
+		AutonomousShape:  "triangle",
+		PlayerEnergy:     100,
+		AutonomousEnergy: 80,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected fight resolution")
+	}
+	if snapshot.Interaction.WinnerID != "player-1" {
+		t.Fatalf("expected higher-energy player to win, got %q", snapshot.Interaction.WinnerID)
+	}
+}
+
+func TestPlayerCanBeRemovedWhenLosingFight(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:      "triangle",
+		AutonomousShape:  "triangle",
+		PlayerEnergy:     50,
+		AutonomousEnergy: 100,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected fight resolution")
+	}
+	if snapshot.Interaction.WinnerID != simulation.DefaultAutonomousID {
+		t.Fatalf("expected autonomous circle to win, got %q", snapshot.Interaction.WinnerID)
+	}
+	if snapshot.Player != nil {
+		t.Fatalf("expected player to be removed after losing fight, got %+v", snapshot.Player)
 	}
 }

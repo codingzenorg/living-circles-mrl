@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_shape_identity_and_collision_classification.md`
+`docs/slices/initial_same_shape_fight_resolution.md`
 
 ## Implemented Shape
 
@@ -13,6 +13,7 @@
 - authoritative food initialization and consumption inside the Go world model
 - one deterministic autonomous circle participating under the same movement and energy rules
 - explicit shape identity and current interaction classification in snapshots
+- deterministic same-shape fight resolution with loser removal
 
 ## Runtime Contract
 
@@ -61,10 +62,13 @@
     }
   ],
   "interaction": {
-    "active": true,
-    "kind": "reproduce_candidate",
+    "active": false,
+    "resolved": true,
+    "kind": "fight_resolved",
     "source_id": "player-1",
-    "target_id": "circle-2"
+    "target_id": "circle-2",
+    "winner_id": "player-1",
+    "loser_id": "circle-2"
   },
   "foods": [
     {
@@ -85,7 +89,8 @@
 - deterministic shape assignment: player `triangle`, autonomous circle `square`
 - deterministic fixed food placement
 - no food respawn
-- no fight or reproduction resolution, death, or continuity logic
+- different-shape reproduction remains classification-only
+- no continuity, replacement, or child logic after defeat
 - no local prediction or interpolation
 - one shared movement intent for the connected client
 - static world size and player radius
@@ -99,11 +104,12 @@ The slice needed these implementation choices not fully specified in the refined
 - player energy clamps to a maximum of `100`
 - the autonomous circle follows a fixed deterministic direction: right on every tick
 - same-shape overlap maps to `fight_candidate`; different-shape overlap maps to `reproduce_candidate`
+- same-shape fights resolve in one tick using: higher energy wins, then larger radius, then player wins exact ties
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
 
 ## Validation Targets
 
-- deterministic server tests for shape assignment, overlap classification, shared food consumption, and energy caps
-- contract test for explicit snapshot shape including shape identity and interaction classification
-- integration test for WebSocket snapshots with active interaction classification
+- deterministic server tests for fight winner selection, loser removal, and unresolved reproduction classification
+- contract test for explicit snapshot shape including resolved fight outcomes
+- integration test for WebSocket snapshots with same-shape fight resolution
