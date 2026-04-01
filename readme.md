@@ -1,84 +1,146 @@
-# MRL Starter
+# Living Circles
 
 ## Purpose
 
-This repository is a starter template for the Model Refinement Lab.
+Living Circles is an experimental multiplayer ecosystem game.
 
-Use it to begin a new repository that follows the MRL loop:
+The current repository explores a browser-based JavaScript canvas client connected by WebSocket to an authoritative Go server. The game model being shaped here is centered on circles as living entities constrained by energy, interacting through movement, food collection, shape-based collision meaning, and later reproduction or conflict.
+
+At this stage, the repository is not trying to present a finished game. It is trying to make the game model explicit, testable, and evolvable in small slices.
+
+---
+
+## Why MRL Was Chosen
+
+This project adopted the Model Refinement Lab because Living Circles began with incomplete but meaningful ideas rather than a fixed specification.
+
+The early material described:
+
+- energy as the central regulating variable
+- shape as the signal that changes the meaning of collisions
+- a real-time browser game connected to an authoritative backend
+- agar.io as a reference point, but not as a cloning target
+
+That kind of project benefits from a workflow that separates:
+
+- source evidence and semantic extraction
+- slice definition
+- implementation
+- expectation review
+
+MRL was chosen to keep those concerns explicit in repository artifacts instead of relying on one long conversation or on undocumented implementation drift.
+
+The working loop used here is:
 
 ```text
 extract -> refine -> build -> egd -> release -> expose -> living -> extract
 ```
 
-This starter separates:
+---
 
-- MRL core: the artifact-driven refinement loop and workflow
-- implementation packs: selectable language and architecture defaults
+## How This Repository Was Initiated
 
-The repository currently includes `python_ddd_monolith` as the example selected pack. If you want another shape such as Go, TypeScript, event sourcing, or a multi-runtime client/server system, keep the MRL core and replace the pack guidance intentionally.
+This repository started from an MRL starter template and was then reshaped around the Living Circles domain.
 
-One of the repository's main characteristics is that pre-defined packs can be used to scaffold new MRL projects. That lets adopters keep the same refinement workflow while starting from a language and architecture shape that already fits their context.
+The initial work in this repository followed this progression:
 
-MRL itself is AI-agent-friendly rather than tool-specific, but this starter is currently optimized for Codex-style repository workflows. It can still be used well with other AI coding agents when they operate from explicit repository artifacts instead of conversational memory.
+1. keep the MRL operating documents and repository structure
+2. extract the original Living Circles notes into semantic artifacts and change requests
+3. replace the starter's default architectural assumptions with a polyglot client/server shape
+4. implement the first deterministic slices of the game model
+
+So MRL is the method used to evolve the project, but Living Circles is the actual subject of the repository.
 
 ---
 
-## Getting Started
+## Current State
 
-Clone the starter into the new repository name you want:
+The implemented baseline currently includes:
 
-```bash
-git clone <starter-url> my-new-project
-cd my-new-project
-```
+- a Go authoritative simulation server
+- a browser client rendered with JavaScript canvas 2D
+- WebSocket movement input and server snapshots
+- energy consumption on movement
+- deterministic food collection and energy recovery
+- deterministic autonomous circles
+- shape-based interaction classification
+- same-shape fight resolution
+- a default demo world that exposes both:
+  - same-shape fight behavior
+  - different-shape `reproduce_candidate` behavior
 
-The preferred way to start a new project is to use this repository as a GitHub template, not as a fork. Forking is more appropriate when working on the starter itself or maintaining a derivative starter.
-
-Then read these files first:
-
-- `docs/operating/mrl_reference.md`
-- `docs/operating/skills_workflow.md`
-- `docs/operating/packs.md`
-- `docs/operating/best_practices.md`
-- `architecture.md`
-- `groundrules.md`
-- `docs/building/project_structure.md`
-
-Then start the loop:
-
-1. run `extract` to build the first semantic baseline in `docs/semantics/`
-2. run `refine` to define the first slice in `docs/slices/`
-3. run `build` to implement one vertical slice
-4. run `egd` to review the built behavior
-
-The semantic placeholders in `docs/semantics/` are intentionally empty. They are meant to be filled by the `extract` phase, not by copying domain content from this starter.
+The game semantics are still intentionally incomplete. Reproduction outcomes, children, continuity, and broader ecosystem behavior remain future refinement work.
 
 ---
 
-## Starter Layout
+## Repository Use
+
+This repository is organized to preserve project memory in artifacts:
 
 ```text
 .agents/skills/            # repo-local MRL skills
 /docs/operating/           # MRL model and workflow docs
-/docs/packs/               # implementation pack definitions
-/docs/building/            # structure and bootstrap guidance
-/docs/evaluation/          # expectation-gap evaluation guidance
-/docs/semantics/           # domain-specific meaning created by extract
+/docs/semantics/           # extracted game meaning and reference knowledge
 /docs/slices/              # one slice document per increment
-/work/sources/             # curated raw evidence and external input material
-/work/changes/             # bounded request and phase handoff artifacts
-/src/                      # implementation root shaped by the selected pack
-/tests/                    # executable specification
+/work/sources/             # curated raw evidence and original source material
+/work/changes/             # request, impact, and implementation artifacts
+/src/                      # client, server, and shared runtime code
+/tests/                    # deterministic executable specification
+```
+
+Useful files to read first:
+
+- `docs/semantics/model_hypothesis.md`
+- `docs/semantics/domain_background_knowledge.md`
+- `architecture.md`
+- `decisions.md`
+- `docs/operating/mrl_reference.md`
+- `docs/operating/skills_workflow.md`
+
+---
+
+## Running The Current Demo
+
+Use the Go server as the runtime entrypoint:
+
+```bash
+source "$HOME/.nvm/nvm.sh"
+nvm use
+go run ./src/server/cmd/livingcircles
+```
+
+Then open:
+
+```text
+http://localhost:8080
+```
+
+Contract-side JavaScript tests can be run with:
+
+```bash
+source "$HOME/.nvm/nvm.sh"
+nvm use
+npm run test:contracts
+```
+
+Go tests can be run with:
+
+```bash
+go test ./...
 ```
 
 ---
 
-## Notes
+## Notes On MRL Usage Here
 
-- Treat this repository as a template, not as a finished application.
-- Keep domain specifics out of the starter and in the adopting repository.
-- Keep the MRL loop generic and move language or architecture assumptions into packs.
-- Prefer one small slice over broad scaffolding.
+MRL in this repository is being used as a disciplined shaping process:
+
+- `extract` records source evidence and semantic meaning
+- `refine` defines one bounded slice
+- `build` implements that slice with deterministic tests
+- later phases evaluate, accept, expose, and feed new evidence back into the loop
+
+The important point is that MRL is here to serve the evolution of Living Circles, not to overshadow it.
 
 ## Licensing
 
