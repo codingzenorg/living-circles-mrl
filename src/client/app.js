@@ -8,20 +8,28 @@ const tickNode = document.getElementById("tick");
 
 let latestSnapshot = null;
 const pressedKeys = new Set();
+let activeSocket = null;
+let senderIntervalId = null;
+
+const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown", "w", "a", "s", "d"]);
+
+function normalizeKey(key) {
+  return key.toLowerCase();
+}
 
 function currentDirection() {
   const vector = { x: 0, y: 0 };
 
-  if (pressedKeys.has("ArrowLeft") || pressedKeys.has("a")) {
+  if (pressedKeys.has("arrowleft") || pressedKeys.has("a")) {
     vector.x -= 1;
   }
-  if (pressedKeys.has("ArrowRight") || pressedKeys.has("d")) {
+  if (pressedKeys.has("arrowright") || pressedKeys.has("d")) {
     vector.x += 1;
   }
-  if (pressedKeys.has("ArrowUp") || pressedKeys.has("w")) {
+  if (pressedKeys.has("arrowup") || pressedKeys.has("w")) {
     vector.y -= 1;
   }
-  if (pressedKeys.has("ArrowDown") || pressedKeys.has("s")) {
+  if (pressedKeys.has("arrowdown") || pressedKeys.has("s")) {
     vector.y += 1;
   }
 
@@ -48,6 +56,13 @@ function draw(snapshot) {
     context.fill();
   }
 
+  context.fillStyle = "#8c6bb1";
+  for (const circle of snapshot.autonomous_circles) {
+    context.beginPath();
+    context.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+    context.fill();
+  }
+
   context.fillStyle = "#3b8ea5";
   context.beginPath();
   context.arc(snapshot.player.x, snapshot.player.y, snapshot.player.radius, 0, Math.PI * 2);
@@ -58,19 +73,36 @@ function draw(snapshot) {
   context.fillText(snapshot.player.id, snapshot.player.x - 28, snapshot.player.y - snapshot.player.radius - 10);
 
   energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)}`;
-  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length}`;
+  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length}`;
 }
 
 function setStatus(message) {
   statusNode.textContent = `${message} · contract v${CONTRACT_VERSION}`;
 }
 
+function ensureSenderLoop() {
+  if (senderIntervalId !== null) {
+    return;
+  }
+
+  senderIntervalId = window.setInterval(() => {
+    if (!activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const direction = currentDirection();
+    activeSocket.send(JSON.stringify(createMovementIntent(direction.x, direction.y)));
+  }, 100);
+}
+
 function connect() {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   const socket = new WebSocket(`${protocol}://${window.location.host}/ws`);
+  activeSocket = socket;
 
   socket.addEventListener("open", () => {
     setStatus("Connected");
+    ensureSenderLoop();
   });
 
   socket.addEventListener("message", (event) => {
@@ -84,6 +116,9 @@ function connect() {
   });
 
   socket.addEventListener("close", () => {
+    if (activeSocket === socket) {
+      activeSocket = null;
+    }
     setStatus("Disconnected");
     setTimeout(connect, 1000);
   });
@@ -92,22 +127,32 @@ function connect() {
     setStatus("Connection error");
   });
 
-  setInterval(() => {
-    if (socket.readyState !== WebSocket.OPEN) {
-      return;
-    }
+}
 
-    const direction = currentDirection();
-    socket.send(JSON.stringify(createMovementIntent(direction.x, direction.y)));
-  }, 100);
+function handleMovementKey(event, isPressed) {
+  const key = normalizeKey(event.key);
+  if (!movementKeys.has(key)) {
+    return;
+  }
+
+  event.preventDefault();
+  if (isPressed) {
+    pressedKeys.add(key);
+  } else {
+    pressedKeys.delete(key);
+  }
 }
 
 window.addEventListener("keydown", (event) => {
-  pressedKeys.add(event.key);
+  handleMovementKey(event, true);
 });
 
 window.addEventListener("keyup", (event) => {
-  pressedKeys.delete(event.key);
+  handleMovementKey(event, false);
+});
+
+window.addEventListener("blur", () => {
+  pressedKeys.clear();
 });
 
 setStatus("Connecting");
