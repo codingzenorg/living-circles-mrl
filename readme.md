@@ -65,6 +65,8 @@ The semantic placeholders in `docs/semantics/` are intentionally empty. They are
 /docs/evaluation/          # expectation-gap evaluation guidance
 /docs/semantics/           # domain-specific meaning created by extract
 /docs/slices/              # one slice document per increment
+/work/sources/             # curated raw evidence and external input material
+/work/changes/             # bounded request and phase handoff artifacts
 /src/                      # implementation root shaped by the selected pack
 /tests/                    # executable specification
 ```

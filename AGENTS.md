@@ -9,6 +9,7 @@ Use this structure as the default shape:
 src/app/{domain,application,infrastructure,interfaces}
 tests/{unit,integration,builders,fixtures}
 docs/{operating,building,evaluation,semantics,slices}
+work/{sources,changes}
 .agents/skills/
 ```
 
