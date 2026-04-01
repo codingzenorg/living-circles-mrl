@@ -28,4 +28,4 @@ Prefer Python 3.12+, explicit types, 4-space indentation, and business-oriented 
 Use tests as specification. Start with domain tests, add integration tests for mappings and end-to-end flows, and keep time, IDs, and external responses deterministic.
 
 ## Commit & Pull Request Guidelines
-Use short imperative commit subjects, keep commits scoped to one slice or doc change, and include test evidence in pull requests.
+Use Conventional Commits for commit subjects, choosing an appropriate type such as `feat`, `fix`, `docs`, `refactor`, `test`, `build`, `ci`, or `chore`. Keep commits scoped to one slice or doc change, and include test evidence in pull requests.
