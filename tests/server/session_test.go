@@ -81,6 +81,9 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.Player.ChildrenCount != 0 {
 		t.Fatalf("expected player children count to start at zero, got %d", snapshot.Player.ChildrenCount)
 	}
+	if snapshot.Player.Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected base player radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.Player.Radius)
+	}
 
 	if snapshot.AutonomousCircles[0].Shape != snapshot.Player.Shape {
 		t.Fatalf("expected first autonomous circle to match player shape %q, got %q", snapshot.Player.Shape, snapshot.AutonomousCircles[0].Shape)
@@ -88,12 +91,18 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.AutonomousCircles[0].ChildrenCount != 0 {
 		t.Fatalf("expected first autonomous children count to start at zero, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
 	}
+	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected base autonomous radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.AutonomousCircles[0].Radius)
+	}
 
 	if snapshot.AutonomousCircles[1].Shape != simulation.DefaultAutoShape {
 		t.Fatalf("expected second autonomous shape %q, got %q", simulation.DefaultAutoShape, snapshot.AutonomousCircles[1].Shape)
 	}
 	if snapshot.AutonomousCircles[1].ChildrenCount != 0 {
 		t.Fatalf("expected second autonomous children count to start at zero, got %d", snapshot.AutonomousCircles[1].ChildrenCount)
+	}
+	if snapshot.AutonomousCircles[1].Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected base autonomous radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.AutonomousCircles[1].Radius)
 	}
 }
 
@@ -114,6 +123,28 @@ func TestOverlappingFoodRemovesItAndRestoresEnergy(t *testing.T) {
 	}
 }
 
+func TestInitialChildrenIncreaseRadiusDeterministically(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "square",
+		PlayerEnergy:            100,
+		AutonomousEnergy:        100,
+		PlayerChildrenCount:     2,
+		AutonomousChildrenCount: 1,
+	})
+	snapshot := session.Snapshot()
+
+	expectedPlayerRadius := simulation.DefaultPlayerRadius + 2*simulation.DefaultChildRadiusGain
+	expectedAutonomousRadius := simulation.DefaultPlayerRadius + simulation.DefaultChildRadiusGain
+
+	if snapshot.Player.Radius != expectedPlayerRadius {
+		t.Fatalf("expected player radius %v, got %v", expectedPlayerRadius, snapshot.Player.Radius)
+	}
+	if snapshot.AutonomousCircles[0].Radius != expectedAutonomousRadius {
+		t.Fatalf("expected autonomous radius %v, got %v", expectedAutonomousRadius, snapshot.AutonomousCircles[0].Radius)
+	}
+}
+
 func TestFoodRecoveryRespectsEnergyCap(t *testing.T) {
 	session := simulation.NewSession()
 	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
@@ -126,6 +157,33 @@ func TestFoodRecoveryRespectsEnergyCap(t *testing.T) {
 
 	if snapshot.Player.Energy != simulation.DefaultMaxEnergy {
 		t.Fatalf("expected food recovery to clamp to max energy, got %v", snapshot.Player.Energy)
+	}
+}
+
+func TestChildGrowthImprovesFoodCollectionReach(t *testing.T) {
+	baseSession := simulation.NewSession()
+	baseSession.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	baseAfter := baseSession.Advance()
+
+	grownSession := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "square",
+		PlayerEnergy:            100,
+		AutonomousEnergy:        100,
+		PlayerChildrenCount:     2,
+		AutonomousChildrenCount: 0,
+	})
+	grownSession.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	after := grownSession.Advance()
+
+	if len(baseAfter.Foods) != 3 {
+		t.Fatalf("expected base-radius player to miss food on first move, got %d foods", len(baseAfter.Foods))
+	}
+	if len(after.Foods) != 2 {
+		t.Fatalf("expected larger-radius player to consume food on first move, got %d foods", len(after.Foods))
+	}
+	if after.Player.Energy != simulation.DefaultMaxEnergy {
+		t.Fatalf("expected immediate food recovery from grown reach, got %v", after.Player.Energy)
 	}
 }
 
@@ -216,8 +274,14 @@ func TestDefaultWorldSupportsDifferentShapeReproductionPath(t *testing.T) {
 	if snapshot.Player.ChildrenCount != 1 {
 		t.Fatalf("expected player child accumulation after reproduction, got %d", snapshot.Player.ChildrenCount)
 	}
+	if snapshot.Player.Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
+		t.Fatalf("expected player radius growth after reproduction, got %v", snapshot.Player.Radius)
+	}
 	if snapshot.AutonomousCircles[1].ChildrenCount != 1 {
 		t.Fatalf("expected autonomous child accumulation after reproduction, got %d", snapshot.AutonomousCircles[1].ChildrenCount)
+	}
+	if snapshot.AutonomousCircles[1].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
+		t.Fatalf("expected autonomous radius growth after reproduction, got %v", snapshot.AutonomousCircles[1].Radius)
 	}
 }
 
@@ -266,8 +330,14 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	if snapshot.Player.ChildrenCount != 1 {
 		t.Fatalf("expected player child accumulation, got %d", snapshot.Player.ChildrenCount)
 	}
+	if snapshot.Player.Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
+		t.Fatalf("expected player radius growth, got %v", snapshot.Player.Radius)
+	}
 	if snapshot.AutonomousCircles[0].ChildrenCount != 1 {
 		t.Fatalf("expected autonomous child accumulation, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+	}
+	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
+		t.Fatalf("expected autonomous radius growth, got %v", snapshot.AutonomousCircles[0].Radius)
 	}
 }
 
@@ -374,6 +444,32 @@ func TestHigherEnergyCircleWinsFight(t *testing.T) {
 	}
 	if snapshot.Interaction.WinnerID != "player-1" {
 		t.Fatalf("expected higher-energy player to win, got %q", snapshot.Interaction.WinnerID)
+	}
+}
+
+func TestLargerRadiusBreaksEqualEnergyFightTie(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "triangle",
+		PlayerEnergy:            100,
+		AutonomousEnergy:        100,
+		PlayerChildrenCount:     1,
+		AutonomousChildrenCount: 0,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected fight resolution")
+	}
+	if snapshot.Interaction.WinnerID != "player-1" {
+		t.Fatalf("expected larger-radius player to win tie-break fight, got %q", snapshot.Interaction.WinnerID)
 	}
 }
 

@@ -130,6 +130,9 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.Player.ChildrenCount != 0 || initial.AutonomousCircles[0].ChildrenCount != 0 || initial.AutonomousCircles[1].ChildrenCount != 0 {
 		t.Fatal("expected child counts to start at zero")
 	}
+	if initial.Player.Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected base player radius %v, got %v", simulation.DefaultPlayerRadius, initial.Player.Radius)
+	}
 }
 
 func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.T) {
@@ -175,6 +178,10 @@ func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.
 			}
 			if snapshot.Player.ChildrenCount != 1 || snapshot.AutonomousCircles[0].ChildrenCount != 1 {
 				t.Fatalf("expected one child count for both circles after reproduction, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+			}
+			expectedRadius := simulation.DefaultPlayerRadius + simulation.DefaultChildRadiusGain
+			if snapshot.Player.Radius != expectedRadius || snapshot.AutonomousCircles[0].Radius != expectedRadius {
+				t.Fatalf("expected grown radius %v after reproduction, player=%v autonomous=%v", expectedRadius, snapshot.Player.Radius, snapshot.AutonomousCircles[0].Radius)
 			}
 			continue
 		}

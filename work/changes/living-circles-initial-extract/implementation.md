@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_different_shape_reproduction_accumulation.md`
+`docs/slices/initial_child_growth_to_radius.md`
 
 ## Implemented Shape
 
@@ -16,6 +16,7 @@
 - deterministic same-shape fight resolution with loser removal
 - default demo visibility for both same-shape and different-shape interaction paths
 - deterministic different-shape reproduction resolution with child accumulation counts
+- deterministic radius growth derived from child accumulation
 
 ## Runtime Contract
 
@@ -50,7 +51,7 @@
     "shape": "triangle",
     "x": 408,
     "y": 300,
-    "radius": 12,
+    "radius": 16,
     "energy": 99,
     "children_count": 1
   },
@@ -69,7 +70,7 @@
       "shape": "square",
       "x": 532,
       "y": 300,
-      "radius": 12,
+      "radius": 16,
       "energy": 99,
       "children_count": 1
     }
@@ -102,6 +103,7 @@
 - no food respawn
 - child accumulation is represented as an integer count on each circle
 - different-shape reproduction resolves without spawning separate child entities
+- radius is derived from child accumulation with a fixed per-child increment
 - no continuity, replacement, or child logic after defeat
 - no local prediction or interpolation
 - one shared movement intent for the connected client
@@ -117,6 +119,7 @@ The slice needed these implementation choices not fully specified in the refined
 - autonomous circles follow deterministic index-based directions so the default demo exposes both interaction paths
 - same-shape overlap resolves as `fight_resolved`; different-shape overlap resolves as `reproduce_resolved`
 - resolved reproduction awards exactly one child accumulation unit to each participating circle
+- each accumulated child increases radius by a fixed deterministic amount of `4`
 - a circle pair may reproduce at most once while continuously overlapping and must separate before reproducing again
 - same-shape fights resolve in one tick using: higher energy wins, then larger radius, then player wins exact ties
 
@@ -124,6 +127,6 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 ## Validation Targets
 
-- deterministic server tests for child accumulation, no-repeat overlap reproduction, fight winner selection, and loser removal
+- deterministic server tests for child accumulation, derived radius growth, food reach leverage, fight winner selection, and loser removal
 - contract test for explicit snapshot shape including child counts and resolved reproduction outcomes
-- integration tests for WebSocket snapshots with resolved reproduction and no repeat accumulation during continuous overlap
+- integration tests for WebSocket snapshots with resolved reproduction, visible growth, and no repeat accumulation during continuous overlap

@@ -3,19 +3,20 @@ package simulation
 import "math"
 
 const (
-	DefaultWorldWidth   = 800.0
-	DefaultWorldHeight  = 600.0
-	DefaultPlayerRadius = 12.0
-	DefaultAutonomousID = "circle-2"
-	DefaultSecondaryID  = "circle-3"
-	DefaultPlayerEnergy = 100.0
-	DefaultMaxEnergy    = 100.0
-	DefaultMoveSpeed    = 8.0
-	DefaultMoveCost     = 1.0
-	DefaultFoodRadius   = 6.0
-	DefaultFoodEnergy   = 10.0
-	DefaultPlayerShape  = "triangle"
-	DefaultAutoShape    = "square"
+	DefaultWorldWidth      = 800.0
+	DefaultWorldHeight     = 600.0
+	DefaultPlayerRadius    = 12.0
+	DefaultChildRadiusGain = 4.0
+	DefaultAutonomousID    = "circle-2"
+	DefaultSecondaryID     = "circle-3"
+	DefaultPlayerEnergy    = 100.0
+	DefaultMaxEnergy       = 100.0
+	DefaultMoveSpeed       = 8.0
+	DefaultMoveCost        = 1.0
+	DefaultFoodRadius      = 6.0
+	DefaultFoodEnergy      = 10.0
+	DefaultPlayerShape     = "triangle"
+	DefaultAutoShape       = "square"
 )
 
 type Bounds struct {
@@ -96,6 +97,9 @@ type Config struct {
 	PlayerEnergy              float64
 	AutonomousEnergy          float64
 	SecondaryAutonomousEnergy float64
+	PlayerChildrenCount       int
+	AutonomousChildrenCount   int
+	SecondaryChildrenCount    int
 }
 
 func NewWorld() *World {
@@ -121,22 +125,24 @@ func NewWorldWithShapes(playerShape, autonomousShape string) *World {
 func NewWorldWithConfig(config Config) *World {
 	autonomousCircles := []AutonomousCircle{
 		{
-			ID:     DefaultAutonomousID,
-			Shape:  config.AutonomousShape,
-			X:      DefaultWorldWidth/2 - 140,
-			Y:      DefaultWorldHeight / 2,
-			Radius: DefaultPlayerRadius,
-			Energy: config.AutonomousEnergy,
+			ID:            DefaultAutonomousID,
+			Shape:         config.AutonomousShape,
+			X:             DefaultWorldWidth/2 - 140,
+			Y:             DefaultWorldHeight / 2,
+			Radius:        derivedRadius(config.AutonomousChildrenCount),
+			Energy:        config.AutonomousEnergy,
+			ChildrenCount: config.AutonomousChildrenCount,
 		},
 	}
 	if config.SecondaryAutonomousShape != "" {
 		autonomousCircles = append(autonomousCircles, AutonomousCircle{
-			ID:     DefaultSecondaryID,
-			Shape:  config.SecondaryAutonomousShape,
-			X:      DefaultWorldWidth/2 + 140,
-			Y:      DefaultWorldHeight / 2,
-			Radius: DefaultPlayerRadius,
-			Energy: config.SecondaryAutonomousEnergy,
+			ID:            DefaultSecondaryID,
+			Shape:         config.SecondaryAutonomousShape,
+			X:             DefaultWorldWidth/2 + 140,
+			Y:             DefaultWorldHeight / 2,
+			Radius:        derivedRadius(config.SecondaryChildrenCount),
+			Energy:        config.SecondaryAutonomousEnergy,
+			ChildrenCount: config.SecondaryChildrenCount,
 		})
 	}
 
@@ -146,12 +152,13 @@ func NewWorldWithConfig(config Config) *World {
 			Height: DefaultWorldHeight,
 		},
 		player: &PlayerCircle{
-			ID:     "player-1",
-			Shape:  config.PlayerShape,
-			X:      DefaultWorldWidth / 2,
-			Y:      DefaultWorldHeight / 2,
-			Radius: DefaultPlayerRadius,
-			Energy: config.PlayerEnergy,
+			ID:            "player-1",
+			Shape:         config.PlayerShape,
+			X:             DefaultWorldWidth / 2,
+			Y:             DefaultWorldHeight / 2,
+			Radius:        derivedRadius(config.PlayerChildrenCount),
+			Energy:        config.PlayerEnergy,
+			ChildrenCount: config.PlayerChildrenCount,
 		},
 		autonomousCircles:    autonomousCircles,
 		autonomousDirections: initialAutonomousDirections(len(autonomousCircles)),
@@ -375,9 +382,11 @@ func (w *World) resolveReproduction(opponentID string) {
 	}
 
 	w.player.ChildrenCount++
+	w.player.Radius = derivedRadius(w.player.ChildrenCount)
 
 	opponent := w.autonomousCircles[opponentIndex]
 	opponent.ChildrenCount++
+	opponent.Radius = derivedRadius(opponent.ChildrenCount)
 	w.autonomousCircles[opponentIndex] = opponent
 
 	w.lastInteraction = &InteractionClassification{
@@ -426,4 +435,8 @@ func initialAutonomousDirections(count int) []Vector {
 	}
 
 	return directions
+}
+
+func derivedRadius(childrenCount int) float64 {
+	return DefaultPlayerRadius + float64(childrenCount)*DefaultChildRadiusGain
 }
