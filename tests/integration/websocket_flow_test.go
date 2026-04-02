@@ -127,4 +127,65 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.AutonomousCircles[1].Shape == initial.Player.Shape {
 		t.Fatalf("expected second autonomous circle to differ from player shape %q", initial.Player.Shape)
 	}
+	if initial.Player.ChildrenCount != 0 || initial.AutonomousCircles[0].ChildrenCount != 0 || initial.AutonomousCircles[1].ChildrenCount != 0 {
+		t.Fatal("expected child counts to start at zero")
+	}
+}
+
+func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:      "triangle",
+		AutonomousShape:  "square",
+		PlayerEnergy:     100,
+		AutonomousEnergy: 100,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	resolvedSeen := false
+	for range 40 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+
+		if snapshot.Interaction != nil && snapshot.Interaction.Kind == "reproduce_resolved" {
+			resolvedSeen = true
+			if snapshot.Player == nil {
+				t.Fatal("expected player to remain active after reproduction")
+			}
+			if snapshot.Player.ChildrenCount != 1 || snapshot.AutonomousCircles[0].ChildrenCount != 1 {
+				t.Fatalf("expected one child count for both circles after reproduction, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+			}
+			continue
+		}
+
+		if resolvedSeen {
+			if snapshot.Player.ChildrenCount > 1 || snapshot.AutonomousCircles[0].ChildrenCount > 1 {
+				t.Fatalf("expected no repeat accumulation during continuous overlap, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+			}
+			return
+		}
+	}
+
+	t.Fatal("expected resolved reproduction snapshot")
 }

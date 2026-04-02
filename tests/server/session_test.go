@@ -78,13 +78,22 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.Player.Shape != simulation.DefaultPlayerShape {
 		t.Fatalf("expected player shape %q, got %q", simulation.DefaultPlayerShape, snapshot.Player.Shape)
 	}
+	if snapshot.Player.ChildrenCount != 0 {
+		t.Fatalf("expected player children count to start at zero, got %d", snapshot.Player.ChildrenCount)
+	}
 
 	if snapshot.AutonomousCircles[0].Shape != snapshot.Player.Shape {
 		t.Fatalf("expected first autonomous circle to match player shape %q, got %q", snapshot.Player.Shape, snapshot.AutonomousCircles[0].Shape)
 	}
+	if snapshot.AutonomousCircles[0].ChildrenCount != 0 {
+		t.Fatalf("expected first autonomous children count to start at zero, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+	}
 
 	if snapshot.AutonomousCircles[1].Shape != simulation.DefaultAutoShape {
 		t.Fatalf("expected second autonomous shape %q, got %q", simulation.DefaultAutoShape, snapshot.AutonomousCircles[1].Shape)
+	}
+	if snapshot.AutonomousCircles[1].ChildrenCount != 0 {
+		t.Fatalf("expected second autonomous children count to start at zero, got %d", snapshot.AutonomousCircles[1].ChildrenCount)
 	}
 }
 
@@ -183,7 +192,7 @@ func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
 	}
 }
 
-func TestDefaultWorldSupportsDifferentShapeClassificationPath(t *testing.T) {
+func TestDefaultWorldSupportsDifferentShapeReproductionPath(t *testing.T) {
 	session := simulation.NewSession()
 
 	var snapshot simulation.Snapshot
@@ -198,11 +207,17 @@ func TestDefaultWorldSupportsDifferentShapeClassificationPath(t *testing.T) {
 	if snapshot.Interaction == nil {
 		t.Fatal("expected different-shape interaction in default world")
 	}
-	if snapshot.Interaction.Kind != "reproduce_candidate" {
-		t.Fatalf("expected reproduce_candidate, got %q", snapshot.Interaction.Kind)
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
 	}
 	if snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
-		t.Fatalf("expected reproduce candidate against %q, got %q", simulation.DefaultSecondaryID, snapshot.Interaction.TargetID)
+		t.Fatalf("expected reproduction against %q, got %q", simulation.DefaultSecondaryID, snapshot.Interaction.TargetID)
+	}
+	if snapshot.Player.ChildrenCount != 1 {
+		t.Fatalf("expected player child accumulation after reproduction, got %d", snapshot.Player.ChildrenCount)
+	}
+	if snapshot.AutonomousCircles[1].ChildrenCount != 1 {
+		t.Fatalf("expected autonomous child accumulation after reproduction, got %d", snapshot.AutonomousCircles[1].ChildrenCount)
 	}
 }
 
@@ -231,7 +246,7 @@ func TestSameShapeOverlapProducesFightCandidate(t *testing.T) {
 	}
 }
 
-func TestDifferentShapeOverlapProducesReproduceCandidate(t *testing.T) {
+func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	session := simulation.NewSessionWithShapes("triangle", "square")
 
 	var snapshot simulation.Snapshot
@@ -245,8 +260,87 @@ func TestDifferentShapeOverlapProducesReproduceCandidate(t *testing.T) {
 	if snapshot.Interaction == nil {
 		t.Fatal("expected active interaction classification")
 	}
-	if snapshot.Interaction.Kind != "reproduce_candidate" {
-		t.Fatalf("expected reproduce_candidate, got %q", snapshot.Interaction.Kind)
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Player.ChildrenCount != 1 {
+		t.Fatalf("expected player child accumulation, got %d", snapshot.Player.ChildrenCount)
+	}
+	if snapshot.AutonomousCircles[0].ChildrenCount != 1 {
+		t.Fatalf("expected autonomous child accumulation, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+	}
+}
+
+func TestContinuousOverlapDoesNotRepeatChildAccumulation(t *testing.T) {
+	session := simulation.NewSessionWithShapes("triangle", "square")
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected reproduction resolution")
+	}
+	if snapshot.Player.ChildrenCount != 1 || snapshot.AutonomousCircles[0].ChildrenCount != 1 {
+		t.Fatalf("expected one child each after first reproduction, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+	}
+
+	for range 3 {
+		snapshot = session.Advance()
+		if snapshot.Player.ChildrenCount != 1 || snapshot.AutonomousCircles[0].ChildrenCount != 1 {
+			t.Fatalf("expected continuous overlap to avoid repeat accumulation, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+		}
+	}
+}
+
+func TestPairCanReproduceAgainAfterSeparating(t *testing.T) {
+	session := simulation.NewSessionWithShapes("triangle", "square")
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected first reproduction resolution")
+	}
+
+	separated := false
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction == nil && snapshot.AutonomousCircles[0].X > snapshot.Player.X+snapshot.Player.Radius+snapshot.AutonomousCircles[0].Radius {
+			separated = true
+			break
+		}
+	}
+
+	if !separated {
+		t.Fatal("expected pair to separate after first reproduction")
+	}
+
+	for range 120 {
+		session.ApplyIntent(simulation.Vector{})
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected second reproduction after re-overlap")
+	}
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Player.ChildrenCount != 2 || snapshot.AutonomousCircles[0].ChildrenCount != 2 {
+		t.Fatalf("expected second reproduction to increment child counts, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
 	}
 }
 

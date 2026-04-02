@@ -23,8 +23,9 @@ test("world snapshot schema remains explicit and parseable", async () => {
 
   assert.equal(schema.properties.type.const, MESSAGE_TYPES.worldSnapshot);
   assert.deepEqual(schema.required, ["type", "tick", "world", "player", "autonomous_circles", "interaction", "foods"]);
-  assert.deepEqual(schema.properties.player.anyOf[1].required, ["id", "shape", "x", "y", "radius", "energy"]);
-  assert.deepEqual(schema.properties.autonomous_circles.items.required, ["id", "shape", "x", "y", "radius", "energy"]);
-  assert.deepEqual(schema.properties.interaction.anyOf[1].properties.kind.enum, ["reproduce_candidate", "fight_resolved"]);
+  assert.deepEqual(schema.properties.player.anyOf[1].required, ["id", "shape", "x", "y", "radius", "energy", "children_count"]);
+  assert.deepEqual(schema.properties.autonomous_circles.items.required, ["id", "shape", "x", "y", "radius", "energy", "children_count"]);
+  assert.deepEqual(schema.properties.interaction.anyOf[1].required, ["active", "resolved", "kind", "source_id", "target_id"]);
+  assert.deepEqual(schema.properties.interaction.anyOf[1].properties.kind.enum, ["reproduce_resolved", "fight_resolved"]);
   assert.deepEqual(schema.properties.foods.items.required, ["id", "x", "y", "radius"]);
 });

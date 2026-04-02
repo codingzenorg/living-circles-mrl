@@ -29,21 +29,23 @@ type Vector struct {
 }
 
 type PlayerCircle struct {
-	ID     string  `json:"id"`
-	Shape  string  `json:"shape"`
-	X      float64 `json:"x"`
-	Y      float64 `json:"y"`
-	Radius float64 `json:"radius"`
-	Energy float64 `json:"energy"`
+	ID            string  `json:"id"`
+	Shape         string  `json:"shape"`
+	X             float64 `json:"x"`
+	Y             float64 `json:"y"`
+	Radius        float64 `json:"radius"`
+	Energy        float64 `json:"energy"`
+	ChildrenCount int     `json:"children_count"`
 }
 
 type AutonomousCircle struct {
-	ID     string  `json:"id"`
-	Shape  string  `json:"shape"`
-	X      float64 `json:"x"`
-	Y      float64 `json:"y"`
-	Radius float64 `json:"radius"`
-	Energy float64 `json:"energy"`
+	ID            string  `json:"id"`
+	Shape         string  `json:"shape"`
+	X             float64 `json:"x"`
+	Y             float64 `json:"y"`
+	Radius        float64 `json:"radius"`
+	Energy        float64 `json:"energy"`
+	ChildrenCount int     `json:"children_count"`
 }
 
 type InteractionClassification struct {
@@ -74,15 +76,17 @@ type Snapshot struct {
 }
 
 type World struct {
-	bounds            Bounds
-	player            *PlayerCircle
-	autonomousCircles []AutonomousCircle
-	foods             []Food
-	moveCost          float64
-	speed             float64
-	maxEnergy         float64
-	foodGain          float64
-	lastInteraction   *InteractionClassification
+	bounds               Bounds
+	player               *PlayerCircle
+	autonomousCircles    []AutonomousCircle
+	autonomousDirections []Vector
+	foods                []Food
+	moveCost             float64
+	speed                float64
+	maxEnergy            float64
+	foodGain             float64
+	lastInteraction      *InteractionClassification
+	activeOverlapPairs   map[string]struct{}
 }
 
 type Config struct {
@@ -149,23 +153,25 @@ func NewWorldWithConfig(config Config) *World {
 			Radius: DefaultPlayerRadius,
 			Energy: config.PlayerEnergy,
 		},
-		autonomousCircles: autonomousCircles,
+		autonomousCircles:    autonomousCircles,
+		autonomousDirections: initialAutonomousDirections(len(autonomousCircles)),
 		foods: []Food{
 			{ID: "food-1", X: DefaultWorldWidth/2 + 32, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
 			{ID: "food-2", X: DefaultWorldWidth/2 - 108, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
 			{ID: "food-3", X: DefaultWorldWidth/2 + 120, Y: DefaultWorldHeight/2 + 84, Radius: DefaultFoodRadius},
 		},
-		moveCost:  DefaultMoveCost,
-		speed:     DefaultMoveSpeed,
-		maxEnergy: DefaultMaxEnergy,
-		foodGain:  DefaultFoodEnergy,
+		moveCost:           DefaultMoveCost,
+		speed:              DefaultMoveSpeed,
+		maxEnergy:          DefaultMaxEnergy,
+		foodGain:           DefaultFoodEnergy,
+		activeOverlapPairs: make(map[string]struct{}),
 	}
 }
 
 func (w *World) Advance(tick int64, intent Vector) Snapshot {
 	w.lastInteraction = nil
 	w.player = w.advanceCircle(w.player, intent)
-	w.advanceAutonomousCircles(tick)
+	w.advanceAutonomousCircles()
 
 	w.consumeOverlappingFood()
 	w.resolveCircleInteractions()
@@ -245,13 +251,13 @@ func (w *World) advanceCircle(circle *PlayerCircle, intent Vector) *PlayerCircle
 	return circle
 }
 
-func (w *World) advanceAutonomousCircles(tick int64) {
+func (w *World) advanceAutonomousCircles() {
 	for index, circle := range w.autonomousCircles {
 		if circle.Energy <= 0 {
 			continue
 		}
 
-		intent := autonomousIntent(tick, index)
+		intent := w.autonomousDirections[index]
 		normalized := normalize(intent)
 		if normalized.X == 0 && normalized.Y == 0 {
 			continue
@@ -260,6 +266,9 @@ func (w *World) advanceAutonomousCircles(tick int64) {
 		circle.X = clamp(circle.X+normalized.X*w.speed, circle.Radius, w.bounds.Width-circle.Radius)
 		circle.Y = clamp(circle.Y+normalized.Y*w.speed, circle.Radius, w.bounds.Height-circle.Radius)
 		circle.Energy = math.Max(0, circle.Energy-w.moveCost)
+		if circle.X == circle.Radius || circle.X == w.bounds.Width-circle.Radius {
+			w.autonomousDirections[index] = Vector{X: -intent.X, Y: intent.Y}
+		}
 		w.autonomousCircles[index] = circle
 	}
 }
@@ -284,37 +293,37 @@ func overlaps(ax, ay, ar, bx, by, br float64) bool {
 	return math.Hypot(ax-bx, ay-by) <= ar+br
 }
 
-func autonomousIntent(tick int64, index int) Vector {
-	if index%2 == 1 {
-		return Vector{X: -1, Y: 0}
-	}
-	return Vector{X: 1, Y: 0}
-}
-
 func (w *World) resolveCircleInteractions() {
 	if w.player == nil {
+		w.activeOverlapPairs = make(map[string]struct{})
 		return
 	}
 
+	currentOverlapPairs := make(map[string]struct{})
 	for _, circle := range w.autonomousCircles {
 		if !overlaps(w.player.X, w.player.Y, w.player.Radius, circle.X, circle.Y, circle.Radius) {
 			continue
 		}
 
+		pairKey := overlapPairKey(w.player.ID, circle.ID)
+		currentOverlapPairs[pairKey] = struct{}{}
+
 		if w.player.Shape != circle.Shape {
-			w.lastInteraction = &InteractionClassification{
-				Active:   true,
-				Resolved: false,
-				Kind:     "reproduce_candidate",
-				SourceID: w.player.ID,
-				TargetID: circle.ID,
+			if _, exists := w.activeOverlapPairs[pairKey]; exists {
+				continue
 			}
+
+			w.resolveReproduction(circle.ID)
+			w.activeOverlapPairs = currentOverlapPairs
 			return
 		}
 
 		w.resolveFight(circle.ID)
+		w.activeOverlapPairs = currentOverlapPairs
 		return
 	}
+
+	w.activeOverlapPairs = currentOverlapPairs
 }
 
 func (w *World) resolveFight(opponentID string) {
@@ -349,6 +358,35 @@ func (w *World) resolveFight(opponentID string) {
 	}
 
 	w.autonomousCircles = append(w.autonomousCircles[:opponentIndex], w.autonomousCircles[opponentIndex+1:]...)
+	w.autonomousDirections = append(w.autonomousDirections[:opponentIndex], w.autonomousDirections[opponentIndex+1:]...)
+}
+
+func (w *World) resolveReproduction(opponentID string) {
+	opponentIndex := -1
+	for index, circle := range w.autonomousCircles {
+		if circle.ID == opponentID {
+			opponentIndex = index
+			break
+		}
+	}
+
+	if opponentIndex == -1 || w.player == nil {
+		return
+	}
+
+	w.player.ChildrenCount++
+
+	opponent := w.autonomousCircles[opponentIndex]
+	opponent.ChildrenCount++
+	w.autonomousCircles[opponentIndex] = opponent
+
+	w.lastInteraction = &InteractionClassification{
+		Active:   false,
+		Resolved: true,
+		Kind:     "reproduce_resolved",
+		SourceID: w.player.ID,
+		TargetID: opponent.ID,
+	}
 }
 
 func determineFightOutcome(player PlayerCircle, opponent AutonomousCircle) (string, string) {
@@ -366,4 +404,26 @@ func determineFightOutcome(player PlayerCircle, opponent AutonomousCircle) (stri
 	}
 
 	return player.ID, opponent.ID
+}
+
+func overlapPairKey(a, b string) string {
+	if a < b {
+		return a + ":" + b
+	}
+
+	return b + ":" + a
+}
+
+func initialAutonomousDirections(count int) []Vector {
+	directions := make([]Vector, 0, count)
+	for index := range count {
+		if index%2 == 1 {
+			directions = append(directions, Vector{X: -1, Y: 0})
+			continue
+		}
+
+		directions = append(directions, Vector{X: 1, Y: 0})
+	}
+
+	return directions
 }
