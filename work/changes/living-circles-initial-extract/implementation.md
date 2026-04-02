@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_child_growth_to_radius.md`
+`docs/slices/initial_child_replacement_on_defeat.md`
 
 ## Implemented Shape
 
@@ -17,6 +17,7 @@
 - default demo visibility for both same-shape and different-shape interaction paths
 - deterministic different-shape reproduction resolution with child accumulation counts
 - deterministic radius growth derived from child accumulation
+- deterministic child replacement on defeat when the loser has available children
 
 ## Runtime Contract
 
@@ -62,7 +63,7 @@
       "x": 268,
       "y": 300,
       "radius": 12,
-      "energy": 99,
+      "energy": 100,
       "children_count": 0
     },
     {
@@ -78,9 +79,11 @@
   "interaction": {
     "active": false,
     "resolved": true,
-    "kind": "reproduce_resolved",
+    "kind": "fight_resolved",
     "source_id": "player-1",
-    "target_id": "circle-3"
+    "target_id": "circle-2",
+    "winner_id": "player-1",
+    "loser_id": "circle-2"
   },
   "foods": [
     {
@@ -104,7 +107,7 @@
 - child accumulation is represented as an integer count on each circle
 - different-shape reproduction resolves without spawning separate child entities
 - radius is derived from child accumulation with a fixed per-child increment
-- no continuity, replacement, or child logic after defeat
+- continuity is limited to one-child replacement after fight defeat
 - no local prediction or interpolation
 - one shared movement intent for the connected client
 - static world size and player radius
@@ -122,11 +125,13 @@ The slice needed these implementation choices not fully specified in the refined
 - each accumulated child increases radius by a fixed deterministic amount of `4`
 - a circle pair may reproduce at most once while continuously overlapping and must separate before reproducing again
 - same-shape fights resolve in one tick using: higher energy wins, then larger radius, then player wins exact ties
+- a fight loser with at least one child remains active through immediate replacement, consuming exactly one child
+- replacement stays at the defeated circle position and resets to deterministic baseline energy `100`
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
 
 ## Validation Targets
 
-- deterministic server tests for child accumulation, derived radius growth, food reach leverage, fight winner selection, and loser removal
+- deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, and child replacement continuity
 - contract test for explicit snapshot shape including child counts and resolved reproduction outcomes
-- integration tests for WebSocket snapshots with resolved reproduction, visible growth, and no repeat accumulation during continuous overlap
+- integration tests for WebSocket snapshots with visible growth, resolved reproduction, and fight continuity through child replacement

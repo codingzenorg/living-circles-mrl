@@ -92,6 +92,63 @@ func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	}
 }
 
+func TestClientReceivesFightResolutionWithChildReplacement(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "triangle",
+		PlayerEnergy:            100,
+		AutonomousEnergy:        80,
+		AutonomousChildrenCount: 1,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 40 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.Interaction == nil {
+			continue
+		}
+
+		if snapshot.Interaction.Kind != "fight_resolved" {
+			t.Fatalf("expected fight_resolved, got %q", snapshot.Interaction.Kind)
+		}
+		if snapshot.Interaction.LoserID != simulation.DefaultAutonomousID {
+			t.Fatalf("expected autonomous loser, got %q", snapshot.Interaction.LoserID)
+		}
+		if len(snapshot.AutonomousCircles) != 1 {
+			t.Fatalf("expected replacement autonomous circle to remain active, got %d", len(snapshot.AutonomousCircles))
+		}
+		if snapshot.AutonomousCircles[0].ChildrenCount != 0 {
+			t.Fatalf("expected replacement to consume one child, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+		}
+		if snapshot.AutonomousCircles[0].Energy != simulation.DefaultReplacementEnergy {
+			t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.AutonomousCircles[0].Energy)
+		}
+		return
+	}
+
+	t.Fatal("expected fight resolution with child replacement")
+}
+
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())
@@ -127,11 +184,20 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.AutonomousCircles[1].Shape == initial.Player.Shape {
 		t.Fatalf("expected second autonomous circle to differ from player shape %q", initial.Player.Shape)
 	}
-	if initial.Player.ChildrenCount != 0 || initial.AutonomousCircles[0].ChildrenCount != 0 || initial.AutonomousCircles[1].ChildrenCount != 0 {
-		t.Fatal("expected child counts to start at zero")
+	if initial.Player.ChildrenCount != 0 {
+		t.Fatalf("expected player child count to start at zero, got %d", initial.Player.ChildrenCount)
+	}
+	if initial.AutonomousCircles[0].ChildrenCount != 1 {
+		t.Fatalf("expected first autonomous child count to start at one for demo continuity, got %d", initial.AutonomousCircles[0].ChildrenCount)
+	}
+	if initial.AutonomousCircles[1].ChildrenCount != 0 {
+		t.Fatalf("expected second autonomous child count to start at zero, got %d", initial.AutonomousCircles[1].ChildrenCount)
 	}
 	if initial.Player.Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected base player radius %v, got %v", simulation.DefaultPlayerRadius, initial.Player.Radius)
+	}
+	if initial.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
+		t.Fatalf("expected first autonomous radius %v, got %v", simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain, initial.AutonomousCircles[0].Radius)
 	}
 }
 

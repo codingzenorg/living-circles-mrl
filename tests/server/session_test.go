@@ -88,11 +88,11 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.AutonomousCircles[0].Shape != snapshot.Player.Shape {
 		t.Fatalf("expected first autonomous circle to match player shape %q, got %q", snapshot.Player.Shape, snapshot.AutonomousCircles[0].Shape)
 	}
-	if snapshot.AutonomousCircles[0].ChildrenCount != 0 {
-		t.Fatalf("expected first autonomous children count to start at zero, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+	if snapshot.AutonomousCircles[0].ChildrenCount != 1 {
+		t.Fatalf("expected first autonomous children count to start at one for demo continuity, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
 	}
-	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius {
-		t.Fatalf("expected base autonomous radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.AutonomousCircles[0].Radius)
+	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
+		t.Fatalf("expected first autonomous radius %v, got %v", simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain, snapshot.AutonomousCircles[0].Radius)
 	}
 
 	if snapshot.AutonomousCircles[1].Shape != simulation.DefaultAutoShape {
@@ -248,6 +248,23 @@ func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
 	if snapshot.Interaction.TargetID != simulation.DefaultAutonomousID {
 		t.Fatalf("expected fight against %q, got %q", simulation.DefaultAutonomousID, snapshot.Interaction.TargetID)
 	}
+	if len(snapshot.AutonomousCircles) != 2 {
+		t.Fatalf("expected replacement plus different-shape autonomous circle to remain, got %d circles", len(snapshot.AutonomousCircles))
+	}
+	foundReplacement := false
+	for _, circle := range snapshot.AutonomousCircles {
+		if circle.ID != simulation.DefaultAutonomousID {
+			continue
+		}
+		foundReplacement = true
+		if circle.ChildrenCount != 0 {
+			t.Fatalf("expected replacement to consume one child, got %d", circle.ChildrenCount)
+		}
+		break
+	}
+	if !foundReplacement {
+		t.Fatalf("expected replacement circle %q to remain active", simulation.DefaultAutonomousID)
+	}
 }
 
 func TestDefaultWorldSupportsDifferentShapeReproductionPath(t *testing.T) {
@@ -307,6 +324,43 @@ func TestSameShapeOverlapProducesFightCandidate(t *testing.T) {
 	}
 	if len(snapshot.AutonomousCircles) != 0 {
 		t.Fatalf("expected losing autonomous circle to be removed, got %d autonomous circles", len(snapshot.AutonomousCircles))
+	}
+}
+
+func TestAutonomousLoserWithChildRemainsActiveThroughReplacement(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "triangle",
+		PlayerEnergy:            100,
+		AutonomousEnergy:        80,
+		AutonomousChildrenCount: 1,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected fight resolution")
+	}
+	if snapshot.Interaction.LoserID != simulation.DefaultAutonomousID {
+		t.Fatalf("expected autonomous loser, got %q", snapshot.Interaction.LoserID)
+	}
+	if len(snapshot.AutonomousCircles) != 1 {
+		t.Fatalf("expected autonomous replacement to remain active, got %d circles", len(snapshot.AutonomousCircles))
+	}
+	if snapshot.AutonomousCircles[0].ChildrenCount != 0 {
+		t.Fatalf("expected replacement to consume one child, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+	}
+	if snapshot.AutonomousCircles[0].Energy != simulation.DefaultReplacementEnergy {
+		t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.AutonomousCircles[0].Energy)
+	}
+	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected replacement radius to reset to base after child consumption, got %v", snapshot.AutonomousCircles[0].Radius)
 	}
 }
 
@@ -497,5 +551,43 @@ func TestPlayerCanBeRemovedWhenLosingFight(t *testing.T) {
 	}
 	if snapshot.Player != nil {
 		t.Fatalf("expected player to be removed after losing fight, got %+v", snapshot.Player)
+	}
+}
+
+func TestPlayerLoserWithChildRemainsActiveThroughReplacement(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "triangle",
+		PlayerEnergy:            50,
+		AutonomousEnergy:        100,
+		PlayerChildrenCount:     1,
+		AutonomousChildrenCount: 0,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected fight resolution")
+	}
+	if snapshot.Interaction.LoserID != "player-1" {
+		t.Fatalf("expected player loser, got %q", snapshot.Interaction.LoserID)
+	}
+	if snapshot.Player == nil {
+		t.Fatal("expected player replacement to remain active")
+	}
+	if snapshot.Player.ChildrenCount != 0 {
+		t.Fatalf("expected replacement to consume one child, got %d", snapshot.Player.ChildrenCount)
+	}
+	if snapshot.Player.Energy != simulation.DefaultReplacementEnergy {
+		t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.Player.Energy)
+	}
+	if snapshot.Player.Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected replacement radius to reset to base after child consumption, got %v", snapshot.Player.Radius)
 	}
 }

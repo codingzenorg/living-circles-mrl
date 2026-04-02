@@ -3,20 +3,21 @@ package simulation
 import "math"
 
 const (
-	DefaultWorldWidth      = 800.0
-	DefaultWorldHeight     = 600.0
-	DefaultPlayerRadius    = 12.0
-	DefaultChildRadiusGain = 4.0
-	DefaultAutonomousID    = "circle-2"
-	DefaultSecondaryID     = "circle-3"
-	DefaultPlayerEnergy    = 100.0
-	DefaultMaxEnergy       = 100.0
-	DefaultMoveSpeed       = 8.0
-	DefaultMoveCost        = 1.0
-	DefaultFoodRadius      = 6.0
-	DefaultFoodEnergy      = 10.0
-	DefaultPlayerShape     = "triangle"
-	DefaultAutoShape       = "square"
+	DefaultWorldWidth        = 800.0
+	DefaultWorldHeight       = 600.0
+	DefaultPlayerRadius      = 12.0
+	DefaultChildRadiusGain   = 4.0
+	DefaultAutonomousID      = "circle-2"
+	DefaultSecondaryID       = "circle-3"
+	DefaultPlayerEnergy      = 100.0
+	DefaultReplacementEnergy = 100.0
+	DefaultMaxEnergy         = 100.0
+	DefaultMoveSpeed         = 8.0
+	DefaultMoveCost          = 1.0
+	DefaultFoodRadius        = 6.0
+	DefaultFoodEnergy        = 10.0
+	DefaultPlayerShape       = "triangle"
+	DefaultAutoShape         = "square"
 )
 
 type Bounds struct {
@@ -108,8 +109,9 @@ func NewWorld() *World {
 		AutonomousShape:           DefaultPlayerShape,
 		SecondaryAutonomousShape:  DefaultAutoShape,
 		PlayerEnergy:              DefaultPlayerEnergy,
-		AutonomousEnergy:          DefaultPlayerEnergy,
+		AutonomousEnergy:          80,
 		SecondaryAutonomousEnergy: DefaultPlayerEnergy,
+		AutonomousChildrenCount:   1,
 	})
 }
 
@@ -360,12 +362,27 @@ func (w *World) resolveFight(opponentID string) {
 	}
 
 	if loserID == w.player.ID {
-		w.player = nil
+		if w.player.ChildrenCount == 0 {
+			w.player = nil
+			return
+		}
+
+		w.player.ChildrenCount--
+		w.player.Radius = derivedRadius(w.player.ChildrenCount)
+		w.player.Energy = DefaultReplacementEnergy
 		return
 	}
 
-	w.autonomousCircles = append(w.autonomousCircles[:opponentIndex], w.autonomousCircles[opponentIndex+1:]...)
-	w.autonomousDirections = append(w.autonomousDirections[:opponentIndex], w.autonomousDirections[opponentIndex+1:]...)
+	if opponent.ChildrenCount == 0 {
+		w.autonomousCircles = append(w.autonomousCircles[:opponentIndex], w.autonomousCircles[opponentIndex+1:]...)
+		w.autonomousDirections = append(w.autonomousDirections[:opponentIndex], w.autonomousDirections[opponentIndex+1:]...)
+		return
+	}
+
+	opponent.ChildrenCount--
+	opponent.Radius = derivedRadius(opponent.ChildrenCount)
+	opponent.Energy = DefaultReplacementEnergy
+	w.autonomousCircles[opponentIndex] = opponent
 }
 
 func (w *World) resolveReproduction(opponentID string) {
