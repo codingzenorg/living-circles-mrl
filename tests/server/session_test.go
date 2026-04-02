@@ -30,6 +30,99 @@ func TestAdvanceConsumesEnergyWhenMovementOccurs(t *testing.T) {
 	}
 }
 
+func TestPlayerWithZeroEnergyDisappearsWithoutChildren(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:      "triangle",
+		AutonomousShape:  "square",
+		PlayerEnergy:     1,
+		AutonomousEnergy: 100,
+	})
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	snapshot := session.Advance()
+
+	if snapshot.Player != nil {
+		t.Fatalf("expected player to disappear on zero energy, got %+v", snapshot.Player)
+	}
+}
+
+func TestPlayerWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:         "triangle",
+		AutonomousShape:     "square",
+		PlayerEnergy:        1,
+		AutonomousEnergy:    100,
+		PlayerChildrenCount: 1,
+	})
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	snapshot := session.Advance()
+
+	if snapshot.Player == nil {
+		t.Fatal("expected player replacement after zero-energy collapse")
+	}
+	if snapshot.Player.ChildrenCount != 0 {
+		t.Fatalf("expected replacement to consume one child, got %d", snapshot.Player.ChildrenCount)
+	}
+	if snapshot.Player.Energy != simulation.DefaultReplacementEnergy {
+		t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.Player.Energy)
+	}
+}
+
+func TestAutonomousCircleWithZeroEnergyDisappearsWithoutChildren(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:      "triangle",
+		AutonomousShape:  "triangle",
+		PlayerEnergy:     100,
+		AutonomousEnergy: 0,
+	})
+	snapshot := session.Advance()
+
+	if len(snapshot.AutonomousCircles) != 0 {
+		t.Fatalf("expected zero-energy autonomous circle to disappear, got %d circles", len(snapshot.AutonomousCircles))
+	}
+}
+
+func TestAutonomousCircleWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "triangle",
+		PlayerEnergy:            100,
+		AutonomousEnergy:        0,
+		AutonomousChildrenCount: 1,
+	})
+	snapshot := session.Advance()
+
+	if len(snapshot.AutonomousCircles) != 1 {
+		t.Fatalf("expected autonomous replacement after zero-energy collapse, got %d circles", len(snapshot.AutonomousCircles))
+	}
+	if snapshot.AutonomousCircles[0].ChildrenCount != 0 {
+		t.Fatalf("expected replacement to consume one child, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+	}
+	if snapshot.AutonomousCircles[0].Energy != simulation.DefaultReplacementEnergy {
+		t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.AutonomousCircles[0].Energy)
+	}
+}
+
+func TestPositiveEnergyDoesNotTriggerCollapseDeath(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:      "triangle",
+		AutonomousShape:  "square",
+		PlayerEnergy:     2,
+		AutonomousEnergy: 100,
+	})
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	snapshot := session.Advance()
+
+	if snapshot.Player == nil {
+		t.Fatal("expected positive-energy player to remain active")
+	}
+	if snapshot.Player.Energy != 1 {
+		t.Fatalf("expected energy to decrease without death, got %v", snapshot.Player.Energy)
+	}
+}
+
 func TestAdvanceKeepsPlayerInsideBounds(t *testing.T) {
 	session := simulation.NewSession()
 

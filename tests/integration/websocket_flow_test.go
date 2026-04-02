@@ -348,3 +348,65 @@ func TestResetEndpointReturnsAndBroadcastsInitialSnapshot(t *testing.T) {
 		t.Fatalf("expected reset broadcast player to match initial snapshot, initial=%+v broadcast=%+v", initial.Player, broadcast.Player)
 	}
 }
+
+func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:         "triangle",
+		AutonomousShape:     "square",
+		PlayerEnergy:        1,
+		AutonomousEnergy:    100,
+		PlayerChildrenCount: 1,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	message := map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 1,
+			"y": 0,
+		},
+	}
+	if err := connection.WriteJSON(message); err != nil {
+		t.Fatalf("write movement intent: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 20 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+
+		if snapshot.Player == nil {
+			t.Fatal("expected replacement player to remain active after zero-energy collapse")
+		}
+		if snapshot.Player.ChildrenCount != 0 {
+			t.Fatalf("expected replacement to consume one child, got %d", snapshot.Player.ChildrenCount)
+		}
+		if snapshot.Player.Energy != simulation.DefaultReplacementEnergy {
+			t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.Player.Energy)
+		}
+		return
+	}
+
+	t.Fatal("expected energy-collapse replacement snapshot")
+}

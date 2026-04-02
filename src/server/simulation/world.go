@@ -183,6 +183,7 @@ func (w *World) Advance(tick int64, intent Vector) Snapshot {
 	w.advanceAutonomousCircles()
 
 	w.consumeOverlappingFood()
+	w.resolveEnergyCollapse()
 	w.resolveCircleInteractions()
 
 	return w.Snapshot(tick)
@@ -362,27 +363,18 @@ func (w *World) resolveFight(opponentID string) {
 	}
 
 	if loserID == w.player.ID {
-		if w.player.ChildrenCount == 0 {
-			w.player = nil
-			return
-		}
-
-		w.player.ChildrenCount--
-		w.player.Radius = derivedRadius(w.player.ChildrenCount)
-		w.player.Energy = DefaultReplacementEnergy
+		w.player = replaceOrRemovePlayer(w.player)
 		return
 	}
 
-	if opponent.ChildrenCount == 0 {
+	replacedOpponent, active := replaceOrRemoveAutonomous(opponent)
+	if !active {
 		w.autonomousCircles = append(w.autonomousCircles[:opponentIndex], w.autonomousCircles[opponentIndex+1:]...)
 		w.autonomousDirections = append(w.autonomousDirections[:opponentIndex], w.autonomousDirections[opponentIndex+1:]...)
 		return
 	}
 
-	opponent.ChildrenCount--
-	opponent.Radius = derivedRadius(opponent.ChildrenCount)
-	opponent.Energy = DefaultReplacementEnergy
-	w.autonomousCircles[opponentIndex] = opponent
+	w.autonomousCircles[opponentIndex] = replacedOpponent
 }
 
 func (w *World) resolveReproduction(opponentID string) {
@@ -456,4 +448,53 @@ func initialAutonomousDirections(count int) []Vector {
 
 func derivedRadius(childrenCount int) float64 {
 	return DefaultPlayerRadius + float64(childrenCount)*DefaultChildRadiusGain
+}
+
+func (w *World) resolveEnergyCollapse() {
+	if w.player != nil && w.player.Energy == 0 {
+		w.player = replaceOrRemovePlayer(w.player)
+	}
+
+	for index, circle := range w.autonomousCircles {
+		if circle.Energy != 0 {
+			continue
+		}
+
+		replaced, active := replaceOrRemoveAutonomous(circle)
+		if !active {
+			w.autonomousCircles = append(w.autonomousCircles[:index], w.autonomousCircles[index+1:]...)
+			w.autonomousDirections = append(w.autonomousDirections[:index], w.autonomousDirections[index+1:]...)
+			index--
+			continue
+		}
+
+		w.autonomousCircles[index] = replaced
+	}
+}
+
+func replaceOrRemovePlayer(circle *PlayerCircle) *PlayerCircle {
+	if circle == nil {
+		return nil
+	}
+	if circle.ChildrenCount == 0 {
+		return nil
+	}
+
+	circle.ChildrenCount--
+	circle.Radius = derivedRadius(circle.ChildrenCount)
+	circle.Energy = DefaultReplacementEnergy
+
+	return circle
+}
+
+func replaceOrRemoveAutonomous(circle AutonomousCircle) (AutonomousCircle, bool) {
+	if circle.ChildrenCount == 0 {
+		return AutonomousCircle{}, false
+	}
+
+	circle.ChildrenCount--
+	circle.Radius = derivedRadius(circle.ChildrenCount)
+	circle.Energy = DefaultReplacementEnergy
+
+	return circle, true
 }
