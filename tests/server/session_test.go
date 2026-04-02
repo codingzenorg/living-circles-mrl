@@ -216,6 +216,110 @@ func TestOverlappingFoodRemovesItAndRestoresEnergy(t *testing.T) {
 	}
 }
 
+func TestConsumedFoodRegeneratesAfterDeterministicDelay(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          0,
+		SecondaryAutonomousEnergy: 0,
+	})
+	before := session.Snapshot()
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	_ = session.Advance()
+	consumed := session.Advance()
+
+	if len(consumed.Foods) != len(before.Foods)-1 {
+		t.Fatalf("expected one consumed food item, before=%d after=%d", len(before.Foods), len(consumed.Foods))
+	}
+
+	var snapshot simulation.Snapshot
+	for range simulation.DefaultFoodRegenDelay - 1 {
+		session.ApplyIntent(simulation.Vector{})
+		snapshot = session.Advance()
+	}
+
+	if len(snapshot.Foods) != len(before.Foods)-1 {
+		t.Fatalf("expected food to remain missing before regen delay, got %d foods", len(snapshot.Foods))
+	}
+
+	session.ApplyIntent(simulation.Vector{})
+	regenerated := session.Advance()
+
+	if len(regenerated.Foods) != len(before.Foods) {
+		t.Fatalf("expected consumed food to regenerate, got %d foods", len(regenerated.Foods))
+	}
+
+	found := false
+	for _, food := range regenerated.Foods {
+		if food.ID != "food-1" {
+			continue
+		}
+		found = true
+		if food.X != 432 || food.Y != 300 {
+			t.Fatalf("expected regenerated food to return to original slot, got %+v", food)
+		}
+	}
+	if !found {
+		t.Fatal("expected regenerated food slot food-1 to be present")
+	}
+}
+
+func TestConsumedFoodDoesNotRegenerateBeforeDelayBoundary(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          0,
+		SecondaryAutonomousEnergy: 0,
+	})
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	_ = session.Advance()
+	snapshot := session.Advance()
+
+	if foodIDs(snapshot.Foods)["food-1"] {
+		t.Fatal("expected food-1 to be absent immediately after consumption")
+	}
+
+	for range simulation.DefaultFoodRegenDelay - 2 {
+		session.ApplyIntent(simulation.Vector{})
+		snapshot = session.Advance()
+	}
+
+	if foodIDs(snapshot.Foods)["food-1"] {
+		t.Fatal("expected food-1 to remain absent before the full delay elapses")
+	}
+}
+
+func TestFoodRegenerationDoesNotDuplicateActiveSlots(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          0,
+		SecondaryAutonomousEnergy: 0,
+	})
+
+	var snapshot simulation.Snapshot
+	for range simulation.DefaultFoodRegenDelay + 3 {
+		snapshot = session.Advance()
+	}
+
+	if len(snapshot.Foods) != 3 {
+		t.Fatalf("expected active food slots to remain non-duplicated, got %d foods", len(snapshot.Foods))
+	}
+
+	ids := foodIDs(snapshot.Foods)
+	if len(ids) != len(snapshot.Foods) {
+		t.Fatalf("expected unique food ids after regeneration cycles, got %+v", snapshot.Foods)
+	}
+}
+
 func TestInitialChildrenIncreaseRadiusDeterministically(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:             "triangle",
@@ -720,4 +824,13 @@ func TestResetRestoresInitialWorldState(t *testing.T) {
 	if reset.Interaction != nil {
 		t.Fatalf("expected no interaction after reset, got %+v", reset.Interaction)
 	}
+}
+
+func foodIDs(foods []simulation.Food) map[string]bool {
+	ids := make(map[string]bool, len(foods))
+	for _, food := range foods {
+		ids[food.ID] = true
+	}
+
+	return ids
 }

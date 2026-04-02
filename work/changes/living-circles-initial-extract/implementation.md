@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_energy_collapse_death.md`
+`docs/slices/initial_food_slot_regeneration.md`
 
 ## Implemented Shape
 
@@ -19,6 +19,7 @@
 - deterministic radius growth derived from child accumulation
 - deterministic child replacement on defeat when the loser has available children
 - zero-energy collapse now causes death or replacement continuity
+- deterministic food-slot regeneration after consumption
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -105,7 +106,7 @@
 - deterministic autonomous movement policy: first autonomous circle moves right, second moves left
 - deterministic shape assignment in the default demo world: player `triangle`, same-shape autonomous `triangle`, different-shape autonomous `square`
 - deterministic fixed food placement
-- no food respawn
+- deterministic food regeneration returns consumed slots to their original positions after a fixed delay
 - child accumulation is represented as an integer count on each circle
 - different-shape reproduction resolves without spawning separate child entities
 - radius is derived from child accumulation with a fixed per-child increment
@@ -122,6 +123,7 @@ The slice needed these implementation choices not fully specified in the refined
 
 - when player energy reaches zero, movement stops and energy clamps at zero
 - food grants a fixed energy recovery amount of `10`
+- each consumed food slot regenerates exactly `12` ticks after consumption
 - player energy clamps to a maximum of `100`
 - autonomous circles follow deterministic index-based directions so the default demo exposes both interaction paths
 - same-shape overlap resolves as `fight_resolved`; different-shape overlap resolves as `reproduce_resolved`
@@ -138,6 +140,6 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 ## Validation Targets
 
-- deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, child replacement continuity, and zero-energy collapse death
+- deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, child replacement continuity, zero-energy collapse death, and food-slot regeneration timing
 - contract test for explicit snapshot shape including child counts and resolved reproduction outcomes
-- integration tests for WebSocket snapshots with visible growth, resolved reproduction, fight continuity through child replacement, zero-energy collapse continuity, and authoritative reset
+- integration tests for WebSocket snapshots with visible growth, resolved reproduction, fight continuity through child replacement, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset

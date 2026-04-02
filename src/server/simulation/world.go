@@ -16,6 +16,7 @@ const (
 	DefaultMoveCost          = 1.0
 	DefaultFoodRadius        = 6.0
 	DefaultFoodEnergy        = 10.0
+	DefaultFoodRegenDelay    = int64(12)
 	DefaultPlayerShape       = "triangle"
 	DefaultAutoShape         = "square"
 )
@@ -82,7 +83,9 @@ type World struct {
 	player               *PlayerCircle
 	autonomousCircles    []AutonomousCircle
 	autonomousDirections []Vector
+	foodSlots            []Food
 	foods                []Food
+	missingFoodSince     map[string]int64
 	moveCost             float64
 	speed                float64
 	maxEnergy            float64
@@ -148,6 +151,12 @@ func NewWorldWithConfig(config Config) *World {
 		})
 	}
 
+	foodSlots := []Food{
+		{ID: "food-1", X: DefaultWorldWidth/2 + 32, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
+		{ID: "food-2", X: DefaultWorldWidth/2 - 108, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
+		{ID: "food-3", X: DefaultWorldWidth/2 + 120, Y: DefaultWorldHeight/2 + 84, Radius: DefaultFoodRadius},
+	}
+
 	return &World{
 		bounds: Bounds{
 			Width:  DefaultWorldWidth,
@@ -164,16 +173,14 @@ func NewWorldWithConfig(config Config) *World {
 		},
 		autonomousCircles:    autonomousCircles,
 		autonomousDirections: initialAutonomousDirections(len(autonomousCircles)),
-		foods: []Food{
-			{ID: "food-1", X: DefaultWorldWidth/2 + 32, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
-			{ID: "food-2", X: DefaultWorldWidth/2 - 108, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
-			{ID: "food-3", X: DefaultWorldWidth/2 + 120, Y: DefaultWorldHeight/2 + 84, Radius: DefaultFoodRadius},
-		},
-		moveCost:           DefaultMoveCost,
-		speed:              DefaultMoveSpeed,
-		maxEnergy:          DefaultMaxEnergy,
-		foodGain:           DefaultFoodEnergy,
-		activeOverlapPairs: make(map[string]struct{}),
+		foodSlots:            foodSlots,
+		foods:                append([]Food(nil), foodSlots...),
+		missingFoodSince:     make(map[string]int64),
+		moveCost:             DefaultMoveCost,
+		speed:                DefaultMoveSpeed,
+		maxEnergy:            DefaultMaxEnergy,
+		foodGain:             DefaultFoodEnergy,
+		activeOverlapPairs:   make(map[string]struct{}),
 	}
 }
 
@@ -182,7 +189,8 @@ func (w *World) Advance(tick int64, intent Vector) Snapshot {
 	w.player = w.advanceCircle(w.player, intent)
 	w.advanceAutonomousCircles()
 
-	w.consumeOverlappingFood()
+	w.consumeOverlappingFood(tick)
+	w.regenerateFood(tick)
 	w.resolveEnergyCollapse()
 	w.resolveCircleInteractions()
 
@@ -213,11 +221,12 @@ func (w *World) Snapshot(tick int64) Snapshot {
 	}
 }
 
-func (w *World) consumeOverlappingFood() {
+func (w *World) consumeOverlappingFood(tick int64) {
 	remaining := make([]Food, 0, len(w.foods))
 	for _, food := range w.foods {
 		if w.player != nil && overlaps(w.player.X, w.player.Y, w.player.Radius, food.X, food.Y, food.Radius) {
 			w.player.Energy = math.Min(w.maxEnergy, w.player.Energy+w.foodGain)
+			w.missingFoodSince[food.ID] = tick
 			continue
 		}
 
@@ -226,6 +235,7 @@ func (w *World) consumeOverlappingFood() {
 			if overlaps(circle.X, circle.Y, circle.Radius, food.X, food.Y, food.Radius) {
 				circle.Energy = math.Min(w.maxEnergy, circle.Energy+w.foodGain)
 				w.autonomousCircles[index] = circle
+				w.missingFoodSince[food.ID] = tick
 				consumed = true
 				break
 			}
@@ -239,6 +249,27 @@ func (w *World) consumeOverlappingFood() {
 	}
 
 	w.foods = remaining
+}
+
+func (w *World) regenerateFood(tick int64) {
+	active := make(map[string]struct{}, len(w.foods))
+	for _, food := range w.foods {
+		active[food.ID] = struct{}{}
+	}
+
+	for _, slot := range w.foodSlots {
+		if _, exists := active[slot.ID]; exists {
+			continue
+		}
+
+		missingSince, tracked := w.missingFoodSince[slot.ID]
+		if !tracked || tick-missingSince < DefaultFoodRegenDelay {
+			continue
+		}
+
+		w.foods = append(w.foods, slot)
+		delete(w.missingFoodSince, slot.ID)
+	}
 }
 
 func (w *World) advanceCircle(circle *PlayerCircle, intent Vector) *PlayerCircle {

@@ -410,3 +410,90 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 
 	t.Fatal("expected energy-collapse replacement snapshot")
 }
+
+func TestClientReceivesRegeneratedFoodAfterDeterministicDelay(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          0,
+		SecondaryAutonomousEnergy: 0,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	message := map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 1,
+			"y": 0,
+		},
+	}
+	if err := connection.WriteJSON(message); err != nil {
+		t.Fatalf("write movement intent: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(4 * time.Second))
+
+	sawFoodMissing := false
+	for range simulation.DefaultFoodRegenDelay + 8 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+
+		_, found := foodByID(snapshot.Foods, "food-1")
+		if !found {
+			sawFoodMissing = true
+			continue
+		}
+
+		if !sawFoodMissing {
+			continue
+		}
+
+		if len(snapshot.Foods) != len(initial.Foods) {
+			t.Fatalf("expected full food set after regeneration, got %d foods", len(snapshot.Foods))
+		}
+		food, _ := foodByID(snapshot.Foods, "food-1")
+		if food.X != 432 || food.Y != 300 {
+			t.Fatalf("expected regenerated food-1 to return to its original slot, got %+v", food)
+		}
+		return
+	}
+
+	t.Fatal("expected regenerated food after deterministic delay")
+}
+
+func foodByID(foods []simulation.Food, id string) (simulation.Food, bool) {
+	for _, food := range foods {
+		if food.ID == id {
+			return food, true
+		}
+	}
+
+	return simulation.Food{}, false
+}
