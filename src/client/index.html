@@ -59,6 +59,7 @@
         gap: 12px;
         flex-wrap: wrap;
         margin: 0 0 16px;
+        align-items: center;
       }
 
       .chip {
@@ -67,6 +68,22 @@
         background: rgba(23, 49, 58, 0.06);
         border: 1px solid var(--line);
         font-size: 0.95rem;
+      }
+
+      .control {
+        appearance: none;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, #fff7ee, #f0dfcb);
+        color: var(--ink);
+        font: inherit;
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+
+      .control:hover {
+        background: linear-gradient(180deg, #fff1e5, #ecd5bb);
       }
 
       canvas {
@@ -93,6 +110,7 @@
           <div class="chip" id="status">Connecting...</div>
           <div class="chip" id="energy">Energy: --</div>
           <div class="chip" id="tick">Tick: --</div>
+          <button class="control" id="reset" type="button">Restart World</button>
         </div>
         <canvas id="world" width="800" height="600"></canvas>
       </section>

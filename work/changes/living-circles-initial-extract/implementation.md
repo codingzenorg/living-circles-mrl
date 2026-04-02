@@ -18,6 +18,7 @@
 - deterministic different-shape reproduction resolution with child accumulation counts
 - deterministic radius growth derived from child accumulation
 - deterministic child replacement on defeat when the loser has available children
+- browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
 
@@ -108,6 +109,7 @@
 - different-shape reproduction resolves without spawning separate child entities
 - radius is derived from child accumulation with a fixed per-child increment
 - continuity is limited to one-child replacement after fight defeat
+- demo reset recreates the initial world state without restarting the server process
 - no local prediction or interpolation
 - one shared movement intent for the connected client
 - static world size and player radius
@@ -127,6 +129,7 @@ The slice needed these implementation choices not fully specified in the refined
 - same-shape fights resolve in one tick using: higher energy wins, then larger radius, then player wins exact ties
 - a fight loser with at least one child remains active through immediate replacement, consuming exactly one child
 - replacement stays at the defeated circle position and resets to deterministic baseline energy `100`
+- `POST /reset` rebuilds the session from its initial config, resets tick to `0`, clears intent, and broadcasts the fresh snapshot
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
 
@@ -134,4 +137,4 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 - deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, and child replacement continuity
 - contract test for explicit snapshot shape including child counts and resolved reproduction outcomes
-- integration tests for WebSocket snapshots with visible growth, resolved reproduction, and fight continuity through child replacement
+- integration tests for WebSocket snapshots with visible growth, resolved reproduction, fight continuity through child replacement, and authoritative reset

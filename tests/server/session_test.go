@@ -591,3 +591,40 @@ func TestPlayerLoserWithChildRemainsActiveThroughReplacement(t *testing.T) {
 		t.Fatalf("expected replacement radius to reset to base after child consumption, got %v", snapshot.Player.Radius)
 	}
 }
+
+func TestResetRestoresInitialWorldState(t *testing.T) {
+	session := simulation.NewSession()
+	initial := session.Snapshot()
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	for range 10 {
+		_ = session.Advance()
+	}
+
+	reset := session.Reset()
+
+	if reset.Tick != 0 {
+		t.Fatalf("expected reset tick 0, got %d", reset.Tick)
+	}
+	if reset.Player == nil {
+		t.Fatal("expected player after reset")
+	}
+	if reset.Player.X != initial.Player.X || reset.Player.Y != initial.Player.Y {
+		t.Fatalf("expected player position reset to %+v, got %+v", initial.Player, reset.Player)
+	}
+	if reset.Player.Energy != initial.Player.Energy {
+		t.Fatalf("expected player energy reset to %v, got %v", initial.Player.Energy, reset.Player.Energy)
+	}
+	if reset.Player.ChildrenCount != initial.Player.ChildrenCount {
+		t.Fatalf("expected player child count reset to %d, got %d", initial.Player.ChildrenCount, reset.Player.ChildrenCount)
+	}
+	if len(reset.AutonomousCircles) != len(initial.AutonomousCircles) {
+		t.Fatalf("expected %d autonomous circles after reset, got %d", len(initial.AutonomousCircles), len(reset.AutonomousCircles))
+	}
+	if len(reset.Foods) != len(initial.Foods) {
+		t.Fatalf("expected %d foods after reset, got %d", len(initial.Foods), len(reset.Foods))
+	}
+	if reset.Interaction != nil {
+		t.Fatalf("expected no interaction after reset, got %+v", reset.Interaction)
+	}
+}

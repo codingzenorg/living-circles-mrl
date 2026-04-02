@@ -77,6 +77,7 @@ func (s *Server) routes() {
 		writer.WriteHeader(http.StatusOK)
 		_, _ = writer.Write([]byte("ok"))
 	})
+	s.mux.HandleFunc("/reset", s.handleReset)
 	s.mux.Handle(websocketPath, http.HandlerFunc(s.handleWebSocket))
 	s.mux.Handle("/", http.FileServer(http.Dir("src/client")))
 	s.mux.Handle("/shared_contracts/", http.StripPrefix("/shared_contracts/", http.FileServer(http.Dir("src/shared_contracts"))))
@@ -121,6 +122,20 @@ func (s *Server) readMessages(connection *websocket.Conn) {
 
 		s.session.ApplyIntent(message.Direction)
 	}
+}
+
+func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodPost {
+		writer.Header().Set("Allow", http.MethodPost)
+		http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	snapshot := s.session.Reset()
+	s.broadcastSnapshot(snapshot)
+
+	writer.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(writer).Encode(snapshot)
 }
 
 func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot) {

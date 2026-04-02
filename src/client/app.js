@@ -5,6 +5,7 @@ const context = canvas.getContext("2d");
 const statusNode = document.getElementById("status");
 const energyNode = document.getElementById("energy");
 const tickNode = document.getElementById("tick");
+const resetButton = document.getElementById("reset");
 
 let latestSnapshot = null;
 const pressedKeys = new Set();
@@ -111,6 +112,35 @@ function setStatus(message) {
   statusNode.textContent = `${message} · contract v${CONTRACT_VERSION}`;
 }
 
+async function resetWorld() {
+  if (!activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
+    setStatus("Reset unavailable while disconnected");
+    return;
+  }
+
+  resetButton.disabled = true;
+  setStatus("Resetting world");
+
+  try {
+    const response = await fetch("/reset", {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      throw new Error(`reset failed with status ${response.status}`);
+    }
+
+    const snapshot = await response.json();
+    latestSnapshot = snapshot;
+    draw(snapshot);
+    setStatus("Connected");
+  } catch (_error) {
+    setStatus("Reset failed");
+  } finally {
+    resetButton.disabled = false;
+  }
+}
+
 function ensureSenderLoop() {
   if (senderIntervalId !== null) {
     return;
@@ -184,6 +214,10 @@ window.addEventListener("keyup", (event) => {
 
 window.addEventListener("blur", () => {
   pressedKeys.clear();
+});
+
+resetButton.addEventListener("click", () => {
+  resetWorld();
 });
 
 setStatus("Connecting");

@@ -2,6 +2,8 @@ package integration_test
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -261,4 +263,88 @@ func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.
 	}
 
 	t.Fatal("expected resolved reproduction snapshot")
+}
+
+func TestResetEndpointReturnsAndBroadcastsInitialSnapshot(t *testing.T) {
+	server := transport.NewServer()
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	message := map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 1,
+			"y": 0,
+		},
+	}
+	if err := connection.WriteJSON(message); err != nil {
+		t.Fatalf("write movement intent: %v", err)
+	}
+
+	var advanced simulation.Snapshot
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+	for range 20 {
+		if err := connection.ReadJSON(&advanced); err != nil {
+			t.Fatalf("read advanced snapshot: %v", err)
+		}
+		if advanced.Tick > 0 {
+			break
+		}
+	}
+
+	if advanced.Tick == 0 {
+		t.Fatal("expected advanced snapshot before reset")
+	}
+
+	response, err := http.Post(httpServer.URL+"/reset", "application/json", nil)
+	if err != nil {
+		t.Fatalf("post reset: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("expected reset status 200, got %d", response.StatusCode)
+	}
+
+	var resetResponse simulation.Snapshot
+	if err := json.NewDecoder(response.Body).Decode(&resetResponse); err != nil {
+		t.Fatalf("decode reset response: %v", err)
+	}
+
+	if resetResponse.Tick != 0 {
+		t.Fatalf("expected reset response tick 0, got %d", resetResponse.Tick)
+	}
+	if resetResponse.Player == nil || resetResponse.Player.X != initial.Player.X || resetResponse.Player.Energy != initial.Player.Energy {
+		t.Fatalf("expected reset response player to match initial snapshot, initial=%+v reset=%+v", initial.Player, resetResponse.Player)
+	}
+
+	var broadcast simulation.Snapshot
+	if err := connection.ReadJSON(&broadcast); err != nil {
+		t.Fatalf("read reset broadcast: %v", err)
+	}
+
+	if broadcast.Tick != 0 {
+		t.Fatalf("expected reset broadcast tick 0, got %d", broadcast.Tick)
+	}
+	if broadcast.Player == nil || broadcast.Player.X != initial.Player.X || broadcast.Player.Energy != initial.Player.Energy {
+		t.Fatalf("expected reset broadcast player to match initial snapshot, initial=%+v broadcast=%+v", initial.Player, broadcast.Player)
+	}
 }
