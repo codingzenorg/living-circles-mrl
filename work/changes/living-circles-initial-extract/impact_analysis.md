@@ -123,6 +123,56 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Allow autonomous circles to resolve interactions with other autonomous circles under the same current rules used for player-involved encounters.
+
+## Why This Matters
+
+The current implementation has improved embodiment and fairness in many local rules, but the world is still structurally player-centered: autonomous circles do not yet resolve encounters with each other. That limits emergence because meaningful state change still depends too heavily on player participation.
+
+The next model pressure is to let the ecosystem evolve through non-player encounters while preserving the current deterministic fight and reproduction semantics.
+
+## Impacted Areas
+
+### Simulation model
+
+- overlap detection should extend beyond player-autonomous pairs to autonomous-autonomous pairs
+- deterministic ordering becomes more important if several autonomous pairs overlap in one tick
+- current child, energy, reproduction, and continuity rules must remain coherent for autonomous-only encounters
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because autonomous circle states and the existing interaction object are already visible
+- build may need a slightly clearer source/target convention only if autonomous-autonomous outcomes are hard to read
+
+### Browser rendering
+
+- current rendering may already be sufficient because autonomous circles and interaction labels are visible
+- minor label improvements may still be needed if autonomous-autonomous results are ambiguous in the demo
+
+### Existing semantics
+
+- player-autonomous interaction should remain unchanged
+- current contact-origin handling should continue to work when autonomous pairs use body or child contact
+- the ecosystem becomes less player-centered without requiring new AI policies yet
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- how autonomous-autonomous pairs are ordered deterministically when more than one overlap exists
+- whether only one autonomous-autonomous interaction resolves per tick or whether it can coexist with a player-involved interaction in the same tick
+- whether the existing interaction object is readable enough for autonomous-only encounters
+
+## Risks If Ignored
+
+- the simulation will remain artificially dependent on player involvement
+- fairness-through-shared-rules will stay incomplete
+- later ecosystem slices will rest on a still player-centered interaction engine
+
+---
+
+## Change
+
 Treat attached-child-to-attached-child overlap as a valid trigger for parent-level interaction.
 
 ## Why This Matters
