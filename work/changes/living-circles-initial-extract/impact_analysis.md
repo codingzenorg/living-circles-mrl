@@ -166,3 +166,51 @@ The next implementation-facing slice should explicitly choose:
 - orbiting children remain visually expressive but mechanically underused in conflict
 - the bridge between visible children and parent-level combat remains weak
 - later attempts to remove transitional radius shortcuts will have less support from executable behavior
+
+---
+
+## Change
+
+Allow attached orbiting children to collect food on behalf of their parent.
+
+## Why This Matters
+
+Attached children now affect reproduction, conflict absorption, and continuity-related consumption, but they still do not directly participate in feeding. That leaves visible orbiters absent from one of the core ecosystem loops.
+
+The next model pressure is to make orbiting children matter in resource acquisition, not just in loss and bookkeeping.
+
+## Impacted Areas
+
+### Simulation model
+
+- food-overlap detection should consider attached-child positions as authoritative collection points
+- parent energy gain and food-slot removal must stay synchronized when a child collects
+
+### Runtime contract
+
+- the current contract may remain sufficient because attached-child positions, foods, and parent energy are already visible
+- no extra event channel is required unless collection provenance becomes necessary for inspectability
+
+### Browser rendering
+
+- the current rendering already exposes attached-child positions, which should make child-based collection visible without new UI systems
+
+### Existing semantics
+
+- current radius-based collection remains active, so attached-child collection must coexist with it cleanly
+- food regeneration timing should remain unchanged
+- player and autonomous circles must follow the same child-based collection rule
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether attached-child overlap is treated exactly like parent-body overlap for food collection
+- how to avoid double-consuming one food slot when both a parent and its child overlap it
+- whether child-based collection needs any explicit interaction marker or remains visible only through ordinary snapshots
+
+## Risks If Ignored
+
+- orbiting children remain mechanically partial in the core energy loop
+- the feeding model will stay more abstract than the conflict model
+- later removal of radius shortcuts will be harder because children still will not materially affect feeding reach
