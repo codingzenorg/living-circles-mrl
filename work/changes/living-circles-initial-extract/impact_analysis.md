@@ -118,3 +118,51 @@ The next implementation-facing slice should explicitly choose:
 - reproduction output will keep drifting away from the intended game feel
 - later changes may require replacing tests and client assumptions built around free spawned child circles
 - child-related semantics will remain split between counters and bodies without an explicit bridge
+
+---
+
+## Change
+
+Make attached orbiting children absorb hostile loss during same-shape conflict before a whole parent circle disappears.
+
+## Why This Matters
+
+The current implementation made children visible and consumable for reproduction or replacement semantics, but hostile conflict still mostly lands on the parent body. That leaves orbiting children visually important but conflict-light.
+
+The next model pressure is to make visible children directly matter in conflict without replacing the existing deterministic fight system.
+
+## Impacted Areas
+
+### Simulation model
+
+- same-shape conflict may now remove one attached child from the loser before full parent defeat
+- child ownership, `children_count`, and visible attached-child state must remain synchronized after hostile loss
+
+### Runtime contract
+
+- the existing contract may remain sufficient if child absorption is expressed through changed child counts and attached-child arrays
+- if the interaction result needs to distinguish child absorption from full parent defeat, one new explicit outcome may be justified
+
+### Browser rendering
+
+- the demo should make it legible that one orbiting child disappeared while the parent remained active
+
+### Existing semantics
+
+- current winner selection can remain unchanged
+- replacement continuity, reproduction payment, and radius growth continue to rely on `children_count`
+- the repository must preserve coherence when the same visible child bodies can now be lost through conflict as well as consumption
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether hostile child absorption happens before every parent defeat when a child exists
+- whether the parent remains active immediately after that absorbed loss
+- whether the existing interaction object needs a new explicit kind for absorbed child loss
+
+## Risks If Ignored
+
+- orbiting children remain visually expressive but mechanically underused in conflict
+- the bridge between visible children and parent-level combat remains weak
+- later attempts to remove transitional radius shortcuts will have less support from executable behavior
