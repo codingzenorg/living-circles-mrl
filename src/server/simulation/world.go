@@ -3,22 +3,24 @@ package simulation
 import "math"
 
 const (
-	DefaultWorldWidth        = 800.0
-	DefaultWorldHeight       = 600.0
-	DefaultPlayerRadius      = 12.0
-	DefaultChildRadiusGain   = 4.0
-	DefaultAutonomousID      = "circle-2"
-	DefaultSecondaryID       = "circle-3"
-	DefaultPlayerEnergy      = 100.0
-	DefaultReplacementEnergy = 100.0
-	DefaultMaxEnergy         = 100.0
-	DefaultMoveSpeed         = 8.0
-	DefaultMoveCost          = 1.0
-	DefaultFoodRadius        = 6.0
-	DefaultFoodEnergy        = 10.0
-	DefaultFoodRegenDelay    = int64(12)
-	DefaultPlayerShape       = "triangle"
-	DefaultAutoShape         = "square"
+	DefaultWorldWidth            = 800.0
+	DefaultWorldHeight           = 600.0
+	DefaultPlayerRadius          = 12.0
+	DefaultChildRadiusGain       = 4.0
+	DefaultAutonomousID          = "circle-2"
+	DefaultSecondaryID           = "circle-3"
+	DefaultPlayerEnergy          = 100.0
+	DefaultReplacementEnergy     = 100.0
+	DefaultMaxEnergy             = 100.0
+	DefaultMoveSpeed             = 8.0
+	DefaultMoveCost              = 1.0
+	DefaultFoodRadius            = 6.0
+	DefaultFoodEnergy            = 10.0
+	DefaultFoodRegenDelay        = int64(12)
+	DefaultReproductionMinEnergy = 15.0
+	DefaultReproductionCost      = 10.0
+	DefaultPlayerShape           = "triangle"
+	DefaultAutoShape             = "square"
 )
 
 type Bounds struct {
@@ -431,10 +433,23 @@ func (w *World) resolveReproduction(opponentID string) {
 		return
 	}
 
+	opponent := w.autonomousCircles[opponentIndex]
+	playerPaid := payPlayerReproductionCost(w.player)
+	opponentPaid, opponent := payAutonomousReproductionCost(opponent)
+	if !playerPaid || !opponentPaid {
+		w.lastInteraction = &InteractionClassification{
+			Active:   false,
+			Resolved: true,
+			Kind:     "reproduce_blocked_energy",
+			SourceID: w.player.ID,
+			TargetID: opponent.ID,
+		}
+		return
+	}
+
 	w.player.ChildrenCount++
 	w.player.Radius = derivedRadius(w.player.ChildrenCount)
 
-	opponent := w.autonomousCircles[opponentIndex]
 	opponent.ChildrenCount++
 	opponent.Radius = derivedRadius(opponent.ChildrenCount)
 	w.autonomousCircles[opponentIndex] = opponent
@@ -493,6 +508,55 @@ func derivedRadius(childrenCount int) float64 {
 
 func lineageIDFor(circleID string) string {
 	return "lineage-" + circleID
+}
+
+func payPlayerReproductionCost(circle *PlayerCircle) bool {
+	if circle == nil {
+		return false
+	}
+	if reproductionCapacity(circle.Energy, circle.ChildrenCount) < DefaultReproductionMinEnergy {
+		return false
+	}
+	if circle.Energy >= DefaultReproductionCost {
+		circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
+		return true
+	}
+	if circle.ChildrenCount == 0 {
+		return false
+	}
+
+	circle.ChildrenCount--
+	circle.Radius = derivedRadius(circle.ChildrenCount)
+	circle.Energy += DefaultReproductionCost
+	circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
+	return true
+}
+
+func payAutonomousReproductionCost(circle AutonomousCircle) (bool, AutonomousCircle) {
+	if reproductionCapacity(circle.Energy, circle.ChildrenCount) < DefaultReproductionMinEnergy {
+		return false, circle
+	}
+	if circle.Energy >= DefaultReproductionCost {
+		circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
+		return true, circle
+	}
+	if circle.ChildrenCount == 0 {
+		return false, circle
+	}
+
+	circle.ChildrenCount--
+	circle.Radius = derivedRadius(circle.ChildrenCount)
+	circle.Energy += DefaultReproductionCost
+	circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
+	return true, circle
+}
+
+func reproductionCapacity(energy float64, childrenCount int) float64 {
+	if childrenCount == 0 {
+		return energy
+	}
+
+	return energy + DefaultReproductionCost
 }
 
 func (w *World) resolveEnergyCollapse() {

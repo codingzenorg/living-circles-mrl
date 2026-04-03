@@ -142,8 +142,11 @@ func TestAdvanceKeepsPlayerInsideBounds(t *testing.T) {
 
 	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
 	var snapshot simulation.Snapshot
-	for range 200 {
+	for range 60 {
 		snapshot = session.Advance()
+	}
+	if snapshot.Player == nil {
+		t.Fatal("expected player to remain active while checking bounds")
 	}
 
 	if snapshot.Player.X > snapshot.World.Width-snapshot.Player.Radius {
@@ -498,6 +501,7 @@ func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
 
 func TestDefaultWorldSupportsDifferentShapeReproductionPath(t *testing.T) {
 	session := simulation.NewSession()
+	before := session.Snapshot()
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -520,11 +524,17 @@ func TestDefaultWorldSupportsDifferentShapeReproductionPath(t *testing.T) {
 	if snapshot.Player.ChildrenCount != 1 {
 		t.Fatalf("expected player child accumulation after reproduction, got %d", snapshot.Player.ChildrenCount)
 	}
+	if snapshot.Player.Energy >= before.Player.Energy {
+		t.Fatalf("expected player energy to decrease through movement and reproduction, before=%v after=%v", before.Player.Energy, snapshot.Player.Energy)
+	}
 	if snapshot.Player.Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
 		t.Fatalf("expected player radius growth after reproduction, got %v", snapshot.Player.Radius)
 	}
 	if snapshot.AutonomousCircles[1].ChildrenCount != 1 {
 		t.Fatalf("expected autonomous child accumulation after reproduction, got %d", snapshot.AutonomousCircles[1].ChildrenCount)
+	}
+	if snapshot.AutonomousCircles[1].Energy >= before.AutonomousCircles[1].Energy {
+		t.Fatalf("expected autonomous energy to decrease through movement and reproduction, before=%v after=%v", before.AutonomousCircles[1].Energy, snapshot.AutonomousCircles[1].Energy)
 	}
 	if snapshot.AutonomousCircles[1].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
 		t.Fatalf("expected autonomous radius growth after reproduction, got %v", snapshot.AutonomousCircles[1].Radius)
@@ -602,6 +612,7 @@ func TestAutonomousLoserWithChildRemainsActiveThroughReplacement(t *testing.T) {
 
 func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	session := simulation.NewSessionWithShapes("triangle", "square")
+	before := session.Snapshot()
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -617,6 +628,9 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	if snapshot.Interaction.Kind != "reproduce_resolved" {
 		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
 	}
+	if snapshot.Player.Energy >= before.Player.Energy {
+		t.Fatalf("expected player energy to decrease through reproduction, before=%v after=%v", before.Player.Energy, snapshot.Player.Energy)
+	}
 	if snapshot.Player.ChildrenCount != 1 {
 		t.Fatalf("expected player child accumulation, got %d", snapshot.Player.ChildrenCount)
 	}
@@ -626,8 +640,75 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	if snapshot.AutonomousCircles[0].ChildrenCount != 1 {
 		t.Fatalf("expected autonomous child accumulation, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
 	}
+	if snapshot.AutonomousCircles[0].Energy >= before.AutonomousCircles[0].Energy {
+		t.Fatalf("expected autonomous energy to decrease through reproduction, before=%v after=%v", before.AutonomousCircles[0].Energy, snapshot.AutonomousCircles[0].Energy)
+	}
 	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
 		t.Fatalf("expected autonomous radius growth, got %v", snapshot.AutonomousCircles[0].Radius)
+	}
+}
+
+func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:      "triangle",
+		AutonomousShape:  "square",
+		PlayerEnergy:     simulation.DefaultPlayerEnergy,
+		AutonomousEnergy: simulation.DefaultReproductionCost - 1,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected reproduction interaction")
+	}
+	if snapshot.Interaction.Kind != "reproduce_blocked_energy" {
+		t.Fatalf("expected reproduce_blocked_energy, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Player.ChildrenCount != 0 || snapshot.AutonomousCircles[0].ChildrenCount != 0 {
+		t.Fatalf("expected blocked reproduction to preserve child counts, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+	}
+}
+
+func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "square",
+		PlayerEnergy:            simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:        simulation.DefaultReproductionCost - 1,
+		AutonomousChildrenCount: 1,
+	})
+
+	var snapshot simulation.Snapshot
+	before := session.Snapshot()
+	for range 20 {
+		before = session.Snapshot()
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected reproduction interaction")
+	}
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Player.ChildrenCount != 1 {
+		t.Fatalf("expected player to gain one child, got %d", snapshot.Player.ChildrenCount)
+	}
+	if snapshot.AutonomousCircles[0].ChildrenCount != 1 {
+		t.Fatalf("expected autonomous circle to spend one child and gain one child, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+	}
+	expectedEnergy := before.AutonomousCircles[0].Energy - simulation.DefaultMoveCost
+	if snapshot.AutonomousCircles[0].Energy != expectedEnergy {
+		t.Fatalf("expected autonomous energy to be %v after movement plus child payment, got %v", expectedEnergy, snapshot.AutonomousCircles[0].Energy)
 	}
 }
 
@@ -658,7 +739,12 @@ func TestContinuousOverlapDoesNotRepeatChildAccumulation(t *testing.T) {
 }
 
 func TestPairCanReproduceAgainAfterSeparating(t *testing.T) {
-	session := simulation.NewSessionWithShapes("triangle", "square")
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:      "triangle",
+		AutonomousShape:  "square",
+		PlayerEnergy:     100,
+		AutonomousEnergy: 100,
+	})
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -685,12 +771,16 @@ func TestPairCanReproduceAgainAfterSeparating(t *testing.T) {
 		t.Fatal("expected pair to separate after first reproduction")
 	}
 
+	beforePlayerChildren := snapshot.Player.ChildrenCount
+	beforeAutonomousChildren := snapshot.AutonomousCircles[0].ChildrenCount
 	for range 120 {
 		session.ApplyIntent(simulation.Vector{})
 		snapshot = session.Advance()
 		if snapshot.Interaction != nil {
 			break
 		}
+		beforePlayerChildren = snapshot.Player.ChildrenCount
+		beforeAutonomousChildren = snapshot.AutonomousCircles[0].ChildrenCount
 	}
 
 	if snapshot.Interaction == nil {
@@ -699,8 +789,14 @@ func TestPairCanReproduceAgainAfterSeparating(t *testing.T) {
 	if snapshot.Interaction.Kind != "reproduce_resolved" {
 		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
 	}
-	if snapshot.Player.ChildrenCount != 2 || snapshot.AutonomousCircles[0].ChildrenCount != 2 {
-		t.Fatalf("expected second reproduction to increment child counts, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+	if snapshot.Player.ChildrenCount != beforePlayerChildren+1 || snapshot.AutonomousCircles[0].ChildrenCount != beforeAutonomousChildren+1 {
+		t.Fatalf(
+			"expected second reproduction to increment child counts from current state, before player=%d autonomous=%d after player=%d autonomous=%d",
+			beforePlayerChildren,
+			beforeAutonomousChildren,
+			snapshot.Player.ChildrenCount,
+			snapshot.AutonomousCircles[0].ChildrenCount,
+		)
 	}
 }
 

@@ -18,11 +18,12 @@ This slice does not add child entities or ancestry branching. It only makes repr
 
 ## Discovery Scope
 
-Establish the smallest deterministic rule that makes energy a real prerequisite for reproduction:
+Establish the smallest deterministic rule that makes reproduction require both eligibility capacity and a payable energy cost:
 
-- different-shape overlap may reproduce only when both participating circles have sufficient energy
+- different-shape overlap may reproduce only when both participating circles satisfy the reproduction-capacity threshold
 - successful reproduction consumes energy from both participants
-- failed reproduction due to insufficient energy remains visible and inspectable
+- a low-energy circle with an available child may consume that child as the reproduction payment unit
+- failed reproduction due to insufficient payment capacity remains visible and inspectable
 
 This slice does **not** attempt to implement:
 
@@ -77,31 +78,32 @@ The server resolves a different-shape collision during a simulation tick.
 
 ### Success Outcome
 
-- reproduction succeeds only if both circles satisfy the deterministic energy requirement
+- reproduction succeeds only if both circles satisfy the deterministic reproduction-capacity threshold
 - both circles pay the deterministic reproduction energy cost
 - both circles still gain one child accumulation unit
 - later snapshots expose the lower post-reproduction energy
 
 ### Failure Or Rejection Cases
 
-- if reproduction succeeds while one participant lacks sufficient energy, the slice fails its purpose
+- if reproduction succeeds while one participant lacks sufficient reproduction capacity, the slice fails its purpose
 - if reproduction changes energy nondeterministically, the rule loses inspectability
 - if the player receives a hidden reproduction exemption, fairness is weakened
 
 ## Main Business Rules
 
 1. Reproduction is authoritative server-side behavior.
-2. Reproduction requires sufficient energy from both participants.
+2. Reproduction requires both participants to satisfy the reproduction-capacity threshold.
 3. Successful reproduction consumes energy from both participants.
-4. Reproduction remains deterministic and pair-based.
-5. Failed reproduction due to low energy must remain inspectable.
-6. This slice does not change same-shape fight behavior.
+4. A participant without enough energy may consume one child as the reproduction payment unit.
+5. Reproduction remains deterministic and pair-based.
+6. Failed reproduction due to insufficient payment capacity must remain inspectable.
+7. This slice does not change same-shape fight behavior.
 
 ## Minimal Domain Concepts In Scope
 
 - `Reproduction Eligibility`
 - `Reproduction Energy Cost`
-- `Energy Threshold`
+- `Reproduction Capacity`
 - `Child Accumulation`
 - `World Snapshot`
 
@@ -109,10 +111,11 @@ The server resolves a different-shape collision during a simulation tick.
 
 This slice chooses the smallest inspectable interpretation:
 
-- one explicit minimum energy requirement
+- one explicit reproduction-capacity threshold
 - one explicit reproduction energy cost
 - both values apply equally to player and autonomous circles
-- when either participant fails the requirement, no child accumulation occurs for that overlap
+- one child may contribute one reproduction-cost unit to the threshold check and payment path
+- when either participant cannot satisfy the threshold or pay with energy or one child, no child accumulation occurs for that overlap
 
 This avoids fertility systems, probabilistic outcomes, and shape-specific exceptions.
 
@@ -135,7 +138,7 @@ This slice should extend the contract only as needed to keep failed eligibility 
 
 ## Build Guidance
 
-- prefer one explicit reproduction threshold and one explicit cost
+- prefer one explicit reproduction-capacity threshold, one explicit reproduction cost, and one explicit child-payment fallback
 - keep eligibility and cost logic in the authoritative server model
 - do not add new client-originated message types
 - preserve the current “once per continuous overlap” rule unless the slice explicitly requires otherwise
@@ -145,8 +148,9 @@ This slice should extend the contract only as needed to keep failed eligibility 
 
 ### Server tests
 
-- different-shape overlap reproduces only when both circles satisfy the energy requirement
+- different-shape overlap reproduces only when both circles satisfy the reproduction-capacity threshold
 - successful reproduction deducts the deterministic energy cost from both participants
+- a low-energy circle with one child can still reproduce by consuming that child as the payment unit
 - blocked reproduction leaves child counts unchanged
 - blocked reproduction does not bypass the energy collapse rule indirectly
 
@@ -166,9 +170,10 @@ Start a local server and open one browser client.
 Scenario steps:
 
 1. two different-shape circles approach overlap
-2. in one case both have enough energy and reproduction resolves with lower energy afterward
-3. in another case one circle lacks energy and reproduction is blocked
-4. the demo and snapshots make the difference visible
+2. in one case both satisfy the threshold and reproduction resolves
+3. in another case one circle pays through a child because it lacks enough energy
+4. in another case one circle lacks both energy and child payment capacity, so reproduction is blocked
+5. the demo and snapshots make the difference visible
 
 ## Done Criteria
 

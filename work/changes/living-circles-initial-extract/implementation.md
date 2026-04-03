@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_lineage_identity_through_replacement.md`
+`docs/slices/initial_energy_gated_reproduction.md`
 
 ## Implemented Shape
 
@@ -21,6 +21,7 @@
 - zero-energy collapse now causes death or replacement continuity
 - deterministic food-slot regeneration after consumption
 - lineage identity and generation are now explicit in active circles and preserved through replacement continuity
+- reproduction is now gated by participant energy and consumes energy on success
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -115,7 +116,7 @@
 - deterministic fixed food placement
 - deterministic food regeneration returns consumed slots to their original positions after a fixed delay
 - child accumulation is represented as an integer count on each circle
-- different-shape reproduction resolves without spawning separate child entities
+- different-shape reproduction resolves through child accumulation when both participants satisfy the energy rule
 - radius is derived from child accumulation with a fixed per-child increment
 - continuity is limited to one-child replacement after fight defeat
 - lineage is represented only by a stable `lineage_id` plus monotonic `generation`
@@ -135,7 +136,12 @@ The slice needed these implementation choices not fully specified in the refined
 - player energy clamps to a maximum of `100`
 - autonomous circles follow deterministic index-based directions so the default demo exposes both interaction paths
 - same-shape overlap resolves as `fight_resolved`; different-shape overlap resolves as `reproduce_resolved`
+- different-shape overlap without enough energy or an available child payment resolves as `reproduce_blocked_energy`
 - resolved reproduction awards exactly one child accumulation unit to each participating circle
+- reproduction requires a total reproduction capacity of at least `15`
+- reproduction costs `10` from each participant on success
+- one child may contribute one `10`-point reserve unit toward the threshold check and payment path
+- a circle below the reproduction cost may consume exactly one child, convert it into a `10`-point temporary reserve, pay the reproduction cost, and then receive the reproduction result
 - each accumulated child increases radius by a fixed deterministic amount of `4`
 - a circle pair may reproduce at most once while continuously overlapping and must separate before reproducing again
 - same-shape fights resolve in one tick using: higher energy wins, then larger radius, then player wins exact ties
@@ -150,6 +156,6 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 ## Validation Targets
 
-- deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, child replacement continuity, lineage preservation, zero-energy collapse death, and food-slot regeneration timing
-- contract test for explicit snapshot shape including child counts, lineage fields, and resolved reproduction outcomes
-- integration tests for WebSocket snapshots with visible growth, resolved reproduction, fight continuity through child replacement, lineage preservation across replacement, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset
+- deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, child replacement continuity, lineage preservation, zero-energy collapse death, food-slot regeneration timing, and energy-gated reproduction
+- contract test for explicit snapshot shape including child counts, lineage fields, and both resolved and blocked reproduction outcomes
+- integration tests for WebSocket snapshots with visible growth, resolved reproduction, blocked reproduction by low energy, fight continuity through child replacement, lineage preservation across replacement, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset

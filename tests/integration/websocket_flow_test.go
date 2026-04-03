@@ -249,6 +249,11 @@ func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.
 	}
 	defer connection.Close()
 
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
 	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
 
 	resolvedSeen := false
@@ -267,8 +272,14 @@ func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.
 			if snapshot.Player == nil {
 				t.Fatal("expected player to remain active after reproduction")
 			}
+			if snapshot.Player.Energy >= initial.Player.Energy {
+				t.Fatalf("expected player energy to decrease after reproduction, before=%v after=%v", initial.Player.Energy, snapshot.Player.Energy)
+			}
 			if snapshot.Player.ChildrenCount != 1 || snapshot.AutonomousCircles[0].ChildrenCount != 1 {
 				t.Fatalf("expected one child count for both circles after reproduction, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+			}
+			if snapshot.AutonomousCircles[0].Energy >= initial.AutonomousCircles[0].Energy {
+				t.Fatalf("expected autonomous energy to decrease after reproduction, before=%v after=%v", initial.AutonomousCircles[0].Energy, snapshot.AutonomousCircles[0].Energy)
 			}
 			expectedRadius := simulation.DefaultPlayerRadius + simulation.DefaultChildRadiusGain
 			if snapshot.Player.Radius != expectedRadius || snapshot.AutonomousCircles[0].Radius != expectedRadius {
@@ -286,6 +297,110 @@ func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.
 	}
 
 	t.Fatal("expected resolved reproduction snapshot")
+}
+
+func TestClientReceivesBlockedReproductionWhenEnergyIsInsufficient(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:      "triangle",
+		AutonomousShape:  "square",
+		PlayerEnergy:     simulation.DefaultPlayerEnergy,
+		AutonomousEnergy: simulation.DefaultReproductionCost - 1,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 40 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.Interaction == nil {
+			continue
+		}
+
+		if snapshot.Interaction.Kind != "reproduce_blocked_energy" {
+			t.Fatalf("expected reproduce_blocked_energy, got %q", snapshot.Interaction.Kind)
+		}
+		if snapshot.Player == nil {
+			t.Fatal("expected player to remain active after blocked reproduction")
+		}
+		if snapshot.Player.ChildrenCount != 0 || snapshot.AutonomousCircles[0].ChildrenCount != 0 {
+			t.Fatalf("expected blocked reproduction to preserve child counts, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+		}
+		return
+	}
+
+	t.Fatal("expected blocked reproduction snapshot")
+}
+
+func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "square",
+		PlayerEnergy:            simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:        simulation.DefaultReproductionCost - 1,
+		AutonomousChildrenCount: 1,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	var previous simulation.Snapshot
+	for range 40 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.Interaction == nil {
+			previous = snapshot
+			continue
+		}
+
+		if snapshot.Interaction.Kind != "reproduce_resolved" {
+			t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+		}
+		if snapshot.AutonomousCircles[0].ChildrenCount != 1 {
+			t.Fatalf("expected autonomous circle child count to stay at 1 after child payment and new reproduction, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+		}
+		expectedEnergy := previous.AutonomousCircles[0].Energy - simulation.DefaultMoveCost
+		if snapshot.AutonomousCircles[0].Energy != expectedEnergy {
+			t.Fatalf("expected autonomous energy to be %v after movement plus child payment, got %v", expectedEnergy, snapshot.AutonomousCircles[0].Energy)
+		}
+		return
+	}
+
+	t.Fatal("expected reproduction snapshot paid by child")
 }
 
 func TestResetEndpointReturnsAndBroadcastsInitialSnapshot(t *testing.T) {
