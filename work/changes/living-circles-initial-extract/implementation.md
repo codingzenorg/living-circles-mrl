@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_energy_gated_reproduction.md`
+`docs/slices/initial_food_seeking_autonomy.md`
 
 ## Implemented Shape
 
@@ -22,6 +22,7 @@
 - deterministic food-slot regeneration after consumption
 - lineage identity and generation are now explicit in active circles and preserved through replacement continuity
 - reproduction is now gated by participant energy and consumes energy on success
+- autonomous circles now steer deterministically toward nearby food before falling back to baseline drift
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -111,7 +112,7 @@
 
 - one player-controlled circle only
 - exactly two autonomous circles in the default demo world
-- deterministic autonomous movement policy: first autonomous circle moves right, second moves left
+- autonomous circles prefer the nearest active food target and fall back to deterministic baseline drift when no food target is available
 - deterministic shape assignment in the default demo world: player `triangle`, same-shape autonomous `triangle`, different-shape autonomous `square`
 - deterministic fixed food placement
 - deterministic food regeneration returns consumed slots to their original positions after a fixed delay
@@ -134,7 +135,8 @@ The slice needed these implementation choices not fully specified in the refined
 - food grants a fixed energy recovery amount of `10`
 - each consumed food slot regenerates exactly `12` ticks after consumption
 - player energy clamps to a maximum of `100`
-- autonomous circles follow deterministic index-based directions so the default demo exposes both interaction paths
+- autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID
+- when no food target is available, autonomous circles fall back to deterministic index-based directions
 - same-shape overlap resolves as `fight_resolved`; different-shape overlap resolves as `reproduce_resolved`
 - different-shape overlap without enough energy or an available child payment resolves as `reproduce_blocked_energy`
 - resolved reproduction awards exactly one child accumulation unit to each participating circle
@@ -156,6 +158,6 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 ## Validation Targets
 
-- deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, child replacement continuity, lineage preservation, zero-energy collapse death, food-slot regeneration timing, and energy-gated reproduction
+- deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, child replacement continuity, lineage preservation, zero-energy collapse death, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
 - contract test for explicit snapshot shape including child counts, lineage fields, and both resolved and blocked reproduction outcomes
-- integration tests for WebSocket snapshots with visible growth, resolved reproduction, blocked reproduction by low energy, fight continuity through child replacement, lineage preservation across replacement, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset
+- integration tests for WebSocket snapshots with visible growth, resolved reproduction, blocked reproduction by low energy, food-seeking autonomous motion, fight continuity through child replacement, lineage preservation across replacement, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset

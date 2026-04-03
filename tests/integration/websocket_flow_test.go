@@ -226,6 +226,49 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	}
 }
 
+func TestClientReceivesAutonomousFoodSeekingMotion(t *testing.T) {
+	server := transport.NewServer()
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 10 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+
+		if snapshot.AutonomousCircles[1].Y > initial.AutonomousCircles[1].Y {
+			return
+		}
+	}
+
+	t.Fatal("expected second autonomous circle to steer downward toward food")
+}
+
 func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:      "triangle",

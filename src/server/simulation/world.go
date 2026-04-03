@@ -89,6 +89,7 @@ type World struct {
 	player               *PlayerCircle
 	autonomousCircles    []AutonomousCircle
 	autonomousDirections []Vector
+	disableFoodSeeking   bool
 	foodSlots            []Food
 	foods                []Food
 	missingFoodSince     map[string]int64
@@ -110,6 +111,7 @@ type Config struct {
 	PlayerChildrenCount       int
 	AutonomousChildrenCount   int
 	SecondaryChildrenCount    int
+	DisableFoodSeeking        bool
 }
 
 func NewWorld() *World {
@@ -185,6 +187,7 @@ func NewWorldWithConfig(config Config) *World {
 		},
 		autonomousCircles:    autonomousCircles,
 		autonomousDirections: initialAutonomousDirections(len(autonomousCircles)),
+		disableFoodSeeking:   config.DisableFoodSeeking,
 		foodSlots:            foodSlots,
 		foods:                append([]Food(nil), foodSlots...),
 		missingFoodSince:     make(map[string]int64),
@@ -310,7 +313,7 @@ func (w *World) advanceAutonomousCircles() {
 			continue
 		}
 
-		intent := w.autonomousDirections[index]
+		intent := w.autonomousIntent(circle, index)
 		normalized := normalize(intent)
 		if normalized.X == 0 && normalized.Y == 0 {
 			continue
@@ -324,6 +327,39 @@ func (w *World) advanceAutonomousCircles() {
 		}
 		w.autonomousCircles[index] = circle
 	}
+}
+
+func (w *World) autonomousIntent(circle AutonomousCircle, index int) Vector {
+	if w.disableFoodSeeking {
+		return w.autonomousDirections[index]
+	}
+
+	foodTarget, found := nearestFoodTarget(circle, w.foods)
+	if found {
+		return Vector{
+			X: foodTarget.X - circle.X,
+			Y: foodTarget.Y - circle.Y,
+		}
+	}
+
+	return w.autonomousDirections[index]
+}
+
+func nearestFoodTarget(circle AutonomousCircle, foods []Food) (Food, bool) {
+	var selected Food
+	bestDistance := 0.0
+	found := false
+
+	for _, food := range foods {
+		distance := math.Hypot(food.X-circle.X, food.Y-circle.Y)
+		if !found || distance < bestDistance || (distance == bestDistance && food.ID < selected.ID) {
+			selected = food
+			bestDistance = distance
+			found = true
+		}
+	}
+
+	return selected, found
 }
 
 func normalize(vector Vector) Vector {

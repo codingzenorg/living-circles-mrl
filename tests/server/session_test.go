@@ -432,6 +432,19 @@ func TestAutonomousCircleMovesWithoutPlayerInput(t *testing.T) {
 	}
 }
 
+func TestAutonomousCircleSteersTowardNearestFood(t *testing.T) {
+	session := simulation.NewSession()
+	before := session.Snapshot()
+	after := session.Advance()
+
+	if after.AutonomousCircles[0].X <= before.AutonomousCircles[0].X {
+		t.Fatalf("expected first autonomous circle to move right toward nearest food, before=%v after=%v", before.AutonomousCircles[0].X, after.AutonomousCircles[0].X)
+	}
+	if after.AutonomousCircles[1].Y <= before.AutonomousCircles[1].Y {
+		t.Fatalf("expected second autonomous circle to move downward toward nearest food, before=%v after=%v", before.AutonomousCircles[1].Y, after.AutonomousCircles[1].Y)
+	}
+}
+
 func TestAutonomousCircleConsumesEnergyWhenMoving(t *testing.T) {
 	session := simulation.NewSession()
 	before := session.Snapshot()
@@ -456,6 +469,27 @@ func TestAutonomousCircleCanConsumeFoodAndRecoverEnergy(t *testing.T) {
 
 	if secondTick.AutonomousCircles[0].Energy <= firstTick.AutonomousCircles[0].Energy {
 		t.Fatalf("expected autonomous circle energy recovery, before=%v after=%v", firstTick.AutonomousCircles[0].Energy, secondTick.AutonomousCircles[0].Energy)
+	}
+}
+
+func TestAutonomousFoodSeekingCanCollectOffLaneFood(t *testing.T) {
+	session := simulation.NewSession()
+
+	var snapshot simulation.Snapshot
+	collected := false
+	for range 20 {
+		snapshot = session.Advance()
+		if len(snapshot.Foods) < 3 {
+			collected = true
+			break
+		}
+	}
+
+	if !collected {
+		t.Fatal("expected autonomous food seeking to collect food within the first steering window")
+	}
+	if snapshot.AutonomousCircles[1].Y <= 300 {
+		t.Fatalf("expected second autonomous circle to steer off its original horizontal lane, got y=%v", snapshot.AutonomousCircles[1].Y)
 	}
 }
 
@@ -500,7 +534,16 @@ func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
 }
 
 func TestDefaultWorldSupportsDifferentShapeReproductionPath(t *testing.T) {
-	session := simulation.NewSession()
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               simulation.DefaultPlayerShape,
+		AutonomousShape:           simulation.DefaultPlayerShape,
+		SecondaryAutonomousShape:  simulation.DefaultAutoShape,
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          80,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+		AutonomousChildrenCount:   1,
+		DisableFoodSeeking:        true,
+	})
 	before := session.Snapshot()
 
 	var snapshot simulation.Snapshot
@@ -740,10 +783,11 @@ func TestContinuousOverlapDoesNotRepeatChildAccumulation(t *testing.T) {
 
 func TestPairCanReproduceAgainAfterSeparating(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
-		PlayerShape:      "triangle",
-		AutonomousShape:  "square",
-		PlayerEnergy:     100,
-		AutonomousEnergy: 100,
+		PlayerShape:        "triangle",
+		AutonomousShape:    "square",
+		PlayerEnergy:       100,
+		AutonomousEnergy:   100,
+		DisableFoodSeeking: true,
 	})
 
 	var snapshot simulation.Snapshot
