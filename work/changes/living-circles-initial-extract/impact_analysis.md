@@ -214,3 +214,51 @@ The next implementation-facing slice should explicitly choose:
 - orbiting children remain mechanically partial in the core energy loop
 - the feeding model will stay more abstract than the conflict model
 - later removal of radius shortcuts will be harder because children still will not materially affect feeding reach
+
+---
+
+## Change
+
+Make parent continuity on death explicitly consume one attached child as the visible source of promotion.
+
+## Why This Matters
+
+The current implementation already lets a parent continue through child-based replacement, but that continuity is still mostly an abstract rule. Now that attached children are visible and mechanically meaningful, continuity should be grounded in them too.
+
+The next model pressure is to make “a child replaces the dead parent” visibly tied to the orbiting child model rather than only to a hidden count decrement.
+
+## Impacted Areas
+
+### Simulation model
+
+- death resolution paths should explicitly consume one attached child when continuity occurs
+- parent generation, energy reset, and child count must stay synchronized with attached-child removal
+
+### Runtime contract
+
+- the current contract may remain sufficient because attached-child arrays, child count, generation, and parent presence are already visible
+- no extra continuity event is required unless the outcome needs stronger inspectability
+
+### Browser rendering
+
+- the current rendering should already make the lost child and continued parent visible without a new UI system
+
+### Existing semantics
+
+- current zero-energy and defeat continuity paths can likely be reused
+- replacement energy and radius reset may stay unchanged for now
+- player and autonomous circles must follow the same visible-promotion rule
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether every continuity path consumes one attached child visibly
+- whether the parent body remains the active representation or a child body becomes the new visible parent
+- whether the current interaction model needs an explicit continuity outcome marker
+
+## Risks If Ignored
+
+- continuity remains more abstract than the now-visible child model
+- lineage survival will feel weaker than feeding and conflict roles for children
+- later removal of counter-only shortcuts will be harder because death continuity still will not be visibly grounded
