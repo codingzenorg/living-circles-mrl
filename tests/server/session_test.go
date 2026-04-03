@@ -903,6 +903,33 @@ func TestLargerRadiusBreaksEqualEnergyFightTie(t *testing.T) {
 	}
 }
 
+func TestHigherChildCountWinsEqualEnergyFight(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "triangle",
+		PlayerEnergy:            100,
+		AutonomousEnergy:        100,
+		PlayerChildrenCount:     0,
+		AutonomousChildrenCount: 1,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		session.ApplyIntent(simulation.Vector{X: -1, Y: 0})
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected fight resolution")
+	}
+	if snapshot.Interaction.WinnerID != simulation.DefaultAutonomousID {
+		t.Fatalf("expected higher-child autonomous circle to win, got %q", snapshot.Interaction.WinnerID)
+	}
+}
+
 func TestPlayerCanBeRemovedWhenLosingFight(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:      "triangle",

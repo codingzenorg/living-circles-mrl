@@ -165,6 +165,67 @@ func TestClientReceivesFightResolutionWithChildReplacement(t *testing.T) {
 	t.Fatal("expected fight resolution with child replacement")
 }
 
+func TestClientReceivesFightOutcomeDrivenByChildPower(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "triangle",
+		PlayerEnergy:            100,
+		AutonomousEnergy:        100,
+		PlayerChildrenCount:     0,
+		AutonomousChildrenCount: 1,
+		DisableFoodSeeking:      true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	message := map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": -1,
+			"y": 0,
+		},
+	}
+	if err := connection.WriteJSON(message); err != nil {
+		t.Fatalf("write movement intent: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 40 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.Interaction == nil {
+			continue
+		}
+
+		if snapshot.Interaction.Kind != "fight_resolved" {
+			t.Fatalf("expected fight_resolved, got %q", snapshot.Interaction.Kind)
+		}
+		if snapshot.Interaction.WinnerID != simulation.DefaultAutonomousID {
+			t.Fatalf("expected higher-child autonomous circle to win, got %q", snapshot.Interaction.WinnerID)
+		}
+		return
+	}
+
+	t.Fatal("expected child-driven fight resolution snapshot")
+}
+
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())

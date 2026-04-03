@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_food_seeking_autonomy.md`
+`docs/slices/initial_child_power_in_fight_resolution.md`
 
 ## Implemented Shape
 
@@ -23,6 +23,7 @@
 - lineage identity and generation are now explicit in active circles and preserved through replacement continuity
 - reproduction is now gated by participant energy and consumes energy on success
 - autonomous circles now steer deterministically toward nearby food before falling back to baseline drift
+- child accumulation now contributes directly to same-shape fight winner selection
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -138,6 +139,7 @@ The slice needed these implementation choices not fully specified in the refined
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID
 - when no food target is available, autonomous circles fall back to deterministic index-based directions
 - same-shape overlap resolves as `fight_resolved`; different-shape overlap resolves as `reproduce_resolved`
+- same-shape fight ordering is: higher energy, then higher child count, then larger radius, then player exact tie-break
 - different-shape overlap without enough energy or an available child payment resolves as `reproduce_blocked_energy`
 - resolved reproduction awards exactly one child accumulation unit to each participating circle
 - reproduction requires a total reproduction capacity of at least `15`
@@ -158,6 +160,6 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 ## Validation Targets
 
-- deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, child replacement continuity, lineage preservation, zero-energy collapse death, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
+- deterministic server tests for child accumulation, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity, lineage preservation, zero-energy collapse death, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
 - contract test for explicit snapshot shape including child counts, lineage fields, and both resolved and blocked reproduction outcomes
-- integration tests for WebSocket snapshots with visible growth, resolved reproduction, blocked reproduction by low energy, food-seeking autonomous motion, fight continuity through child replacement, lineage preservation across replacement, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset
+- integration tests for WebSocket snapshots with visible growth, resolved reproduction, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, fight continuity through child replacement, lineage preservation across replacement, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset

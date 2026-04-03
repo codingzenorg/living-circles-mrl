@@ -506,6 +506,12 @@ func determineFightOutcome(player PlayerCircle, opponent AutonomousCircle) (stri
 	if opponent.Energy > player.Energy {
 		return opponent.ID, player.ID
 	}
+	if player.ChildrenCount > opponent.ChildrenCount {
+		return player.ID, opponent.ID
+	}
+	if opponent.ChildrenCount > player.ChildrenCount {
+		return opponent.ID, player.ID
+	}
 	if player.Radius > opponent.Radius {
 		return player.ID, opponent.ID
 	}
