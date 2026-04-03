@@ -193,6 +193,9 @@
             "kind": {
               "enum": ["reproduce_resolved", "reproduce_blocked_energy", "fight_resolved", "fight_absorbed_child", "death_promoted_child"]
             },
+            "contact_origin": {
+              "enum": ["parent_body", "attached_child"]
+            },
             "source_id": {
               "type": "string"
             },

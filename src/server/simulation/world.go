@@ -75,6 +75,7 @@ type InteractionClassification struct {
 	Active   bool   `json:"active"`
 	Resolved bool   `json:"resolved"`
 	Kind     string `json:"kind"`
+	ContactOrigin string `json:"contact_origin,omitempty"`
 	SourceID string `json:"source_id"`
 	TargetID string `json:"target_id"`
 	WinnerID string `json:"winner_id"`
@@ -120,6 +121,12 @@ type Config struct {
 	PlayerShape               string
 	AutonomousShape           string
 	SecondaryAutonomousShape  string
+	PlayerX                   float64
+	PlayerY                   float64
+	AutonomousX               float64
+	AutonomousY               float64
+	SecondaryAutonomousX      float64
+	SecondaryAutonomousY      float64
 	PlayerEnergy              float64
 	AutonomousEnergy          float64
 	SecondaryAutonomousEnergy float64
@@ -153,14 +160,18 @@ func NewWorldWithShapes(playerShape, autonomousShape string) *World {
 
 func NewWorldWithConfig(config Config) *World {
 	playerID := "player-1"
+	playerX := configuredOrDefault(config.PlayerX, DefaultWorldWidth/2)
+	playerY := configuredOrDefault(config.PlayerY, DefaultWorldHeight/2)
+	autonomousX := configuredOrDefault(config.AutonomousX, DefaultWorldWidth/2-140)
+	autonomousY := configuredOrDefault(config.AutonomousY, DefaultWorldHeight/2)
 	autonomousCircles := []AutonomousCircle{
 		{
 			ID:               DefaultAutonomousID,
 			LineageID:        lineageIDFor(DefaultAutonomousID),
 			Generation:       0,
 			Shape:            config.AutonomousShape,
-			X:                DefaultWorldWidth/2 - 140,
-			Y:                DefaultWorldHeight / 2,
+			X:                autonomousX,
+			Y:                autonomousY,
 			Radius:           derivedRadius(config.AutonomousChildrenCount),
 			Energy:           config.AutonomousEnergy,
 			ChildrenCount:    config.AutonomousChildrenCount,
@@ -168,13 +179,15 @@ func NewWorldWithConfig(config Config) *World {
 		},
 	}
 	if config.SecondaryAutonomousShape != "" {
+		secondaryX := configuredOrDefault(config.SecondaryAutonomousX, DefaultWorldWidth/2+140)
+		secondaryY := configuredOrDefault(config.SecondaryAutonomousY, DefaultWorldHeight/2)
 		autonomousCircles = append(autonomousCircles, AutonomousCircle{
 			ID:               DefaultSecondaryID,
 			LineageID:        lineageIDFor(DefaultSecondaryID),
 			Generation:       0,
 			Shape:            config.SecondaryAutonomousShape,
-			X:                DefaultWorldWidth/2 + 140,
-			Y:                DefaultWorldHeight / 2,
+			X:                secondaryX,
+			Y:                secondaryY,
 			Radius:           derivedRadius(config.SecondaryChildrenCount),
 			Energy:           config.SecondaryAutonomousEnergy,
 			ChildrenCount:    config.SecondaryChildrenCount,
@@ -198,8 +211,8 @@ func NewWorldWithConfig(config Config) *World {
 			LineageID:        lineageIDFor(playerID),
 			Generation:       0,
 			Shape:            config.PlayerShape,
-			X:                DefaultWorldWidth / 2,
-			Y:                DefaultWorldHeight / 2,
+			X:                playerX,
+			Y:                playerY,
 			Radius:           derivedRadius(config.PlayerChildrenCount),
 			Energy:           config.PlayerEnergy,
 			ChildrenCount:    config.PlayerChildrenCount,
@@ -218,6 +231,14 @@ func NewWorldWithConfig(config Config) *World {
 		foodGain:             DefaultFoodEnergy,
 		activeOverlapPairs:   make(map[string]struct{}),
 	}
+}
+
+func configuredOrDefault(value, fallback float64) float64 {
+	if value == 0 {
+		return fallback
+	}
+
+	return value
 }
 
 func (w *World) Advance(tick int64, intent Vector) Snapshot {
@@ -446,7 +467,8 @@ func (w *World) resolveCircleInteractions(tick int64) {
 
 	currentOverlapPairs := make(map[string]struct{})
 	for _, circle := range w.autonomousCircles {
-		if !overlaps(w.player.X, w.player.Y, w.player.Radius, circle.X, circle.Y, circle.Radius) {
+		contactOrigin, interacting := circlesInteract(*w.player, circle, tick)
+		if !interacting {
 			continue
 		}
 
@@ -458,12 +480,12 @@ func (w *World) resolveCircleInteractions(tick int64) {
 				continue
 			}
 
-			w.resolveReproduction(circle.ID, tick)
+			w.resolveReproduction(circle.ID, tick, contactOrigin)
 			w.activeOverlapPairs = currentOverlapPairs
 			return
 		}
 
-		w.resolveFight(circle.ID)
+		w.resolveFight(circle.ID, contactOrigin)
 		w.activeOverlapPairs = currentOverlapPairs
 		return
 	}
@@ -471,7 +493,31 @@ func (w *World) resolveCircleInteractions(tick int64) {
 	w.activeOverlapPairs = currentOverlapPairs
 }
 
-func (w *World) resolveFight(opponentID string) {
+func circlesInteract(player PlayerCircle, autonomous AutonomousCircle, tick int64) (string, bool) {
+	parentBodyOverlap := overlaps(player.X, player.Y, player.Radius, autonomous.X, autonomous.Y, autonomous.Radius)
+
+	playerChildren := layoutAttachedChildren(player.ID, player.X, player.Y, player.Radius, player.AttachedChildren, tick)
+	for _, child := range playerChildren {
+		if overlaps(child.X, child.Y, child.Radius, autonomous.X, autonomous.Y, autonomous.Radius) {
+			return "attached_child", true
+		}
+	}
+
+	autonomousChildren := layoutAttachedChildren(autonomous.ID, autonomous.X, autonomous.Y, autonomous.Radius, autonomous.AttachedChildren, tick)
+	for _, child := range autonomousChildren {
+		if overlaps(player.X, player.Y, player.Radius, child.X, child.Y, child.Radius) {
+			return "attached_child", true
+		}
+	}
+
+	if parentBodyOverlap {
+		return "parent_body", true
+	}
+
+	return "", false
+}
+
+func (w *World) resolveFight(opponentID string, contactOrigin string) {
 	opponentIndex := -1
 	for index, circle := range w.autonomousCircles {
 		if circle.ID == opponentID {
@@ -488,12 +534,14 @@ func (w *World) resolveFight(opponentID string) {
 	winnerID, loserID := determineFightOutcome(*w.player, opponent)
 
 	w.lastInteraction = &InteractionClassification{
-		Active:   false,
-		Resolved: true,
-		SourceID: w.player.ID,
-		TargetID: opponent.ID,
-		WinnerID: winnerID,
-		LoserID:  loserID,
+		Active:        false,
+		Resolved:      true,
+		Kind:          "",
+		ContactOrigin: contactOrigin,
+		SourceID:      w.player.ID,
+		TargetID:      opponent.ID,
+		WinnerID:      winnerID,
+		LoserID:       loserID,
 	}
 
 	if loserID == w.player.ID {
@@ -525,7 +573,7 @@ func (w *World) resolveFight(opponentID string) {
 	w.autonomousCircles[opponentIndex] = replacedOpponent
 }
 
-func (w *World) resolveReproduction(opponentID string, tick int64) {
+func (w *World) resolveReproduction(opponentID string, tick int64, contactOrigin string) {
 	opponentIndex := -1
 	for index, circle := range w.autonomousCircles {
 		if circle.ID == opponentID {
@@ -543,11 +591,12 @@ func (w *World) resolveReproduction(opponentID string, tick int64) {
 	opponentPaid, opponent := payAutonomousReproductionCost(opponent)
 	if !playerPaid || !opponentPaid {
 		w.lastInteraction = &InteractionClassification{
-			Active:   false,
-			Resolved: true,
-			Kind:     "reproduce_blocked_energy",
-			SourceID: w.player.ID,
-			TargetID: opponent.ID,
+			Active:        false,
+			Resolved:      true,
+			Kind:          "reproduce_blocked_energy",
+			ContactOrigin: contactOrigin,
+			SourceID:      w.player.ID,
+			TargetID:      opponent.ID,
 		}
 		return
 	}
@@ -556,11 +605,12 @@ func (w *World) resolveReproduction(opponentID string, tick int64) {
 	w.autonomousCircles[opponentIndex] = opponent
 
 	w.lastInteraction = &InteractionClassification{
-		Active:   false,
-		Resolved: true,
-		Kind:     "reproduce_resolved",
-		SourceID: w.player.ID,
-		TargetID: opponent.ID,
+		Active:        false,
+		Resolved:      true,
+		Kind:          "reproduce_resolved",
+		ContactOrigin: contactOrigin,
+		SourceID:      w.player.ID,
+		TargetID:      opponent.ID,
 	}
 }
 

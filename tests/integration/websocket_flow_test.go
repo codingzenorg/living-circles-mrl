@@ -226,6 +226,68 @@ func TestClientReceivesFightOutcomeDrivenByChildPower(t *testing.T) {
 	t.Fatal("expected child-driven fight resolution snapshot")
 }
 
+func TestClientReceivesChildTriggeredReproductionBeforeParentBodiesOverlap(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerX:                   200,
+		PlayerY:                   300,
+		AutonomousX:               142,
+		AutonomousY:               308,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       1,
+		AutonomousEnergy:          100,
+		AutonomousChildrenCount:   0,
+		SecondaryAutonomousEnergy: 0,
+		DisableFoodSeeking:        true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 40 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.Interaction == nil {
+			continue
+		}
+
+		if snapshot.Interaction.Kind != "reproduce_resolved" {
+			t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+		}
+		if snapshot.Player == nil {
+			t.Fatal("expected player to remain active after child-triggered reproduction")
+		}
+		if len(snapshot.AutonomousCircles) != 1 {
+			t.Fatalf("expected one autonomous parent, got %d", len(snapshot.AutonomousCircles))
+		}
+		if snapshot.Interaction.ContactOrigin != "attached_child" {
+			t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
+		}
+		return
+	}
+
+	t.Fatal("expected child-triggered reproduction snapshot")
+}
+
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())
