@@ -16,6 +16,7 @@ func NewSession() *Session {
 		AutonomousShape:           DefaultPlayerShape,
 		SecondaryAutonomousShape:  DefaultAutoShape,
 		PlayerEnergy:              DefaultPlayerEnergy,
+		PlayerChildrenCount:       1,
 		AutonomousEnergy:          80,
 		SecondaryAutonomousEnergy: DefaultPlayerEnergy,
 		AutonomousChildrenCount:   1,

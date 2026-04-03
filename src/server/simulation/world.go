@@ -7,6 +7,9 @@ const (
 	DefaultWorldHeight           = 600.0
 	DefaultPlayerRadius          = 12.0
 	DefaultChildRadiusGain       = 4.0
+	DefaultAttachedChildRadius   = 4.0
+	DefaultAttachedChildOrbitGap = 8.0
+	DefaultChildOrbitSpeed       = 0.12
 	DefaultAutonomousID          = "circle-2"
 	DefaultSecondaryID           = "circle-3"
 	DefaultPlayerEnergy          = 100.0
@@ -33,28 +36,39 @@ type Vector struct {
 	Y float64 `json:"y"`
 }
 
+type AttachedChild struct {
+	ID        string  `json:"id"`
+	OwnerID   string  `json:"owner_id"`
+	OrbitSlot int     `json:"orbit_slot"`
+	X         float64 `json:"x"`
+	Y         float64 `json:"y"`
+	Radius    float64 `json:"radius"`
+}
+
 type PlayerCircle struct {
-	ID            string  `json:"id"`
-	LineageID     string  `json:"lineage_id"`
-	Generation    int     `json:"generation"`
-	Shape         string  `json:"shape"`
-	X             float64 `json:"x"`
-	Y             float64 `json:"y"`
-	Radius        float64 `json:"radius"`
-	Energy        float64 `json:"energy"`
-	ChildrenCount int     `json:"children_count"`
+	ID               string          `json:"id"`
+	LineageID        string          `json:"lineage_id"`
+	Generation       int             `json:"generation"`
+	Shape            string          `json:"shape"`
+	X                float64         `json:"x"`
+	Y                float64         `json:"y"`
+	Radius           float64         `json:"radius"`
+	Energy           float64         `json:"energy"`
+	ChildrenCount    int             `json:"children_count"`
+	AttachedChildren []AttachedChild `json:"attached_children"`
 }
 
 type AutonomousCircle struct {
-	ID            string  `json:"id"`
-	LineageID     string  `json:"lineage_id"`
-	Generation    int     `json:"generation"`
-	Shape         string  `json:"shape"`
-	X             float64 `json:"x"`
-	Y             float64 `json:"y"`
-	Radius        float64 `json:"radius"`
-	Energy        float64 `json:"energy"`
-	ChildrenCount int     `json:"children_count"`
+	ID               string          `json:"id"`
+	LineageID        string          `json:"lineage_id"`
+	Generation       int             `json:"generation"`
+	Shape            string          `json:"shape"`
+	X                float64         `json:"x"`
+	Y                float64         `json:"y"`
+	Radius           float64         `json:"radius"`
+	Energy           float64         `json:"energy"`
+	ChildrenCount    int             `json:"children_count"`
+	AttachedChildren []AttachedChild `json:"attached_children"`
 }
 
 type InteractionClassification struct {
@@ -89,7 +103,7 @@ type World struct {
 	player               *PlayerCircle
 	autonomousCircles    []AutonomousCircle
 	autonomousDirections []Vector
-	nextCircleID         int
+	nextChildID          int
 	disableFoodSeeking   bool
 	foodSlots            []Food
 	foods                []Food
@@ -121,6 +135,7 @@ func NewWorld() *World {
 		AutonomousShape:           DefaultPlayerShape,
 		SecondaryAutonomousShape:  DefaultAutoShape,
 		PlayerEnergy:              DefaultPlayerEnergy,
+		PlayerChildrenCount:       1,
 		AutonomousEnergy:          80,
 		SecondaryAutonomousEnergy: DefaultPlayerEnergy,
 		AutonomousChildrenCount:   1,
@@ -137,30 +152,33 @@ func NewWorldWithShapes(playerShape, autonomousShape string) *World {
 }
 
 func NewWorldWithConfig(config Config) *World {
+	playerID := "player-1"
 	autonomousCircles := []AutonomousCircle{
 		{
-			ID:            DefaultAutonomousID,
-			LineageID:     lineageIDFor(DefaultAutonomousID),
-			Generation:    0,
-			Shape:         config.AutonomousShape,
-			X:             DefaultWorldWidth/2 - 140,
-			Y:             DefaultWorldHeight / 2,
-			Radius:        derivedRadius(config.AutonomousChildrenCount),
-			Energy:        config.AutonomousEnergy,
-			ChildrenCount: config.AutonomousChildrenCount,
+			ID:               DefaultAutonomousID,
+			LineageID:        lineageIDFor(DefaultAutonomousID),
+			Generation:       0,
+			Shape:            config.AutonomousShape,
+			X:                DefaultWorldWidth/2 - 140,
+			Y:                DefaultWorldHeight / 2,
+			Radius:           derivedRadius(config.AutonomousChildrenCount),
+			Energy:           config.AutonomousEnergy,
+			ChildrenCount:    config.AutonomousChildrenCount,
+			AttachedChildren: initialAttachedChildren(DefaultAutonomousID, config.AutonomousChildrenCount),
 		},
 	}
 	if config.SecondaryAutonomousShape != "" {
 		autonomousCircles = append(autonomousCircles, AutonomousCircle{
-			ID:            DefaultSecondaryID,
-			LineageID:     lineageIDFor(DefaultSecondaryID),
-			Generation:    0,
-			Shape:         config.SecondaryAutonomousShape,
-			X:             DefaultWorldWidth/2 + 140,
-			Y:             DefaultWorldHeight / 2,
-			Radius:        derivedRadius(config.SecondaryChildrenCount),
-			Energy:        config.SecondaryAutonomousEnergy,
-			ChildrenCount: config.SecondaryChildrenCount,
+			ID:               DefaultSecondaryID,
+			LineageID:        lineageIDFor(DefaultSecondaryID),
+			Generation:       0,
+			Shape:            config.SecondaryAutonomousShape,
+			X:                DefaultWorldWidth/2 + 140,
+			Y:                DefaultWorldHeight / 2,
+			Radius:           derivedRadius(config.SecondaryChildrenCount),
+			Energy:           config.SecondaryAutonomousEnergy,
+			ChildrenCount:    config.SecondaryChildrenCount,
+			AttachedChildren: initialAttachedChildren(DefaultSecondaryID, config.SecondaryChildrenCount),
 		})
 	}
 
@@ -176,19 +194,20 @@ func NewWorldWithConfig(config Config) *World {
 			Height: DefaultWorldHeight,
 		},
 		player: &PlayerCircle{
-			ID:            "player-1",
-			LineageID:     lineageIDFor("player-1"),
-			Generation:    0,
-			Shape:         config.PlayerShape,
-			X:             DefaultWorldWidth / 2,
-			Y:             DefaultWorldHeight / 2,
-			Radius:        derivedRadius(config.PlayerChildrenCount),
-			Energy:        config.PlayerEnergy,
-			ChildrenCount: config.PlayerChildrenCount,
+			ID:               playerID,
+			LineageID:        lineageIDFor(playerID),
+			Generation:       0,
+			Shape:            config.PlayerShape,
+			X:                DefaultWorldWidth / 2,
+			Y:                DefaultWorldHeight / 2,
+			Radius:           derivedRadius(config.PlayerChildrenCount),
+			Energy:           config.PlayerEnergy,
+			ChildrenCount:    config.PlayerChildrenCount,
+			AttachedChildren: initialAttachedChildren(playerID, config.PlayerChildrenCount),
 		},
 		autonomousCircles:    autonomousCircles,
 		autonomousDirections: initialAutonomousDirections(len(autonomousCircles)),
-		nextCircleID:         4,
+		nextChildID:          totalInitialChildren(config) + 1,
 		disableFoodSeeking:   config.DisableFoodSeeking,
 		foodSlots:            foodSlots,
 		foods:                append([]Food(nil), foodSlots...),
@@ -209,7 +228,7 @@ func (w *World) Advance(tick int64, intent Vector) Snapshot {
 	w.consumeOverlappingFood(tick)
 	w.regenerateFood(tick)
 	w.resolveEnergyCollapse()
-	w.resolveCircleInteractions()
+	w.resolveCircleInteractions(tick)
 
 	return w.Snapshot(tick)
 }
@@ -217,7 +236,7 @@ func (w *World) Advance(tick int64, intent Vector) Snapshot {
 func (w *World) Snapshot(tick int64) Snapshot {
 	var player *PlayerCircle
 	if w.player != nil {
-		copy := *w.player
+		copy := snapshotPlayerCircle(*w.player, tick)
 		player = &copy
 	}
 
@@ -227,12 +246,17 @@ func (w *World) Snapshot(tick int64) Snapshot {
 		interaction = &copy
 	}
 
+	autonomousCircles := make([]AutonomousCircle, 0, len(w.autonomousCircles))
+	for _, circle := range w.autonomousCircles {
+		autonomousCircles = append(autonomousCircles, snapshotAutonomousCircle(circle, tick))
+	}
+
 	return Snapshot{
 		Type:              "world_snapshot",
 		Tick:              tick,
 		World:             w.bounds,
 		Player:            player,
-		AutonomousCircles: append([]AutonomousCircle(nil), w.autonomousCircles...),
+		AutonomousCircles: autonomousCircles,
 		Interaction:       interaction,
 		Foods:             append([]Food(nil), w.foods...),
 	}
@@ -384,7 +408,7 @@ func overlaps(ax, ay, ar, bx, by, br float64) bool {
 	return math.Hypot(ax-bx, ay-by) <= ar+br
 }
 
-func (w *World) resolveCircleInteractions() {
+func (w *World) resolveCircleInteractions(tick int64) {
 	if w.player == nil {
 		w.activeOverlapPairs = make(map[string]struct{})
 		return
@@ -404,7 +428,7 @@ func (w *World) resolveCircleInteractions() {
 				continue
 			}
 
-			w.resolveReproduction(circle.ID)
+			w.resolveReproduction(circle.ID, tick)
 			w.activeOverlapPairs = currentOverlapPairs
 			return
 		}
@@ -458,7 +482,7 @@ func (w *World) resolveFight(opponentID string) {
 	w.autonomousCircles[opponentIndex] = replacedOpponent
 }
 
-func (w *World) resolveReproduction(opponentID string) {
+func (w *World) resolveReproduction(opponentID string, tick int64) {
 	opponentIndex := -1
 	for index, circle := range w.autonomousCircles {
 		if circle.ID == opponentID {
@@ -485,12 +509,7 @@ func (w *World) resolveReproduction(opponentID string) {
 		return
 	}
 
-	w.player.ChildrenCount++
-	w.player.Radius = derivedRadius(w.player.ChildrenCount)
-
-	opponent.ChildrenCount++
-	opponent.Radius = derivedRadius(opponent.ChildrenCount)
-	w.spawnChildCircle(*w.player, opponent)
+	w.assignReproductionChildren(&opponent, tick)
 	w.autonomousCircles[opponentIndex] = opponent
 
 	w.lastInteraction = &InteractionClassification{
@@ -555,55 +574,6 @@ func lineageIDFor(circleID string) string {
 	return "lineage-" + circleID
 }
 
-func (w *World) spawnChildCircle(player PlayerCircle, opponent AutonomousCircle) {
-	childID := "circle-" + intToString(w.nextCircleID)
-	w.nextCircleID++
-
-	childShape := player.Shape
-	if player.ChildrenCount > opponent.ChildrenCount {
-		childShape = opponent.Shape
-	}
-
-	childX, childY := childSpawnPosition(w.bounds, player, opponent)
-
-	child := AutonomousCircle{
-		ID:            childID,
-		LineageID:     lineageIDFor(childID),
-		Generation:    0,
-		Shape:         childShape,
-		X:             childX,
-		Y:             childY,
-		Radius:        DefaultPlayerRadius,
-		Energy:        DefaultPlayerEnergy,
-		ChildrenCount: 0,
-	}
-
-	w.autonomousCircles = append(w.autonomousCircles, child)
-	w.autonomousDirections = append(w.autonomousDirections, Vector{X: 1, Y: 0})
-}
-
-func childSpawnPosition(bounds Bounds, player PlayerCircle, opponent AutonomousCircle) (float64, float64) {
-	midX := (player.X + opponent.X) / 2
-	midY := (player.Y + opponent.Y) / 2
-
-	axis := normalize(Vector{
-		X: opponent.X - player.X,
-		Y: opponent.Y - player.Y,
-	})
-	if axis.X == 0 && axis.Y == 0 {
-		axis = Vector{X: 1, Y: 0}
-	}
-
-	perpendicular := Vector{
-		X: -axis.Y,
-		Y: axis.X,
-	}
-	offset := player.Radius + opponent.Radius + DefaultPlayerRadius + 4
-
-	return clamp(midX+perpendicular.X*offset, DefaultPlayerRadius, bounds.Width-DefaultPlayerRadius),
-		clamp(midY+perpendicular.Y*offset, DefaultPlayerRadius, bounds.Height-DefaultPlayerRadius)
-}
-
 func intToString(value int) string {
 	if value == 0 {
 		return "0"
@@ -643,8 +613,7 @@ func payPlayerReproductionCost(circle *PlayerCircle) bool {
 		return false
 	}
 
-	circle.ChildrenCount--
-	circle.Radius = derivedRadius(circle.ChildrenCount)
+	consumePlayerChild(circle)
 	circle.Energy += DefaultReproductionCost
 	circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
 	return true
@@ -662,8 +631,7 @@ func payAutonomousReproductionCost(circle AutonomousCircle) (bool, AutonomousCir
 		return false, circle
 	}
 
-	circle.ChildrenCount--
-	circle.Radius = derivedRadius(circle.ChildrenCount)
+	consumeAutonomousChild(&circle)
 	circle.Energy += DefaultReproductionCost
 	circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
 	return true, circle
@@ -707,9 +675,8 @@ func replaceOrRemovePlayer(circle *PlayerCircle) *PlayerCircle {
 		return nil
 	}
 
-	circle.ChildrenCount--
+	consumePlayerChild(circle)
 	circle.Generation++
-	circle.Radius = derivedRadius(circle.ChildrenCount)
 	circle.Energy = DefaultReplacementEnergy
 
 	return circle
@@ -720,10 +687,149 @@ func replaceOrRemoveAutonomous(circle AutonomousCircle) (AutonomousCircle, bool)
 		return AutonomousCircle{}, false
 	}
 
-	circle.ChildrenCount--
+	consumeAutonomousChild(&circle)
 	circle.Generation++
-	circle.Radius = derivedRadius(circle.ChildrenCount)
 	circle.Energy = DefaultReplacementEnergy
 
 	return circle, true
+}
+
+func initialAttachedChildren(ownerID string, count int) []AttachedChild {
+	children := make([]AttachedChild, 0, count)
+	for index := 0; index < count; index++ {
+		children = append(children, AttachedChild{
+			ID:      ownerID + "-child-" + intToString(index+1),
+			OwnerID: ownerID,
+		})
+	}
+
+	return children
+}
+
+func totalInitialChildren(config Config) int {
+	return config.PlayerChildrenCount + config.AutonomousChildrenCount + config.SecondaryChildrenCount
+}
+
+func snapshotPlayerCircle(circle PlayerCircle, tick int64) PlayerCircle {
+	copy := circle
+	copy.AttachedChildren = layoutAttachedChildren(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
+	return copy
+}
+
+func snapshotAutonomousCircle(circle AutonomousCircle, tick int64) AutonomousCircle {
+	copy := circle
+	copy.AttachedChildren = layoutAttachedChildren(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
+	return copy
+}
+
+func layoutAttachedChildren(ownerID string, x, y, parentRadius float64, children []AttachedChild, tick int64) []AttachedChild {
+	if len(children) == 0 {
+		return []AttachedChild{}
+	}
+
+	positioned := make([]AttachedChild, 0, len(children))
+	orbitRadius := parentRadius + DefaultAttachedChildOrbitGap + DefaultAttachedChildRadius
+	for index, child := range children {
+		angle := childOrbitAngle(ownerID, child.ID, tick, index, len(children))
+		positioned = append(positioned, AttachedChild{
+			ID:        child.ID,
+			OwnerID:   ownerID,
+			OrbitSlot: index,
+			X:         x + math.Cos(angle)*orbitRadius,
+			Y:         y + math.Sin(angle)*orbitRadius,
+			Radius:    DefaultAttachedChildRadius,
+		})
+	}
+
+	return positioned
+}
+
+func childOrbitAngle(ownerID, childID string, tick int64, index, total int) float64 {
+	baseAngle := float64(hashString(ownerID+":"+childID)%360) * math.Pi / 180
+	slotOffset := 0.0
+	if total > 0 {
+		slotOffset = float64(index) * (2 * math.Pi / float64(total))
+	}
+
+	return baseAngle + slotOffset + float64(tick)*DefaultChildOrbitSpeed
+}
+
+func hashString(value string) int {
+	hash := 17
+	for _, char := range value {
+		hash = hash*31 + int(char)
+	}
+	if hash < 0 {
+		return -hash
+	}
+	return hash
+}
+
+func (w *World) assignReproductionChildren(opponent *AutonomousCircle, tick int64) {
+	distribution := reproductionDistributionCase(tick, *w.player, *opponent)
+	switch distribution {
+	case 0:
+		w.addPlayerChild()
+		w.addPlayerChild()
+	case 1:
+		w.addPlayerChild()
+		addAutonomousChild(opponent, w.allocateChildID())
+	case 2:
+		addAutonomousChild(opponent, w.allocateChildID())
+		addAutonomousChild(opponent, w.allocateChildID())
+	}
+}
+
+func reproductionDistributionCase(tick int64, player PlayerCircle, opponent AutonomousCircle) int {
+	seed := int(tick) + len(player.ID) + len(opponent.ID) + player.Generation + opponent.Generation + player.ChildrenCount + opponent.ChildrenCount
+	return seed % 3
+}
+
+func (w *World) allocateChildID() string {
+	childID := "child-" + intToString(w.nextChildID)
+	w.nextChildID++
+	return childID
+}
+
+func (w *World) addPlayerChild() {
+	if w.player == nil {
+		return
+	}
+	w.player.AttachedChildren = append(w.player.AttachedChildren, AttachedChild{
+		ID:      w.allocateChildID(),
+		OwnerID: w.player.ID,
+	})
+	syncPlayerChildrenState(w.player)
+}
+
+func addAutonomousChild(circle *AutonomousCircle, childID string) {
+	circle.AttachedChildren = append(circle.AttachedChildren, AttachedChild{
+		ID:      childID,
+		OwnerID: circle.ID,
+	})
+	syncAutonomousChildrenState(circle)
+}
+
+func consumePlayerChild(circle *PlayerCircle) {
+	if len(circle.AttachedChildren) > 0 {
+		circle.AttachedChildren = circle.AttachedChildren[:len(circle.AttachedChildren)-1]
+	}
+	syncPlayerChildrenState(circle)
+}
+
+func consumeAutonomousChild(circle *AutonomousCircle) {
+	if len(circle.AttachedChildren) > 0 {
+		circle.AttachedChildren = circle.AttachedChildren[:len(circle.AttachedChildren)-1]
+	}
+	syncAutonomousChildrenState(circle)
+}
+
+func syncPlayerChildrenState(circle *PlayerCircle) {
+	circle.ChildrenCount = len(circle.AttachedChildren)
+	circle.Radius = derivedRadius(circle.ChildrenCount)
+}
+
+func syncAutonomousChildrenState(circle *AutonomousCircle) {
+	circle.ChildrenCount = len(circle.AttachedChildren)
+	circle.Radius = derivedRadius(circle.ChildrenCount)
 }

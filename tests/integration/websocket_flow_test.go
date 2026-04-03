@@ -261,8 +261,11 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.AutonomousCircles[1].Shape == initial.Player.Shape {
 		t.Fatalf("expected second autonomous circle to differ from player shape %q", initial.Player.Shape)
 	}
-	if initial.Player.ChildrenCount != 0 {
-		t.Fatalf("expected player child count to start at zero, got %d", initial.Player.ChildrenCount)
+	if initial.Player.ChildrenCount != 1 {
+		t.Fatalf("expected player child count to start at one for demo continuity, got %d", initial.Player.ChildrenCount)
+	}
+	if len(initial.Player.AttachedChildren) != initial.Player.ChildrenCount {
+		t.Fatalf("expected player attached children to match count, count=%d attached=%d", initial.Player.ChildrenCount, len(initial.Player.AttachedChildren))
 	}
 	if initial.Player.LineageID != "lineage-player-1" || initial.Player.Generation != 0 {
 		t.Fatalf("expected initial player lineage state, got lineage=%q generation=%d", initial.Player.LineageID, initial.Player.Generation)
@@ -270,17 +273,23 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.AutonomousCircles[0].ChildrenCount != 1 {
 		t.Fatalf("expected first autonomous child count to start at one for demo continuity, got %d", initial.AutonomousCircles[0].ChildrenCount)
 	}
+	if len(initial.AutonomousCircles[0].AttachedChildren) != initial.AutonomousCircles[0].ChildrenCount {
+		t.Fatalf("expected first autonomous attached children to match count, count=%d attached=%d", initial.AutonomousCircles[0].ChildrenCount, len(initial.AutonomousCircles[0].AttachedChildren))
+	}
 	if initial.AutonomousCircles[0].LineageID != "lineage-circle-2" || initial.AutonomousCircles[0].Generation != 0 {
 		t.Fatalf("expected first autonomous lineage state, got lineage=%q generation=%d", initial.AutonomousCircles[0].LineageID, initial.AutonomousCircles[0].Generation)
 	}
 	if initial.AutonomousCircles[1].ChildrenCount != 0 {
 		t.Fatalf("expected second autonomous child count to start at zero, got %d", initial.AutonomousCircles[1].ChildrenCount)
 	}
+	if len(initial.AutonomousCircles[1].AttachedChildren) != initial.AutonomousCircles[1].ChildrenCount {
+		t.Fatalf("expected second autonomous attached children to match count, count=%d attached=%d", initial.AutonomousCircles[1].ChildrenCount, len(initial.AutonomousCircles[1].AttachedChildren))
+	}
 	if initial.AutonomousCircles[1].LineageID != "lineage-circle-3" || initial.AutonomousCircles[1].Generation != 0 {
 		t.Fatalf("expected second autonomous lineage state, got lineage=%q generation=%d", initial.AutonomousCircles[1].LineageID, initial.AutonomousCircles[1].Generation)
 	}
-	if initial.Player.Radius != simulation.DefaultPlayerRadius {
-		t.Fatalf("expected base player radius %v, got %v", simulation.DefaultPlayerRadius, initial.Player.Radius)
+	if initial.Player.Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
+		t.Fatalf("expected player demo radius %v, got %v", simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain, initial.Player.Radius)
 	}
 	if initial.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
 		t.Fatalf("expected first autonomous radius %v, got %v", simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain, initial.AutonomousCircles[0].Radius)
@@ -376,28 +385,32 @@ func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.
 			if snapshot.Player == nil {
 				t.Fatal("expected player to remain active after reproduction")
 			}
-			if len(snapshot.AutonomousCircles) != len(initial.AutonomousCircles)+1 {
-				t.Fatalf("expected one spawned child circle after reproduction, before=%d after=%d", len(initial.AutonomousCircles), len(snapshot.AutonomousCircles))
+			if len(snapshot.AutonomousCircles) != len(initial.AutonomousCircles) {
+				t.Fatalf("expected no new autonomous circles after reproduction, before=%d after=%d", len(initial.AutonomousCircles), len(snapshot.AutonomousCircles))
 			}
 			if snapshot.Player.Energy >= initial.Player.Energy {
 				t.Fatalf("expected player energy to decrease after reproduction, before=%v after=%v", initial.Player.Energy, snapshot.Player.Energy)
 			}
-			if snapshot.Player.ChildrenCount != 1 || snapshot.AutonomousCircles[0].ChildrenCount != 1 {
-				t.Fatalf("expected one child count for both circles after reproduction, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+			if snapshot.Player.ChildrenCount+snapshot.AutonomousCircles[0].ChildrenCount != initial.Player.ChildrenCount+initial.AutonomousCircles[0].ChildrenCount+2 {
+				t.Fatalf("expected reproduction to distribute two children across the pair, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
 			}
 			if snapshot.AutonomousCircles[0].Energy >= initial.AutonomousCircles[0].Energy {
 				t.Fatalf("expected autonomous energy to decrease after reproduction, before=%v after=%v", initial.AutonomousCircles[0].Energy, snapshot.AutonomousCircles[0].Energy)
 			}
-			expectedRadius := simulation.DefaultPlayerRadius + simulation.DefaultChildRadiusGain
-			if snapshot.Player.Radius != expectedRadius || snapshot.AutonomousCircles[0].Radius != expectedRadius {
-				t.Fatalf("expected grown radius %v after reproduction, player=%v autonomous=%v", expectedRadius, snapshot.Player.Radius, snapshot.AutonomousCircles[0].Radius)
+			if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount || len(snapshot.AutonomousCircles[0].AttachedChildren) != snapshot.AutonomousCircles[0].ChildrenCount {
+				t.Fatalf("expected attached children to match counts after reproduction, player attached=%d count=%d autonomous attached=%d count=%d", len(snapshot.Player.AttachedChildren), snapshot.Player.ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren), snapshot.AutonomousCircles[0].ChildrenCount)
 			}
 			continue
 		}
 
 		if resolvedSeen {
-			if snapshot.Player.ChildrenCount > 1 || snapshot.AutonomousCircles[0].ChildrenCount > 1 {
+			if snapshot.Player.ChildrenCount+snapshot.AutonomousCircles[0].ChildrenCount > initial.Player.ChildrenCount+initial.AutonomousCircles[0].ChildrenCount+2 {
 				t.Fatalf("expected no repeat accumulation during continuous overlap, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+			}
+			if snapshot.Player.ChildrenCount > 0 && len(snapshot.Player.AttachedChildren) > 0 {
+				if snapshot.Player.AttachedChildren[0].X == initial.Player.X && snapshot.Player.AttachedChildren[0].Y == initial.Player.Y {
+					t.Fatal("expected attached child position to be authoritative world state, not parent center")
+				}
 			}
 			return
 		}
@@ -450,6 +463,9 @@ func TestClientReceivesBlockedReproductionWhenEnergyIsInsufficient(t *testing.T)
 		if snapshot.Player.ChildrenCount != 0 || snapshot.AutonomousCircles[0].ChildrenCount != 0 {
 			t.Fatalf("expected blocked reproduction to preserve child counts, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
 		}
+		if len(snapshot.Player.AttachedChildren) != 0 || len(snapshot.AutonomousCircles[0].AttachedChildren) != 0 {
+			t.Fatalf("expected blocked reproduction to preserve attached children, player=%d autonomous=%d", len(snapshot.Player.AttachedChildren), len(snapshot.AutonomousCircles[0].AttachedChildren))
+		}
 		return
 	}
 
@@ -497,12 +513,15 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 		if snapshot.Interaction.Kind != "reproduce_resolved" {
 			t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
 		}
-		if snapshot.AutonomousCircles[0].ChildrenCount != 1 {
-			t.Fatalf("expected autonomous circle child count to stay at 1 after child payment and new reproduction, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+		if snapshot.Player.ChildrenCount+snapshot.AutonomousCircles[0].ChildrenCount != previous.Player.ChildrenCount+previous.AutonomousCircles[0].ChildrenCount+1 {
+			t.Fatalf("expected one child payment plus two redistributed children, before player=%d autonomous=%d after player=%d autonomous=%d", previous.Player.ChildrenCount, previous.AutonomousCircles[0].ChildrenCount, snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
 		}
 		expectedEnergy := previous.AutonomousCircles[0].Energy - simulation.DefaultMoveCost
 		if snapshot.AutonomousCircles[0].Energy != expectedEnergy {
 			t.Fatalf("expected autonomous energy to be %v after movement plus child payment, got %v", expectedEnergy, snapshot.AutonomousCircles[0].Energy)
+		}
+		if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount || len(snapshot.AutonomousCircles[0].AttachedChildren) != snapshot.AutonomousCircles[0].ChildrenCount {
+			t.Fatalf("expected attached children to match counts after child-payment reproduction, player attached=%d count=%d autonomous attached=%d count=%d", len(snapshot.Player.AttachedChildren), snapshot.Player.ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren), snapshot.AutonomousCircles[0].ChildrenCount)
 		}
 		return
 	}

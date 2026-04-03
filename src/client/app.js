@@ -74,7 +74,7 @@ function draw(snapshot) {
 
 function drawCircle(circle, isPlayer, player) {
   const matchesPlayerShape = !isPlayer && player && circle.shape === player.shape;
-  const color = circle.shape === "triangle" ? "#3b8ea5" : "#8c6bb1";
+  const color = isPlayer ? "#d85f3d" : circle.shape === "triangle" ? "#3b8ea5" : "#8c6bb1";
   context.fillStyle = color;
 
   if (circle.shape === "triangle") {
@@ -100,15 +100,47 @@ function drawCircle(circle, isPlayer, player) {
     context.stroke();
   }
 
+  if (isPlayer) {
+    context.strokeStyle = "#f4d35e";
+    context.lineWidth = 4;
+    context.beginPath();
+    context.arc(circle.x, circle.y, circle.radius + 8, 0, Math.PI * 2);
+    context.stroke();
+
+    context.fillStyle = "#f7f3e8";
+    context.beginPath();
+    context.arc(circle.x, circle.y, 3, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  drawAttachedChildren(circle, color);
+
   context.fillStyle = "#17313a";
   context.font = "16px Georgia";
   const label = isPlayer
-    ? `${circle.id} (${circle.shape}) c:${circle.children_count} g:${circle.generation}`
-    : `${circle.id} ${matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${circle.children_count} g:${circle.generation}${circle.generation === 0 && circle.id !== "circle-2" && circle.id !== "circle-3" ? " child" : ""}`;
+    ? `YOU ${circle.id} (${circle.shape}) c:${circle.children_count} o:${circle.attached_children.length} g:${circle.generation}`
+    : `${circle.id} ${matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${circle.children_count} o:${circle.attached_children.length} g:${circle.generation}`;
   context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
 
   context.font = "12px Georgia";
   context.fillText(circle.lineage_id, circle.x - 40, circle.y + circle.radius + 18);
+}
+
+function drawAttachedChildren(circle, color) {
+  for (const child of circle.attached_children) {
+    context.fillStyle = color;
+    context.globalAlpha = 0.7;
+    context.beginPath();
+    context.arc(child.x, child.y, child.radius, 0, Math.PI * 2);
+    context.fill();
+
+    context.globalAlpha = 1;
+    context.strokeStyle = "#17313a";
+    context.lineWidth = 1;
+    context.beginPath();
+    context.arc(child.x, child.y, child.radius, 0, Math.PI * 2);
+    context.stroke();
+  }
 }
 
 function setStatus(message) {

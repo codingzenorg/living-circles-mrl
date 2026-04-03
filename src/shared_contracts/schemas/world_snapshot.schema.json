@@ -36,7 +36,7 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "children_count"],
+          "required": ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "children_count", "attached_children"],
           "properties": {
             "id": {
               "type": "string"
@@ -68,6 +68,36 @@
             "children_count": {
               "type": "integer",
               "minimum": 0
+            },
+            "attached_children": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "owner_id", "orbit_slot", "x", "y", "radius"],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "owner_id": {
+                    "type": "string"
+                  },
+                  "orbit_slot": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "radius": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                }
+              }
             }
           }
         }
@@ -78,7 +108,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "children_count"],
+        "required": ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "children_count", "attached_children"],
         "properties": {
           "id": {
             "type": "string"
@@ -110,6 +140,36 @@
           "children_count": {
             "type": "integer",
             "minimum": 0
+          },
+          "attached_children": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "owner_id", "orbit_slot", "x", "y", "radius"],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "owner_id": {
+                  "type": "string"
+                },
+                "orbit_slot": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "radius": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
           }
         }
       }
