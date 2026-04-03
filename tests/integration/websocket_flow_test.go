@@ -667,6 +667,9 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 		if snapshot.Player.ChildrenCount != 0 {
 			t.Fatalf("expected replacement to consume one child, got %d", snapshot.Player.ChildrenCount)
 		}
+		if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount {
+			t.Fatalf("expected attached children to remain synchronized, count=%d attached=%d", snapshot.Player.ChildrenCount, len(snapshot.Player.AttachedChildren))
+		}
 		if snapshot.Player.Energy != simulation.DefaultReplacementEnergy {
 			t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.Player.Energy)
 		}
@@ -675,6 +678,15 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 		}
 		if snapshot.Player.Generation != initial.Player.Generation+1 {
 			t.Fatalf("expected replacement generation %d, got %d", initial.Player.Generation+1, snapshot.Player.Generation)
+		}
+		if snapshot.Interaction == nil {
+			t.Fatal("expected continuity interaction after zero-energy promotion")
+		}
+		if snapshot.Interaction.Kind != "death_promoted_child" {
+			t.Fatalf("expected death_promoted_child, got %q", snapshot.Interaction.Kind)
+		}
+		if snapshot.Interaction.SourceID != initial.Player.ID || snapshot.Interaction.TargetID != initial.Player.ID {
+			t.Fatalf("expected continuity interaction to identify player %q, got source=%q target=%q", initial.Player.ID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
 		}
 		return
 	}

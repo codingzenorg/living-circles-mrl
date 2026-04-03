@@ -74,6 +74,18 @@ func TestPlayerWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
 	if snapshot.Player.Generation != before.Player.Generation+1 {
 		t.Fatalf("expected replacement generation %d, got %d", before.Player.Generation+1, snapshot.Player.Generation)
 	}
+	if snapshot.Interaction == nil {
+		t.Fatal("expected continuity interaction after zero-energy promotion")
+	}
+	if snapshot.Interaction.Kind != "death_promoted_child" {
+		t.Fatalf("expected death_promoted_child, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceID != before.Player.ID || snapshot.Interaction.TargetID != before.Player.ID {
+		t.Fatalf("expected continuity interaction to identify player %q, got source=%q target=%q", before.Player.ID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+	if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount {
+		t.Fatalf("expected attached children to remain synchronized, count=%d attached=%d", snapshot.Player.ChildrenCount, len(snapshot.Player.AttachedChildren))
+	}
 }
 
 func TestAutonomousCircleWithZeroEnergyDisappearsWithoutChildren(t *testing.T) {
@@ -115,6 +127,18 @@ func TestAutonomousCircleWithZeroEnergyReplacesThroughChildContinuity(t *testing
 	}
 	if snapshot.AutonomousCircles[0].Generation != before.AutonomousCircles[0].Generation+1 {
 		t.Fatalf("expected replacement generation %d, got %d", before.AutonomousCircles[0].Generation+1, snapshot.AutonomousCircles[0].Generation)
+	}
+	if snapshot.Interaction == nil {
+		t.Fatal("expected continuity interaction after zero-energy promotion")
+	}
+	if snapshot.Interaction.Kind != "death_promoted_child" {
+		t.Fatalf("expected death_promoted_child, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceID != before.AutonomousCircles[0].ID || snapshot.Interaction.TargetID != before.AutonomousCircles[0].ID {
+		t.Fatalf("expected continuity interaction to identify autonomous circle %q, got source=%q target=%q", before.AutonomousCircles[0].ID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+	if len(snapshot.AutonomousCircles[0].AttachedChildren) != snapshot.AutonomousCircles[0].ChildrenCount {
+		t.Fatalf("expected attached children to remain synchronized, count=%d attached=%d", snapshot.AutonomousCircles[0].ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren))
 	}
 }
 
@@ -925,7 +949,7 @@ func TestPairCanReproduceAgainAfterSeparating(t *testing.T) {
 	for range 120 {
 		session.ApplyIntent(simulation.Vector{})
 		snapshot = session.Advance()
-		if snapshot.Interaction != nil {
+		if snapshot.Interaction != nil && snapshot.Interaction.Kind == "reproduce_resolved" {
 			break
 		}
 		beforePlayerChildren = snapshot.Player.ChildrenCount

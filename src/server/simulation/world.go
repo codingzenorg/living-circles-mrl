@@ -690,7 +690,17 @@ func reproductionCapacity(energy float64, childrenCount int) float64 {
 
 func (w *World) resolveEnergyCollapse() {
 	if w.player != nil && w.player.Energy == 0 {
+		promoted := w.player.ChildrenCount > 0
 		w.player = replaceOrRemovePlayer(w.player)
+		if promoted && w.player != nil && w.lastInteraction == nil {
+			w.lastInteraction = &InteractionClassification{
+				Active:   false,
+				Resolved: true,
+				Kind:     "death_promoted_child",
+				SourceID: w.player.ID,
+				TargetID: w.player.ID,
+			}
+		}
 	}
 
 	for index, circle := range w.autonomousCircles {
@@ -698,6 +708,7 @@ func (w *World) resolveEnergyCollapse() {
 			continue
 		}
 
+		promoted := circle.ChildrenCount > 0
 		replaced, active := replaceOrRemoveAutonomous(circle)
 		if !active {
 			w.autonomousCircles = append(w.autonomousCircles[:index], w.autonomousCircles[index+1:]...)
@@ -707,6 +718,15 @@ func (w *World) resolveEnergyCollapse() {
 		}
 
 		w.autonomousCircles[index] = replaced
+		if promoted && w.lastInteraction == nil {
+			w.lastInteraction = &InteractionClassification{
+				Active:   false,
+				Resolved: true,
+				Kind:     "death_promoted_child",
+				SourceID: replaced.ID,
+				TargetID: replaced.ID,
+			}
+		}
 	}
 }
 

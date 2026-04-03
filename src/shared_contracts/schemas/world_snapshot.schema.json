@@ -191,7 +191,7 @@
               "type": "boolean"
             },
             "kind": {
-              "enum": ["reproduce_resolved", "reproduce_blocked_energy", "fight_resolved", "fight_absorbed_child"]
+              "enum": ["reproduce_resolved", "reproduce_blocked_energy", "fight_resolved", "fight_absorbed_child", "death_promoted_child"]
             },
             "source_id": {
               "type": "string"

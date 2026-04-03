@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_attached_child_food_collection.md`
+`docs/slices/initial_attached_child_promotion_on_parent_death.md`
 
 ## Implemented Shape
 
@@ -27,6 +27,7 @@
 - successful reproduction now creates visible attached orbiting children owned by the participating parents
 - same-shape conflict can now remove one attached child from the loser before removing the parent
 - attached orbiting children can now collect food on behalf of their parent
+- parent continuity after death now emits an explicit `death_promoted_child` outcome when one attached child is consumed to preserve the lineage
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -116,11 +117,9 @@
   "interaction": {
     "active": false,
     "resolved": true,
-    "kind": "fight_absorbed_child",
+    "kind": "death_promoted_child",
     "source_id": "player-1",
-    "target_id": "circle-2",
-    "winner_id": "player-1",
-    "loser_id": "circle-2"
+    "target_id": "player-1"
   },
   "foods": [
     {
@@ -166,6 +165,7 @@ The slice needed these implementation choices not fully specified in the refined
 - when no food target is available, autonomous circles fall back to deterministic index-based directions
 - same-shape overlap resolves as `fight_resolved`; different-shape overlap resolves as `reproduce_resolved`
 - same-shape overlap may also resolve as `fight_absorbed_child` when the loser has an attached child available to absorb the loss
+- zero-energy collapse that preserves continuity now resolves as `death_promoted_child`
 - same-shape fight ordering is: higher energy, then higher child count, then larger radius, then player exact tie-break
 - a same-shape loser with at least one attached child loses exactly one attached child and remains active on that tick
 - different-shape overlap without enough energy or an available child payment resolves as `reproduce_blocked_energy`
@@ -184,6 +184,7 @@ The slice needed these implementation choices not fully specified in the refined
 - initial circles derive deterministic lineage IDs from their active IDs and start at generation `0`
 - replacement continuity preserves `lineage_id` and increments `generation` by exactly `1`
 - a zero-energy circle follows the same removal-or-replacement rule used after fight defeat
+- when continuity occurs on parent death, one attached child is explicitly consumed and the snapshot exposes `death_promoted_child` for inspectability unless a higher-priority same-tick interaction already exists
 - `POST /reset` rebuilds the session from its initial config, resets tick to `0`, clears intent, and broadcasts the fresh snapshot
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
@@ -191,5 +192,5 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 ## Validation Targets
 
 - deterministic server tests for child accumulation, attached orbiting child ownership, attached-child food collection, child absorption during hostile conflict, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity on zero-energy collapse, lineage preservation, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
-- contract test for explicit snapshot shape including child counts, attached child state, lineage fields, and resolved, blocked, or absorbed interaction outcomes
-- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset
+- contract test for explicit snapshot shape including child counts, attached child state, lineage fields, and resolved, blocked, absorbed, or promoted interaction outcomes
+- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset
