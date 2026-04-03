@@ -671,6 +671,9 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	if snapshot.Interaction.Kind != "reproduce_resolved" {
 		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
 	}
+	if len(snapshot.AutonomousCircles) != len(before.AutonomousCircles)+1 {
+		t.Fatalf("expected one spawned child circle, before=%d after=%d", len(before.AutonomousCircles), len(snapshot.AutonomousCircles))
+	}
 	if snapshot.Player.Energy >= before.Player.Energy {
 		t.Fatalf("expected player energy to decrease through reproduction, before=%v after=%v", before.Player.Energy, snapshot.Player.Energy)
 	}
@@ -688,6 +691,13 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	}
 	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
 		t.Fatalf("expected autonomous radius growth, got %v", snapshot.AutonomousCircles[0].Radius)
+	}
+	child := snapshot.AutonomousCircles[1]
+	if child.ChildrenCount != 0 || child.Generation != 0 {
+		t.Fatalf("expected spawned child to start at generation 0 with no children, got %+v", child)
+	}
+	if child.Radius != simulation.DefaultPlayerRadius || child.Energy != simulation.DefaultPlayerEnergy {
+		t.Fatalf("expected spawned child baseline state, got %+v", child)
 	}
 }
 
@@ -712,6 +722,9 @@ func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *test
 	}
 	if snapshot.Interaction.Kind != "reproduce_blocked_energy" {
 		t.Fatalf("expected reproduce_blocked_energy, got %q", snapshot.Interaction.Kind)
+	}
+	if len(snapshot.AutonomousCircles) != 1 {
+		t.Fatalf("expected blocked reproduction to avoid spawning children, got %d autonomous circles", len(snapshot.AutonomousCircles))
 	}
 	if snapshot.Player.ChildrenCount != 0 || snapshot.AutonomousCircles[0].ChildrenCount != 0 {
 		t.Fatalf("expected blocked reproduction to preserve child counts, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
@@ -756,7 +769,14 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 }
 
 func TestContinuousOverlapDoesNotRepeatChildAccumulation(t *testing.T) {
-	session := simulation.NewSessionWithShapes("triangle", "square")
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:        "triangle",
+		AutonomousShape:    "square",
+		PlayerEnergy:       100,
+		AutonomousEnergy:   100,
+		DisableFoodSeeking: true,
+	})
+	originalOpponentID := simulation.DefaultAutonomousID
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -769,14 +789,22 @@ func TestContinuousOverlapDoesNotRepeatChildAccumulation(t *testing.T) {
 	if snapshot.Interaction == nil {
 		t.Fatal("expected reproduction resolution")
 	}
-	if snapshot.Player.ChildrenCount != 1 || snapshot.AutonomousCircles[0].ChildrenCount != 1 {
-		t.Fatalf("expected one child each after first reproduction, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+	originalOpponent, found := autonomousByID(snapshot.AutonomousCircles, originalOpponentID)
+	if !found {
+		t.Fatalf("expected original autonomous circle %q after reproduction", originalOpponentID)
+	}
+	if snapshot.Player.ChildrenCount != 1 || originalOpponent.ChildrenCount != 1 {
+		t.Fatalf("expected one child each after first reproduction, player=%d autonomous=%d", snapshot.Player.ChildrenCount, originalOpponent.ChildrenCount)
 	}
 
 	for range 3 {
 		snapshot = session.Advance()
-		if snapshot.Player.ChildrenCount != 1 || snapshot.AutonomousCircles[0].ChildrenCount != 1 {
-			t.Fatalf("expected continuous overlap to avoid repeat accumulation, player=%d autonomous=%d", snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+		originalOpponent, found = autonomousByID(snapshot.AutonomousCircles, originalOpponentID)
+		if !found {
+			t.Fatalf("expected original autonomous circle %q during continuous overlap", originalOpponentID)
+		}
+		if snapshot.Player.ChildrenCount != 1 || originalOpponent.ChildrenCount != 1 {
+			t.Fatalf("expected continuous overlap to avoid repeat accumulation, player=%d autonomous=%d", snapshot.Player.ChildrenCount, originalOpponent.ChildrenCount)
 		}
 	}
 }
@@ -1046,4 +1074,14 @@ func foodIDs(foods []simulation.Food) map[string]bool {
 	}
 
 	return ids
+}
+
+func autonomousByID(circles []simulation.AutonomousCircle, id string) (simulation.AutonomousCircle, bool) {
+	for _, circle := range circles {
+		if circle.ID == id {
+			return circle, true
+		}
+	}
+
+	return simulation.AutonomousCircle{}, false
 }

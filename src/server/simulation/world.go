@@ -89,6 +89,7 @@ type World struct {
 	player               *PlayerCircle
 	autonomousCircles    []AutonomousCircle
 	autonomousDirections []Vector
+	nextCircleID         int
 	disableFoodSeeking   bool
 	foodSlots            []Food
 	foods                []Food
@@ -187,6 +188,7 @@ func NewWorldWithConfig(config Config) *World {
 		},
 		autonomousCircles:    autonomousCircles,
 		autonomousDirections: initialAutonomousDirections(len(autonomousCircles)),
+		nextCircleID:         4,
 		disableFoodSeeking:   config.DisableFoodSeeking,
 		foodSlots:            foodSlots,
 		foods:                append([]Food(nil), foodSlots...),
@@ -488,6 +490,7 @@ func (w *World) resolveReproduction(opponentID string) {
 
 	opponent.ChildrenCount++
 	opponent.Radius = derivedRadius(opponent.ChildrenCount)
+	w.spawnChildCircle(*w.player, opponent)
 	w.autonomousCircles[opponentIndex] = opponent
 
 	w.lastInteraction = &InteractionClassification{
@@ -550,6 +553,79 @@ func derivedRadius(childrenCount int) float64 {
 
 func lineageIDFor(circleID string) string {
 	return "lineage-" + circleID
+}
+
+func (w *World) spawnChildCircle(player PlayerCircle, opponent AutonomousCircle) {
+	childID := "circle-" + intToString(w.nextCircleID)
+	w.nextCircleID++
+
+	childShape := player.Shape
+	if player.ChildrenCount > opponent.ChildrenCount {
+		childShape = opponent.Shape
+	}
+
+	childX, childY := childSpawnPosition(w.bounds, player, opponent)
+
+	child := AutonomousCircle{
+		ID:            childID,
+		LineageID:     lineageIDFor(childID),
+		Generation:    0,
+		Shape:         childShape,
+		X:             childX,
+		Y:             childY,
+		Radius:        DefaultPlayerRadius,
+		Energy:        DefaultPlayerEnergy,
+		ChildrenCount: 0,
+	}
+
+	w.autonomousCircles = append(w.autonomousCircles, child)
+	w.autonomousDirections = append(w.autonomousDirections, Vector{X: 1, Y: 0})
+}
+
+func childSpawnPosition(bounds Bounds, player PlayerCircle, opponent AutonomousCircle) (float64, float64) {
+	midX := (player.X + opponent.X) / 2
+	midY := (player.Y + opponent.Y) / 2
+
+	axis := normalize(Vector{
+		X: opponent.X - player.X,
+		Y: opponent.Y - player.Y,
+	})
+	if axis.X == 0 && axis.Y == 0 {
+		axis = Vector{X: 1, Y: 0}
+	}
+
+	perpendicular := Vector{
+		X: -axis.Y,
+		Y: axis.X,
+	}
+	offset := player.Radius + opponent.Radius + DefaultPlayerRadius + 4
+
+	return clamp(midX+perpendicular.X*offset, DefaultPlayerRadius, bounds.Width-DefaultPlayerRadius),
+		clamp(midY+perpendicular.Y*offset, DefaultPlayerRadius, bounds.Height-DefaultPlayerRadius)
+}
+
+func intToString(value int) string {
+	if value == 0 {
+		return "0"
+	}
+
+	sign := ""
+	if value < 0 {
+		sign = "-"
+		value = -value
+	}
+
+	digits := make([]byte, 0, 10)
+	for value > 0 {
+		digits = append(digits, byte('0'+value%10))
+		value /= 10
+	}
+
+	for left, right := 0, len(digits)-1; left < right; left, right = left+1, right-1 {
+		digits[left], digits[right] = digits[right], digits[left]
+	}
+
+	return sign + string(digits)
 }
 
 func payPlayerReproductionCost(circle *PlayerCircle) bool {

@@ -376,6 +376,9 @@ func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.
 			if snapshot.Player == nil {
 				t.Fatal("expected player to remain active after reproduction")
 			}
+			if len(snapshot.AutonomousCircles) != len(initial.AutonomousCircles)+1 {
+				t.Fatalf("expected one spawned child circle after reproduction, before=%d after=%d", len(initial.AutonomousCircles), len(snapshot.AutonomousCircles))
+			}
 			if snapshot.Player.Energy >= initial.Player.Energy {
 				t.Fatalf("expected player energy to decrease after reproduction, before=%v after=%v", initial.Player.Energy, snapshot.Player.Energy)
 			}

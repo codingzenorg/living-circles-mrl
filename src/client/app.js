@@ -104,7 +104,7 @@ function drawCircle(circle, isPlayer, player) {
   context.font = "16px Georgia";
   const label = isPlayer
     ? `${circle.id} (${circle.shape}) c:${circle.children_count} g:${circle.generation}`
-    : `${circle.id} ${matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${circle.children_count} g:${circle.generation}`;
+    : `${circle.id} ${matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${circle.children_count} g:${circle.generation}${circle.generation === 0 && circle.id !== "circle-2" && circle.id !== "circle-3" ? " child" : ""}`;
   context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
 
   context.font = "12px Georgia";
