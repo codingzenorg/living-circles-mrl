@@ -460,7 +460,6 @@ func (w *World) resolveFight(opponentID string) {
 	w.lastInteraction = &InteractionClassification{
 		Active:   false,
 		Resolved: true,
-		Kind:     "fight_resolved",
 		SourceID: w.player.ID,
 		TargetID: opponent.ID,
 		WinnerID: winnerID,
@@ -468,10 +467,24 @@ func (w *World) resolveFight(opponentID string) {
 	}
 
 	if loserID == w.player.ID {
+		if w.player.ChildrenCount > 0 {
+			consumePlayerChild(w.player)
+			w.lastInteraction.Kind = "fight_absorbed_child"
+			return
+		}
+		w.lastInteraction.Kind = "fight_resolved"
 		w.player = replaceOrRemovePlayer(w.player)
 		return
 	}
 
+	if opponent.ChildrenCount > 0 {
+		consumeAutonomousChild(&opponent)
+		w.autonomousCircles[opponentIndex] = opponent
+		w.lastInteraction.Kind = "fight_absorbed_child"
+		return
+	}
+
+	w.lastInteraction.Kind = "fight_resolved"
 	replacedOpponent, active := replaceOrRemoveAutonomous(opponent)
 	if !active {
 		w.autonomousCircles = append(w.autonomousCircles[:opponentIndex], w.autonomousCircles[opponentIndex+1:]...)

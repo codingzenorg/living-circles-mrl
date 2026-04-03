@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_orbiting_children_attached_to_parents.md`
+`docs/slices/initial_attached_child_absorption_on_conflict.md`
 
 ## Implemented Shape
 
@@ -25,6 +25,7 @@
 - autonomous circles now steer deterministically toward nearby food before falling back to baseline drift
 - child accumulation now contributes directly to same-shape fight winner selection
 - successful reproduction now creates visible attached orbiting children owned by the participating parents
+- same-shape conflict can now remove one attached child from the loser before removing the parent
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -114,7 +115,7 @@
   "interaction": {
     "active": false,
     "resolved": true,
-    "kind": "fight_resolved",
+    "kind": "fight_absorbed_child",
     "source_id": "player-1",
     "target_id": "circle-2",
     "winner_id": "player-1",
@@ -161,7 +162,9 @@ The slice needed these implementation choices not fully specified in the refined
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID
 - when no food target is available, autonomous circles fall back to deterministic index-based directions
 - same-shape overlap resolves as `fight_resolved`; different-shape overlap resolves as `reproduce_resolved`
+- same-shape overlap may also resolve as `fight_absorbed_child` when the loser has an attached child available to absorb the loss
 - same-shape fight ordering is: higher energy, then higher child count, then larger radius, then player exact tie-break
+- a same-shape loser with at least one attached child loses exactly one attached child and remains active on that tick
 - different-shape overlap without enough energy or an available child payment resolves as `reproduce_blocked_energy`
 - resolved reproduction creates exactly two new child units and assigns them deterministically across the participating parents
 - attached children remain orbiting dependents of their current parent rather than immediately becoming free autonomous circles
@@ -184,6 +187,6 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 ## Validation Targets
 
-- deterministic server tests for child accumulation, attached orbiting child ownership, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity, lineage preservation, zero-energy collapse death, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
-- contract test for explicit snapshot shape including child counts, attached child state, lineage fields, and both resolved and blocked reproduction outcomes
-- integration tests for WebSocket snapshots with visible orbiting children after reproduction, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, fight continuity through child replacement, lineage preservation across replacement, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset
+- deterministic server tests for child accumulation, attached orbiting child ownership, child absorption during hostile conflict, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity on zero-energy collapse, lineage preservation, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
+- contract test for explicit snapshot shape including child counts, attached child state, lineage fields, and resolved, blocked, or absorbed interaction outcomes
+- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child loss during hostile conflict, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset
