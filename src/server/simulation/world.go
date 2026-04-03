@@ -497,16 +497,25 @@ func circlesInteract(player PlayerCircle, autonomous AutonomousCircle, tick int6
 	parentBodyOverlap := overlaps(player.X, player.Y, player.Radius, autonomous.X, autonomous.Y, autonomous.Radius)
 
 	playerChildren := layoutAttachedChildren(player.ID, player.X, player.Y, player.Radius, player.AttachedChildren, tick)
+	autonomousChildren := layoutAttachedChildren(autonomous.ID, autonomous.X, autonomous.Y, autonomous.Radius, autonomous.AttachedChildren, tick)
+
 	for _, child := range playerChildren {
 		if overlaps(child.X, child.Y, child.Radius, autonomous.X, autonomous.Y, autonomous.Radius) {
 			return "attached_child", true
 		}
 	}
 
-	autonomousChildren := layoutAttachedChildren(autonomous.ID, autonomous.X, autonomous.Y, autonomous.Radius, autonomous.AttachedChildren, tick)
 	for _, child := range autonomousChildren {
 		if overlaps(player.X, player.Y, player.Radius, child.X, child.Y, child.Radius) {
 			return "attached_child", true
+		}
+	}
+
+	for _, playerChild := range playerChildren {
+		for _, autonomousChild := range autonomousChildren {
+			if overlaps(playerChild.X, playerChild.Y, playerChild.Radius, autonomousChild.X, autonomousChild.Y, autonomousChild.Radius) {
+				return "attached_child", true
+			}
 		}
 	}
 

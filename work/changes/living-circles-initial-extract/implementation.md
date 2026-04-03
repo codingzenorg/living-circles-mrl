@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_attached_child_contact_triggers_parent_interaction.md`
+`docs/slices/initial_attached_child_to_child_contact_triggers_parent_interaction.md`
 
 ## Implemented Shape
 
@@ -30,6 +30,7 @@
 - parent continuity after death now emits an explicit `death_promoted_child` outcome when one attached child is consumed to preserve the lineage
 - attached orbiting children can now trigger parent-level fight or reproduction before parent core bodies overlap
 - interaction snapshots now expose `contact_origin` so child-triggered contact is inspectable
+- attached orbiting children can now also trigger parent-level interaction through child-to-child overlap
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -163,6 +164,7 @@ The slice needed these implementation choices not fully specified in the refined
 - each consumed food slot regenerates exactly `12` ticks after consumption
 - attached-child food collection gives the same parent energy gain as parent-body food collection
 - attached-child body contact against another parent body now counts as authoritative pair contact for interaction triggering
+- attached-child-to-attached-child overlap also counts as authoritative pair contact for interaction triggering
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID
@@ -171,6 +173,7 @@ The slice needed these implementation choices not fully specified in the refined
 - same-shape overlap may also resolve as `fight_absorbed_child` when the loser has an attached child available to absorb the loss
 - zero-energy collapse that preserves continuity now resolves as `death_promoted_child`
 - pair contact may be initiated by one attached child touching the other parent's body even when the two parent cores do not yet overlap
+- pair contact may also be initiated by one attached child touching another attached child across the pair
 - same-shape fight ordering is: higher energy, then higher child count, then larger radius, then player exact tie-break
 - a same-shape loser with at least one attached child loses exactly one attached child and remains active on that tick
 - different-shape overlap without enough energy or an available child payment resolves as `reproduce_blocked_energy`
@@ -199,4 +202,4 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 - deterministic server tests for child accumulation, attached orbiting child ownership, attached-child food collection, child absorption during hostile conflict, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity on zero-energy collapse, lineage preservation, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
 - contract test for explicit snapshot shape including child counts, attached child state, lineage fields, and resolved, blocked, absorbed, or promoted interaction outcomes
-- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, child-triggered contact before parent core overlap, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset
+- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, child-triggered contact before parent core overlap, child-to-child-triggered contact, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset

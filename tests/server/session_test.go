@@ -840,6 +840,79 @@ func TestAutonomousAttachedChildCanTriggerReproductionBeforeParentBodiesOverlap(
 	}
 }
 
+func TestAttachedChildrenCanTriggerFightThroughChildToChildContact(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "",
+		PlayerX:                   200,
+		PlayerY:                   300,
+		AutonomousX:               254.511,
+		AutonomousY:               294.944,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       2,
+		AutonomousEnergy:          80,
+		AutonomousChildrenCount:   2,
+		SecondaryAutonomousEnergy: 0,
+		DisableFoodSeeking:        true,
+	})
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected child-to-child fight interaction")
+	}
+	if snapshot.Interaction.Kind != "fight_absorbed_child" {
+		t.Fatalf("expected fight_absorbed_child, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.ContactOrigin != "attached_child" {
+		t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
+	}
+	if snapshot.Player == nil || len(snapshot.AutonomousCircles) != 1 {
+		t.Fatalf("expected both parents to remain after absorbed fight, player=%v autonomous=%d", snapshot.Player != nil, len(snapshot.AutonomousCircles))
+	}
+	if snapshot.AutonomousCircles[0].ChildrenCount != 1 {
+		t.Fatalf("expected autonomous loser to lose one child, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
+	}
+}
+
+func TestAttachedChildrenCanTriggerReproductionThroughChildToChildContact(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerX:                   200,
+		PlayerY:                   300,
+		AutonomousX:               254.511,
+		AutonomousY:               294.944,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       2,
+		AutonomousEnergy:          100,
+		AutonomousChildrenCount:   2,
+		SecondaryAutonomousEnergy: 0,
+		DisableFoodSeeking:        true,
+	})
+	before := session.Snapshot()
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected child-to-child reproduction interaction")
+	}
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.ContactOrigin != "attached_child" {
+		t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
+	}
+	if snapshot.Player == nil || len(snapshot.AutonomousCircles) != 1 {
+		t.Fatalf("expected both parents to remain after reproduction, player=%v autonomous=%d", snapshot.Player != nil, len(snapshot.AutonomousCircles))
+	}
+	if snapshot.Player.ChildrenCount+snapshot.AutonomousCircles[0].ChildrenCount != before.Player.ChildrenCount+before.AutonomousCircles[0].ChildrenCount+2 {
+		t.Fatalf("expected reproduction to add two children across the pair, before player=%d autonomous=%d after player=%d autonomous=%d", before.Player.ChildrenCount, before.AutonomousCircles[0].ChildrenCount, snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
+	}
+}
+
 func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	session := simulation.NewSessionWithShapes("triangle", "square")
 	before := session.Snapshot()

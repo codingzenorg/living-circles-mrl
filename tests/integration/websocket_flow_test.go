@@ -288,6 +288,65 @@ func TestClientReceivesChildTriggeredReproductionBeforeParentBodiesOverlap(t *te
 	t.Fatal("expected child-triggered reproduction snapshot")
 }
 
+func TestClientReceivesChildToChildTriggeredReproduction(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerX:                   200,
+		PlayerY:                   300,
+		AutonomousX:               254.511,
+		AutonomousY:               294.944,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       2,
+		AutonomousEnergy:          100,
+		AutonomousChildrenCount:   2,
+		SecondaryAutonomousEnergy: 0,
+		DisableFoodSeeking:        true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 10 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.Interaction == nil {
+			continue
+		}
+
+		if snapshot.Interaction.Kind != "reproduce_resolved" {
+			t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+		}
+		if snapshot.Interaction.ContactOrigin != "attached_child" {
+			t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
+		}
+		if snapshot.Player == nil || len(snapshot.AutonomousCircles) != 1 {
+			t.Fatalf("expected both parents to remain, player=%v autonomous=%d", snapshot.Player != nil, len(snapshot.AutonomousCircles))
+		}
+		return
+	}
+
+	t.Fatal("expected child-to-child reproduction snapshot")
+}
+
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())
