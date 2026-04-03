@@ -123,6 +123,56 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Treat attached orbiting children as valid contact points for triggering parent-level interactions.
+
+## Why This Matters
+
+The current implementation has made attached children visible and useful in feeding, payment, conflict absorption, and continuity. But interaction initiation is still mostly parent-core-driven. That keeps the orbiting-child model partially embodied: children matter after outcomes, but not enough in how encounters begin.
+
+The next model pressure is to let visible orbiting children participate directly in authoritative contact detection while still preserving the current parent-level fight and reproduction rules.
+
+## Impacted Areas
+
+### Simulation model
+
+- overlap detection should consider attached-child positions against other parent bodies
+- one parent pair still needs deterministic de-duplication so child contact does not produce duplicate same-tick outcomes
+- the current overlap-window rule for repeated reproduction must remain coherent when contact originates from a child
+
+### Runtime contract
+
+- the current snapshot may remain sufficient because attached-child positions and interaction outcomes are already visible
+- build may need one extra outcome marker only if ordinary snapshots are not enough to explain child-originated contact
+
+### Browser rendering
+
+- no major rendering feature is required if current orbiting-child visuals already make the contact path inspectable
+- labels or debug text may still need minor updates if child-originated contact is too ambiguous in the demo
+
+### Existing semantics
+
+- same-shape and different-shape interaction meaning should remain unchanged after contact is detected
+- current radius shortcuts remain transitional and should coexist with child-originated contact in this slice
+- player and autonomous circles should follow the same child-contact rule
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether attached-child contact counts only against parent bodies or also against other attached children
+- how to prevent one pair from triggering the same interaction twice in one tick when parent and child both overlap
+- whether the existing interaction object is sufficient for inspectability
+
+## Risks If Ignored
+
+- orbiting children will remain mechanically important but still not central to encounter initiation
+- later removal of radius shortcuts will be harder because contact logic will still be too parent-core-centric
+- the visible orbital model will continue to lag behind the authoritative interaction model
+
+---
+
+## Change
+
 Make attached orbiting children absorb hostile loss during same-shape conflict before a whole parent circle disappears.
 
 ## Why This Matters
