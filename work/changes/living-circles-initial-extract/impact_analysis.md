@@ -58,3 +58,63 @@ If no:
 - client/server authority may be blurred or hidden
 - later slices may need avoidable structural rework
 - semantic artifacts and implementation structure will diverge early
+
+---
+
+## Change
+
+Reinterpret children as attached orbiting dependents of a parent circle instead of immediately free autonomous circles.
+
+## Why This Matters
+
+The current implementation made reproduction visible by spawning a free active child circle. That was a useful executable step, but it does not match the stated product idea that children orbit their parents.
+
+This is not a cosmetic tweak. It changes:
+
+- what a child entity is
+- how reproduction output is represented
+- how snapshots should expose child state
+- how future fight, food, and continuity rules should relate to visible children
+
+## Impacted Areas
+
+### Simulation model
+
+- reproduction output should become parent-owned attached children rather than immediate free autonomous participants
+- world update logic needs an orbit model derived from parent-child state
+- the current child-count model becomes transitional rather than the whole embodiment
+
+### Runtime contract
+
+- snapshots need explicit attached-child state
+- the current representation of a child as just another autonomous circle is no longer sufficient
+- child ownership and orbit inspectability become first-class contract concerns
+
+### Browser rendering
+
+- the client should render children orbiting a parent rather than appearing as free peers in the world
+- labels and debugging affordances should clarify which parent owns which child
+
+### Existing semantics
+
+- current radius growth, fight leverage, replacement continuity, and reproduction payment all still depend on `children_count`
+- the repository needs an explicit transitional stance on whether visible orbiting children and count-based shortcuts coexist temporarily
+
+### Determinism discipline
+
+- the intended game feel says post-reproduction children are randomly distributed between parents
+- deterministic testing means build should use a reproducible authoritative distribution rule rather than unrestricted randomness
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether visible orbiting children are a one-to-one embodiment of `children_count`
+- how post-reproduction child ownership is assigned while remaining deterministic
+- whether current radius growth stays temporarily active alongside orbiting children
+
+## Risks If Ignored
+
+- reproduction output will keep drifting away from the intended game feel
+- later changes may require replacing tests and client assumptions built around free spawned child circles
+- child-related semantics will remain split between counters and bodies without an explicit bridge
