@@ -123,6 +123,56 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Treat attached-child-to-attached-child overlap as a valid trigger for parent-level interaction.
+
+## Why This Matters
+
+The current implementation now lets orbiting children trigger parent-level interaction when they touch another parent body. That improved the embodied contact model, but it still leaves a visible inconsistency: two child swarms can meet each other without authoritative meaning.
+
+The next model pressure is to complete the minimum contact interpretation by allowing attached-child-to-attached-child overlap to trigger the same parent-level fight or reproduction paths.
+
+## Impacted Areas
+
+### Simulation model
+
+- overlap detection should consider child-to-child contact across a parent pair
+- de-duplication needs to stay deterministic when parent-body, child-to-parent, and child-to-child contact all happen in the same tick
+- current repeated-reproduction overlap windows must remain coherent when the triggering path is child-to-child
+
+### Runtime contract
+
+- the current contract may remain sufficient if `contact_origin: attached_child` is still enough for inspectability
+- build may need a finer-grained provenance value only if child-to-child contact cannot be understood from current snapshots
+
+### Browser rendering
+
+- current orbit rendering may already be enough to explain child-to-child contact
+- minor label or debug adjustments may still be needed if provenance is too ambiguous in the live demo
+
+### Existing semantics
+
+- same-shape and different-shape meaning should remain unchanged after contact is detected
+- current parent-body and child-to-parent contact rules should coexist cleanly with child-to-child contact
+- player and autonomous circles must follow the same rule
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether the existing `attached_child` provenance is sufficient for both child-to-parent and child-to-child contact
+- how to prevent duplicate same-tick outcomes when several child bodies overlap across one pair
+- whether any child-to-child-specific outcome is needed or remains out of scope
+
+## Risks If Ignored
+
+- orbiting children will still feel only partially real as contact bodies
+- the visible swarm model will remain more expressive than the authoritative interaction model
+- later attempts to lean less on radius shortcuts will have a weaker embodied basis
+
+---
+
+## Change
+
 Treat attached orbiting children as valid contact points for triggering parent-level interactions.
 
 ## Why This Matters
