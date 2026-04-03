@@ -36,10 +36,17 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "shape", "x", "y", "radius", "energy", "children_count"],
+          "required": ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "children_count"],
           "properties": {
             "id": {
               "type": "string"
+            },
+            "lineage_id": {
+              "type": "string"
+            },
+            "generation": {
+              "type": "integer",
+              "minimum": 0
             },
             "shape": {
               "type": "string"
@@ -71,10 +78,17 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "shape", "x", "y", "radius", "energy", "children_count"],
+        "required": ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "children_count"],
         "properties": {
           "id": {
             "type": "string"
+          },
+          "lineage_id": {
+            "type": "string"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 0
           },
           "shape": {
             "type": "string"

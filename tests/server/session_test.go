@@ -54,6 +54,7 @@ func TestPlayerWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
 		AutonomousEnergy:    100,
 		PlayerChildrenCount: 1,
 	})
+	before := session.Snapshot()
 
 	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
 	snapshot := session.Advance()
@@ -66,6 +67,12 @@ func TestPlayerWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
 	}
 	if snapshot.Player.Energy != simulation.DefaultReplacementEnergy {
 		t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.Player.Energy)
+	}
+	if snapshot.Player.LineageID != before.Player.LineageID {
+		t.Fatalf("expected replacement lineage %q, got %q", before.Player.LineageID, snapshot.Player.LineageID)
+	}
+	if snapshot.Player.Generation != before.Player.Generation+1 {
+		t.Fatalf("expected replacement generation %d, got %d", before.Player.Generation+1, snapshot.Player.Generation)
 	}
 }
 
@@ -91,6 +98,7 @@ func TestAutonomousCircleWithZeroEnergyReplacesThroughChildContinuity(t *testing
 		AutonomousEnergy:        0,
 		AutonomousChildrenCount: 1,
 	})
+	before := session.Snapshot()
 	snapshot := session.Advance()
 
 	if len(snapshot.AutonomousCircles) != 1 {
@@ -101,6 +109,12 @@ func TestAutonomousCircleWithZeroEnergyReplacesThroughChildContinuity(t *testing
 	}
 	if snapshot.AutonomousCircles[0].Energy != simulation.DefaultReplacementEnergy {
 		t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.AutonomousCircles[0].Energy)
+	}
+	if snapshot.AutonomousCircles[0].LineageID != before.AutonomousCircles[0].LineageID {
+		t.Fatalf("expected replacement lineage %q, got %q", before.AutonomousCircles[0].LineageID, snapshot.AutonomousCircles[0].LineageID)
+	}
+	if snapshot.AutonomousCircles[0].Generation != before.AutonomousCircles[0].Generation+1 {
+		t.Fatalf("expected replacement generation %d, got %d", before.AutonomousCircles[0].Generation+1, snapshot.AutonomousCircles[0].Generation)
 	}
 }
 
@@ -174,6 +188,12 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.Player.ChildrenCount != 0 {
 		t.Fatalf("expected player children count to start at zero, got %d", snapshot.Player.ChildrenCount)
 	}
+	if snapshot.Player.LineageID != "lineage-player-1" {
+		t.Fatalf("expected player lineage %q, got %q", "lineage-player-1", snapshot.Player.LineageID)
+	}
+	if snapshot.Player.Generation != 0 {
+		t.Fatalf("expected player generation 0, got %d", snapshot.Player.Generation)
+	}
 	if snapshot.Player.Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected base player radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.Player.Radius)
 	}
@@ -184,6 +204,12 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.AutonomousCircles[0].ChildrenCount != 1 {
 		t.Fatalf("expected first autonomous children count to start at one for demo continuity, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
 	}
+	if snapshot.AutonomousCircles[0].LineageID != "lineage-circle-2" {
+		t.Fatalf("expected first autonomous lineage %q, got %q", "lineage-circle-2", snapshot.AutonomousCircles[0].LineageID)
+	}
+	if snapshot.AutonomousCircles[0].Generation != 0 {
+		t.Fatalf("expected first autonomous generation 0, got %d", snapshot.AutonomousCircles[0].Generation)
+	}
 	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
 		t.Fatalf("expected first autonomous radius %v, got %v", simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain, snapshot.AutonomousCircles[0].Radius)
 	}
@@ -193,6 +219,12 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	}
 	if snapshot.AutonomousCircles[1].ChildrenCount != 0 {
 		t.Fatalf("expected second autonomous children count to start at zero, got %d", snapshot.AutonomousCircles[1].ChildrenCount)
+	}
+	if snapshot.AutonomousCircles[1].LineageID != "lineage-circle-3" {
+		t.Fatalf("expected second autonomous lineage %q, got %q", "lineage-circle-3", snapshot.AutonomousCircles[1].LineageID)
+	}
+	if snapshot.AutonomousCircles[1].Generation != 0 {
+		t.Fatalf("expected second autonomous generation 0, got %d", snapshot.AutonomousCircles[1].Generation)
 	}
 	if snapshot.AutonomousCircles[1].Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected base autonomous radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.AutonomousCircles[1].Radius)
@@ -532,6 +564,7 @@ func TestAutonomousLoserWithChildRemainsActiveThroughReplacement(t *testing.T) {
 		AutonomousEnergy:        80,
 		AutonomousChildrenCount: 1,
 	})
+	before := session.Snapshot()
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -558,6 +591,12 @@ func TestAutonomousLoserWithChildRemainsActiveThroughReplacement(t *testing.T) {
 	}
 	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected replacement radius to reset to base after child consumption, got %v", snapshot.AutonomousCircles[0].Radius)
+	}
+	if snapshot.AutonomousCircles[0].LineageID != before.AutonomousCircles[0].LineageID {
+		t.Fatalf("expected replacement lineage %q, got %q", before.AutonomousCircles[0].LineageID, snapshot.AutonomousCircles[0].LineageID)
+	}
+	if snapshot.AutonomousCircles[0].Generation != before.AutonomousCircles[0].Generation+1 {
+		t.Fatalf("expected replacement generation %d, got %d", before.AutonomousCircles[0].Generation+1, snapshot.AutonomousCircles[0].Generation)
 	}
 }
 
@@ -760,6 +799,7 @@ func TestPlayerLoserWithChildRemainsActiveThroughReplacement(t *testing.T) {
 		PlayerChildrenCount:     1,
 		AutonomousChildrenCount: 0,
 	})
+	before := session.Snapshot()
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -786,6 +826,12 @@ func TestPlayerLoserWithChildRemainsActiveThroughReplacement(t *testing.T) {
 	}
 	if snapshot.Player.Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected replacement radius to reset to base after child consumption, got %v", snapshot.Player.Radius)
+	}
+	if snapshot.Player.LineageID != before.Player.LineageID {
+		t.Fatalf("expected replacement lineage %q, got %q", before.Player.LineageID, snapshot.Player.LineageID)
+	}
+	if snapshot.Player.Generation != before.Player.Generation+1 {
+		t.Fatalf("expected replacement generation %d, got %d", before.Player.Generation+1, snapshot.Player.Generation)
 	}
 }
 

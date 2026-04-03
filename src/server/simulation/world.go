@@ -33,6 +33,8 @@ type Vector struct {
 
 type PlayerCircle struct {
 	ID            string  `json:"id"`
+	LineageID     string  `json:"lineage_id"`
+	Generation    int     `json:"generation"`
 	Shape         string  `json:"shape"`
 	X             float64 `json:"x"`
 	Y             float64 `json:"y"`
@@ -43,6 +45,8 @@ type PlayerCircle struct {
 
 type AutonomousCircle struct {
 	ID            string  `json:"id"`
+	LineageID     string  `json:"lineage_id"`
+	Generation    int     `json:"generation"`
 	Shape         string  `json:"shape"`
 	X             float64 `json:"x"`
 	Y             float64 `json:"y"`
@@ -131,6 +135,8 @@ func NewWorldWithConfig(config Config) *World {
 	autonomousCircles := []AutonomousCircle{
 		{
 			ID:            DefaultAutonomousID,
+			LineageID:     lineageIDFor(DefaultAutonomousID),
+			Generation:    0,
 			Shape:         config.AutonomousShape,
 			X:             DefaultWorldWidth/2 - 140,
 			Y:             DefaultWorldHeight / 2,
@@ -142,6 +148,8 @@ func NewWorldWithConfig(config Config) *World {
 	if config.SecondaryAutonomousShape != "" {
 		autonomousCircles = append(autonomousCircles, AutonomousCircle{
 			ID:            DefaultSecondaryID,
+			LineageID:     lineageIDFor(DefaultSecondaryID),
+			Generation:    0,
 			Shape:         config.SecondaryAutonomousShape,
 			X:             DefaultWorldWidth/2 + 140,
 			Y:             DefaultWorldHeight / 2,
@@ -164,6 +172,8 @@ func NewWorldWithConfig(config Config) *World {
 		},
 		player: &PlayerCircle{
 			ID:            "player-1",
+			LineageID:     lineageIDFor("player-1"),
+			Generation:    0,
 			Shape:         config.PlayerShape,
 			X:             DefaultWorldWidth / 2,
 			Y:             DefaultWorldHeight / 2,
@@ -481,6 +491,10 @@ func derivedRadius(childrenCount int) float64 {
 	return DefaultPlayerRadius + float64(childrenCount)*DefaultChildRadiusGain
 }
 
+func lineageIDFor(circleID string) string {
+	return "lineage-" + circleID
+}
+
 func (w *World) resolveEnergyCollapse() {
 	if w.player != nil && w.player.Energy == 0 {
 		w.player = replaceOrRemovePlayer(w.player)
@@ -512,6 +526,7 @@ func replaceOrRemovePlayer(circle *PlayerCircle) *PlayerCircle {
 	}
 
 	circle.ChildrenCount--
+	circle.Generation++
 	circle.Radius = derivedRadius(circle.ChildrenCount)
 	circle.Energy = DefaultReplacementEnergy
 
@@ -524,6 +539,7 @@ func replaceOrRemoveAutonomous(circle AutonomousCircle) (AutonomousCircle, bool)
 	}
 
 	circle.ChildrenCount--
+	circle.Generation++
 	circle.Radius = derivedRadius(circle.ChildrenCount)
 	circle.Energy = DefaultReplacementEnergy
 

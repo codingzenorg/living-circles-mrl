@@ -63,7 +63,7 @@ function draw(snapshot) {
 
   if (snapshot.player) {
     drawCircle(snapshot.player, true, snapshot.player);
-    energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)} · Children: ${snapshot.player.children_count}`;
+    energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)} · Children: ${snapshot.player.children_count} · Generation: ${snapshot.player.generation}`;
   } else {
     energyNode.textContent = "Energy: defeated";
   }
@@ -103,9 +103,12 @@ function drawCircle(circle, isPlayer, player) {
   context.fillStyle = "#17313a";
   context.font = "16px Georgia";
   const label = isPlayer
-    ? `${circle.id} (${circle.shape}) c:${circle.children_count}`
-    : `${circle.id} ${matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${circle.children_count}`;
+    ? `${circle.id} (${circle.shape}) c:${circle.children_count} g:${circle.generation}`
+    : `${circle.id} ${matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${circle.children_count} g:${circle.generation}`;
   context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
+
+  context.font = "12px Georgia";
+  context.fillText(circle.lineage_id, circle.x - 40, circle.y + circle.radius + 18);
 }
 
 function setStatus(message) {

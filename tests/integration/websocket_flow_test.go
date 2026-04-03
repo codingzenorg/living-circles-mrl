@@ -52,6 +52,9 @@ func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	if initial.Player.Shape == "" || initial.AutonomousCircles[0].Shape == "" {
 		t.Fatal("expected circle shapes in initial snapshot")
 	}
+	if initial.Player.Generation != 0 || initial.AutonomousCircles[0].Generation != 0 {
+		t.Fatalf("expected initial generation 0, player=%d autonomous=%d", initial.Player.Generation, initial.AutonomousCircles[0].Generation)
+	}
 
 	message := map[string]any{
 		"type": "movement_intent",
@@ -118,6 +121,11 @@ func TestClientReceivesFightResolutionWithChildReplacement(t *testing.T) {
 	}
 	defer connection.Close()
 
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
 	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
 
 	for range 40 {
@@ -144,6 +152,12 @@ func TestClientReceivesFightResolutionWithChildReplacement(t *testing.T) {
 		}
 		if snapshot.AutonomousCircles[0].Energy != simulation.DefaultReplacementEnergy {
 			t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.AutonomousCircles[0].Energy)
+		}
+		if snapshot.AutonomousCircles[0].LineageID != initial.AutonomousCircles[0].LineageID {
+			t.Fatalf("expected replacement lineage %q, got %q", initial.AutonomousCircles[0].LineageID, snapshot.AutonomousCircles[0].LineageID)
+		}
+		if snapshot.AutonomousCircles[0].Generation != initial.AutonomousCircles[0].Generation+1 {
+			t.Fatalf("expected replacement generation %d, got %d", initial.AutonomousCircles[0].Generation+1, snapshot.AutonomousCircles[0].Generation)
 		}
 		return
 	}
@@ -189,11 +203,20 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.Player.ChildrenCount != 0 {
 		t.Fatalf("expected player child count to start at zero, got %d", initial.Player.ChildrenCount)
 	}
+	if initial.Player.LineageID != "lineage-player-1" || initial.Player.Generation != 0 {
+		t.Fatalf("expected initial player lineage state, got lineage=%q generation=%d", initial.Player.LineageID, initial.Player.Generation)
+	}
 	if initial.AutonomousCircles[0].ChildrenCount != 1 {
 		t.Fatalf("expected first autonomous child count to start at one for demo continuity, got %d", initial.AutonomousCircles[0].ChildrenCount)
 	}
+	if initial.AutonomousCircles[0].LineageID != "lineage-circle-2" || initial.AutonomousCircles[0].Generation != 0 {
+		t.Fatalf("expected first autonomous lineage state, got lineage=%q generation=%d", initial.AutonomousCircles[0].LineageID, initial.AutonomousCircles[0].Generation)
+	}
 	if initial.AutonomousCircles[1].ChildrenCount != 0 {
 		t.Fatalf("expected second autonomous child count to start at zero, got %d", initial.AutonomousCircles[1].ChildrenCount)
+	}
+	if initial.AutonomousCircles[1].LineageID != "lineage-circle-3" || initial.AutonomousCircles[1].Generation != 0 {
+		t.Fatalf("expected second autonomous lineage state, got lineage=%q generation=%d", initial.AutonomousCircles[1].LineageID, initial.AutonomousCircles[1].Generation)
 	}
 	if initial.Player.Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected base player radius %v, got %v", simulation.DefaultPlayerRadius, initial.Player.Radius)
@@ -373,6 +396,11 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 	}
 	defer connection.Close()
 
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
 	message := map[string]any{
 		"type": "movement_intent",
 		"direction": map[string]float64{
@@ -392,10 +420,6 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 			t.Fatalf("read snapshot: %v", err)
 		}
 
-		if snapshot.Tick == 0 {
-			continue
-		}
-
 		if snapshot.Player == nil {
 			t.Fatal("expected replacement player to remain active after zero-energy collapse")
 		}
@@ -404,6 +428,12 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 		}
 		if snapshot.Player.Energy != simulation.DefaultReplacementEnergy {
 			t.Fatalf("expected replacement energy %v, got %v", simulation.DefaultReplacementEnergy, snapshot.Player.Energy)
+		}
+		if snapshot.Player.LineageID != initial.Player.LineageID {
+			t.Fatalf("expected replacement lineage %q, got %q", initial.Player.LineageID, snapshot.Player.LineageID)
+		}
+		if snapshot.Player.Generation != initial.Player.Generation+1 {
+			t.Fatalf("expected replacement generation %d, got %d", initial.Player.Generation+1, snapshot.Player.Generation)
 		}
 		return
 	}

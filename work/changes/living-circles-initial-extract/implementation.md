@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_food_slot_regeneration.md`
+`docs/slices/initial_lineage_identity_through_replacement.md`
 
 ## Implemented Shape
 
@@ -20,6 +20,7 @@
 - deterministic child replacement on defeat when the loser has available children
 - zero-energy collapse now causes death or replacement continuity
 - deterministic food-slot regeneration after consumption
+- lineage identity and generation are now explicit in active circles and preserved through replacement continuity
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -52,6 +53,8 @@
   },
   "player": {
     "id": "player-1",
+    "lineage_id": "lineage-player-1",
+    "generation": 1,
     "shape": "triangle",
     "x": 408,
     "y": 300,
@@ -62,6 +65,8 @@
   "autonomous_circles": [
     {
       "id": "circle-2",
+      "lineage_id": "lineage-circle-2",
+      "generation": 1,
       "shape": "triangle",
       "x": 268,
       "y": 300,
@@ -71,6 +76,8 @@
     },
     {
       "id": "circle-3",
+      "lineage_id": "lineage-circle-3",
+      "generation": 0,
       "shape": "square",
       "x": 532,
       "y": 300,
@@ -111,6 +118,7 @@
 - different-shape reproduction resolves without spawning separate child entities
 - radius is derived from child accumulation with a fixed per-child increment
 - continuity is limited to one-child replacement after fight defeat
+- lineage is represented only by a stable `lineage_id` plus monotonic `generation`
 - zero energy is now a death threshold rather than only a movement stop condition
 - demo reset recreates the initial world state without restarting the server process
 - no local prediction or interpolation
@@ -133,6 +141,8 @@ The slice needed these implementation choices not fully specified in the refined
 - same-shape fights resolve in one tick using: higher energy wins, then larger radius, then player wins exact ties
 - a fight loser with at least one child remains active through immediate replacement, consuming exactly one child
 - replacement stays at the defeated circle position and resets to deterministic baseline energy `100`
+- initial circles derive deterministic lineage IDs from their active IDs and start at generation `0`
+- replacement continuity preserves `lineage_id` and increments `generation` by exactly `1`
 - a zero-energy circle follows the same removal-or-replacement rule used after fight defeat
 - `POST /reset` rebuilds the session from its initial config, resets tick to `0`, clears intent, and broadcasts the fresh snapshot
 
@@ -140,6 +150,6 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 ## Validation Targets
 
-- deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, child replacement continuity, zero-energy collapse death, and food-slot regeneration timing
-- contract test for explicit snapshot shape including child counts and resolved reproduction outcomes
-- integration tests for WebSocket snapshots with visible growth, resolved reproduction, fight continuity through child replacement, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset
+- deterministic server tests for child accumulation, derived radius growth, fight winner selection, loser removal, child replacement continuity, lineage preservation, zero-energy collapse death, and food-slot regeneration timing
+- contract test for explicit snapshot shape including child counts, lineage fields, and resolved reproduction outcomes
+- integration tests for WebSocket snapshots with visible growth, resolved reproduction, fight continuity through child replacement, lineage preservation across replacement, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset
