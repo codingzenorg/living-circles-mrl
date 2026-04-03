@@ -759,6 +759,80 @@ func TestClientReceivesRegeneratedFoodAfterDeterministicDelay(t *testing.T) {
 	t.Fatal("expected regenerated food after deterministic delay")
 }
 
+func TestClientReceivesFoodCollectionThroughAttachedChild(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerEnergy:              80,
+		PlayerChildrenCount:       2,
+		AutonomousEnergy:          0,
+		SecondaryAutonomousEnergy: 0,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	message := map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 1,
+			"y": 0,
+		},
+	}
+	if err := connection.WriteJSON(message); err != nil {
+		t.Fatalf("write movement intent: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 8 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+
+		if len(snapshot.Foods) != len(initial.Foods)-1 {
+			continue
+		}
+
+		if snapshot.Player == nil {
+			t.Fatal("expected player to remain active after attached-child collection")
+		}
+		expectedEnergy := initial.Player.Energy - simulation.DefaultMoveCost + simulation.DefaultFoodEnergy
+		if snapshot.Player.Energy != expectedEnergy {
+			t.Fatalf("expected player energy %v after attached-child collection, got %v", expectedEnergy, snapshot.Player.Energy)
+		}
+		if len(snapshot.Player.AttachedChildren) != 2 {
+			t.Fatalf("expected attached children to remain visible after collection, got %d", len(snapshot.Player.AttachedChildren))
+		}
+		return
+	}
+
+	t.Fatal("expected food collection through attached child")
+}
+
 func foodByID(foods []simulation.Food, id string) (simulation.Food, bool) {
 	for _, food := range foods {
 		if food.ID == id {

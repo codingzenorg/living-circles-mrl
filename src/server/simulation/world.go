@@ -265,7 +265,7 @@ func (w *World) Snapshot(tick int64) Snapshot {
 func (w *World) consumeOverlappingFood(tick int64) {
 	remaining := make([]Food, 0, len(w.foods))
 	for _, food := range w.foods {
-		if w.player != nil && overlaps(w.player.X, w.player.Y, w.player.Radius, food.X, food.Y, food.Radius) {
+		if w.player != nil && playerCollectsFood(*w.player, food, tick) {
 			w.player.Energy = math.Min(w.maxEnergy, w.player.Energy+w.foodGain)
 			w.missingFoodSince[food.ID] = tick
 			continue
@@ -273,7 +273,7 @@ func (w *World) consumeOverlappingFood(tick int64) {
 
 		consumed := false
 		for index, circle := range w.autonomousCircles {
-			if overlaps(circle.X, circle.Y, circle.Radius, food.X, food.Y, food.Radius) {
+			if autonomousCollectsFood(circle, food, tick) {
 				circle.Energy = math.Min(w.maxEnergy, circle.Energy+w.foodGain)
 				w.autonomousCircles[index] = circle
 				w.missingFoodSince[food.ID] = tick
@@ -406,6 +406,36 @@ func clamp(value, minimum, maximum float64) float64 {
 
 func overlaps(ax, ay, ar, bx, by, br float64) bool {
 	return math.Hypot(ax-bx, ay-by) <= ar+br
+}
+
+func playerCollectsFood(circle PlayerCircle, food Food, tick int64) bool {
+	if overlaps(circle.X, circle.Y, circle.Radius, food.X, food.Y, food.Radius) {
+		return true
+	}
+
+	children := layoutAttachedChildren(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
+	for _, child := range children {
+		if overlaps(child.X, child.Y, child.Radius, food.X, food.Y, food.Radius) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func autonomousCollectsFood(circle AutonomousCircle, food Food, tick int64) bool {
+	if overlaps(circle.X, circle.Y, circle.Radius, food.X, food.Y, food.Radius) {
+		return true
+	}
+
+	children := layoutAttachedChildren(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
+	for _, child := range children {
+		if overlaps(child.X, child.Y, child.Radius, food.X, food.Y, food.Radius) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (w *World) resolveCircleInteractions(tick int64) {

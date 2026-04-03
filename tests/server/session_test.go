@@ -428,6 +428,32 @@ func TestChildGrowthImprovesFoodCollectionReach(t *testing.T) {
 	}
 }
 
+func TestAttachedChildCanCollectFoodForPlayer(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		AutonomousShape:          "square",
+		PlayerEnergy:             80,
+		PlayerChildrenCount:      2,
+		AutonomousEnergy:         0,
+		SecondaryAutonomousShape: "",
+	})
+
+	before := session.Snapshot()
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	snapshot := session.Advance()
+
+	if len(snapshot.Foods) != len(before.Foods)-1 {
+		t.Fatalf("expected attached child collection to consume one food, before=%d after=%d", len(before.Foods), len(snapshot.Foods))
+	}
+	expectedEnergy := before.Player.Energy - simulation.DefaultMoveCost + simulation.DefaultFoodEnergy
+	if snapshot.Player.Energy != expectedEnergy {
+		t.Fatalf("expected attached child collection to restore player energy to %v, got %v", expectedEnergy, snapshot.Player.Energy)
+	}
+	if len(snapshot.Player.AttachedChildren) != 2 {
+		t.Fatalf("expected attached children to remain attached after collection, got %d", len(snapshot.Player.AttachedChildren))
+	}
+}
+
 func TestAutonomousCircleMovesWithoutPlayerInput(t *testing.T) {
 	session := simulation.NewSession()
 	before := session.Snapshot()
@@ -478,6 +504,33 @@ func TestAutonomousCircleCanConsumeFoodAndRecoverEnergy(t *testing.T) {
 
 	if secondTick.AutonomousCircles[0].Energy <= firstTick.AutonomousCircles[0].Energy {
 		t.Fatalf("expected autonomous circle energy recovery, before=%v after=%v", firstTick.AutonomousCircles[0].Energy, secondTick.AutonomousCircles[0].Energy)
+	}
+}
+
+func TestAutonomousAttachedChildCanCollectFoodForParent(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "triangle",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          80,
+		AutonomousChildrenCount:   2,
+		SecondaryAutonomousShape:  "",
+		SecondaryAutonomousEnergy: 0,
+		DisableFoodSeeking:        true,
+	})
+
+	before := session.Snapshot()
+	snapshot := session.Advance()
+
+	if len(snapshot.Foods) != len(before.Foods)-1 {
+		t.Fatalf("expected autonomous attached child collection to consume one food, before=%d after=%d", len(before.Foods), len(snapshot.Foods))
+	}
+	expectedEnergy := before.AutonomousCircles[0].Energy - simulation.DefaultMoveCost + simulation.DefaultFoodEnergy
+	if snapshot.AutonomousCircles[0].Energy != expectedEnergy {
+		t.Fatalf("expected autonomous attached child collection to restore energy to %v, got %v", expectedEnergy, snapshot.AutonomousCircles[0].Energy)
+	}
+	if len(snapshot.AutonomousCircles[0].AttachedChildren) != 2 {
+		t.Fatalf("expected attached children to remain attached after autonomous collection, got %d", len(snapshot.AutonomousCircles[0].AttachedChildren))
 	}
 }
 

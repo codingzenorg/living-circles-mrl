@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_attached_child_absorption_on_conflict.md`
+`docs/slices/initial_attached_child_food_collection.md`
 
 ## Implemented Shape
 
@@ -26,6 +26,7 @@
 - child accumulation now contributes directly to same-shape fight winner selection
 - successful reproduction now creates visible attached orbiting children owned by the participating parents
 - same-shape conflict can now remove one attached child from the loser before removing the parent
+- attached orbiting children can now collect food on behalf of their parent
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -141,6 +142,7 @@
 - deterministic fixed food placement
 - deterministic food regeneration returns consumed slots to their original positions after a fixed delay
 - child accumulation remains the source of truth for current radius, fight power, replacement continuity, and child-payment rules, but is now also embodied as attached orbiting children
+- attached-child positions now extend a parent's effective food collection reach
 - different-shape reproduction resolves through deterministic child redistribution across the participating parents when both participants satisfy the energy rule
 - radius is derived from child accumulation with a fixed per-child increment
 - continuity is limited to one-child replacement after fight defeat
@@ -158,6 +160,7 @@ The slice needed these implementation choices not fully specified in the refined
 - when player energy reaches zero, movement stops and energy clamps at zero
 - food grants a fixed energy recovery amount of `10`
 - each consumed food slot regenerates exactly `12` ticks after consumption
+- attached-child food collection gives the same parent energy gain as parent-body food collection
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID
 - when no food target is available, autonomous circles fall back to deterministic index-based directions
@@ -187,6 +190,6 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 ## Validation Targets
 
-- deterministic server tests for child accumulation, attached orbiting child ownership, child absorption during hostile conflict, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity on zero-energy collapse, lineage preservation, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
+- deterministic server tests for child accumulation, attached orbiting child ownership, attached-child food collection, child absorption during hostile conflict, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity on zero-energy collapse, lineage preservation, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
 - contract test for explicit snapshot shape including child counts, attached child state, lineage fields, and resolved, blocked, or absorbed interaction outcomes
-- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child loss during hostile conflict, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset
+- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity, deterministic food regeneration, and authoritative reset
