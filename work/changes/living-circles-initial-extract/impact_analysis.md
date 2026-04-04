@@ -224,6 +224,57 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Allow autonomous circles to steer away from nearby stronger same-shape threats under one bounded deterministic rule.
+
+## Why This Matters
+
+The current implementation now avoids pursuing clearly losing same-shape fights, which improves target choice. But it still does not let circles respond explicitly when a stronger same-shape threat is already nearby. That means the model still lacks a negative steering expression for hostile asymmetry: circles can decline pursuit, but they do not yet actively avoid immediate danger.
+
+The next model pressure is to make the existing fight model visible in motion before contact, not only in target eligibility and post-contact resolution.
+
+## Impacted Areas
+
+### Simulation model
+
+- steering needs one explicit threat-avoidance step based on the current deterministic fight ordering
+- proximity becomes part of whether fight semantics affect motion before contact
+- current movement, energy, fight, reproduction, and food rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because positions, shapes, children, energy, and outcomes are already visible
+- build may need steering provenance only if avoidance is too subtle to infer from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because the demo shows shapes and live motion
+- minor HUD cues may still help if avoidance is hard to distinguish from food-seeking in some layouts
+
+### Existing semantics
+
+- the current low-energy food-recovery rule should remain unchanged
+- the current reproduction-feasibility-aware and fight-feasibility-aware pursuit rules should remain in place
+- player-targetable and autonomous-targetable steering should continue sharing one candidate set for threat evaluation
+- the existing deterministic fight ordering should remain the sole basis for deciding whether a nearby same-shape target is threatening
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- the proximity threshold for threat avoidance
+- whether threat avoidance runs before or after ordinary pursuit selection
+- how deterministic tie-breaking behaves across multiple nearby threats
+
+## Risks If Ignored
+
+- autonomous circles will still feel too passive in the presence of immediately stronger same-shape threats
+- the fight model will stay more visible in outcomes than in motion
+- later ecosystem slices will keep carrying a gap between threat presence and steering response
+
+---
+
+## Change
+
 Allow interaction-seeking autonomous circles to prioritize targets by shape meaning instead of using only nearest-target selection.
 
 ## Why This Matters
