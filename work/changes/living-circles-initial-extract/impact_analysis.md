@@ -319,6 +319,55 @@ The next implementation-facing slice should explicitly choose:
 - the energy loop will remain less embodied than the social interaction loop
 - visible orbiting children will continue to matter for actual collection more than for food-seeking intent
 - later autonomy slices may accumulate avoidable asymmetry between feeding and social steering
+
+---
+
+## Change
+
+Make child-paid reproduction visibly grounded in attached-child state.
+
+## Why This Matters
+
+The current implementation already allows a circle to use one child as reserve payment when energy is below the reproduction cost. That keeps the gameplay rule moving, but the visible result can still feel too similar to ordinary reproduction because the payment and the reward are folded together in the final child counts. Attached children are now embodied across feeding, contact, avoidance, pursuit, conflict absorption, and continuity, so reproduction payment is the clearest remaining place where child use can still feel hidden.
+
+The next model pressure is to make child-paid reproduction observably different from energy-only reproduction without changing the broader reproduction model.
+
+## Impacted Areas
+
+### Simulation model
+
+- reproduction resolution should visibly reflect when one participant paid through child reserve
+- current reproduction feasibility, cost, and deterministic redistribution rules should stay unchanged unless a minimal explicit adjustment is required
+
+### Runtime contract
+
+- the current snapshot shape may already be sufficient because child counts, attached-child arrays, and interaction outcomes are visible
+- build may need one explicit reproduction-outcome distinction only if ordinary snapshots remain too ambiguous
+
+### Browser rendering
+
+- current rendering may already be enough because attached-child state is visible
+- minor HUD adjustments may still help if child-paid reproduction is hard to distinguish from energy-only reproduction
+
+### Existing semantics
+
+- current orbiting-child representation should remain the authoritative child embodiment
+- current food, fight, continuity, and movement rules should remain unchanged
+- player and autonomous circles should follow the same visible child-payment rule
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether ordinary child-count and attached-child changes are enough to make child-paid reproduction legible
+- whether one explicit reproduction outcome distinction is needed for inspectability
+- how visible child payment coexists with the current deterministic redistribution rule
+
+## Risks If Ignored
+
+- reproduction payment will remain less embodied than other child-related mechanics
+- players may continue to read child-paid reproduction as a hidden or net-zero bookkeeping trick
+- later efforts to remove transitional count-based shortcuts will have weaker visible support
 - later autonomy slices will keep carrying a gap between steering and the current fight model
 
 ---
