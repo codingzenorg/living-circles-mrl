@@ -368,6 +368,55 @@ The next implementation-facing slice should explicitly choose:
 - reproduction payment will remain less embodied than other child-related mechanics
 - players may continue to read child-paid reproduction as a hidden or net-zero bookkeeping trick
 - later efforts to remove transitional count-based shortcuts will have weaker visible support
+
+---
+
+## Change
+
+Reduce the feeding shortcut by making food collection depend on visible parent and attached-child bodies rather than enlarged derived radius alone.
+
+## Why This Matters
+
+The current implementation now makes attached children matter across nearly every core loop, including food targeting and actual child-based collection. But food collection still benefits from the abstract radius growth shortcut, which means the energy loop remains only partially embodied. A circle can still collect food because of a hidden reach expansion even when no visible body touches the slot.
+
+The next model pressure is to reduce one shortcut where the embodied child model is already strong, without trying to remove radius-based abstraction everywhere at once.
+
+## Impacted Areas
+
+### Simulation model
+
+- food consumption checks should depend on parent-core and attached-child overlap rather than enlarged parent radius alone
+- current energy gain and food regeneration should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because food positions, parent bodies, and attached children are already visible
+- build should add provenance only if embodied non-collection is too subtle to infer
+
+### Browser rendering
+
+- current rendering may already be enough because visible bodies and food positions are shown
+- minor HUD changes may still help if “large radius but no collection” is hard to read
+
+### Existing semantics
+
+- food targeting should remain unchanged
+- fight, reproduction, continuity, and social steering should remain unchanged
+- radius may remain a visual and other-domain property for now even if feeding stops using it as silent reach
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether parent-core overlap and attached-child overlap are the only valid food collection paths
+- how to preserve exact-once food consumption when multiple visible bodies overlap the same slot
+- whether the current snapshot contract is sufficient to explain embodied non-collection
+
+## Risks If Ignored
+
+- the energy loop will remain partly governed by hidden geometric reach
+- the visible orbiting-child model will still be weaker in feeding than it appears
+- later removal of broader count-based shortcuts will remain harder to stage cleanly
 - later autonomy slices will keep carrying a gap between steering and the current fight model
 
 ---
