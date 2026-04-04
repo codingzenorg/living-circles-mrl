@@ -460,34 +460,59 @@ func autonomousCollectsFood(circle AutonomousCircle, food Food, tick int64) bool
 }
 
 func (w *World) resolveCircleInteractions(tick int64) {
-	if w.player == nil {
-		w.activeOverlapPairs = make(map[string]struct{})
-		return
-	}
-
 	currentOverlapPairs := make(map[string]struct{})
-	for _, circle := range w.autonomousCircles {
-		contactOrigin, interacting := circlesInteract(*w.player, circle, tick)
-		if !interacting {
-			continue
-		}
-
-		pairKey := overlapPairKey(w.player.ID, circle.ID)
-		currentOverlapPairs[pairKey] = struct{}{}
-
-		if w.player.Shape != circle.Shape {
-			if _, exists := w.activeOverlapPairs[pairKey]; exists {
+	if w.player != nil {
+		for _, circle := range w.autonomousCircles {
+			contactOrigin, interacting := circlesInteract(*w.player, circle, tick)
+			if !interacting {
 				continue
 			}
 
-			w.resolveReproduction(circle.ID, tick, contactOrigin)
+			pairKey := overlapPairKey(w.player.ID, circle.ID)
+			currentOverlapPairs[pairKey] = struct{}{}
+
+			if w.player.Shape != circle.Shape {
+				if _, exists := w.activeOverlapPairs[pairKey]; exists {
+					continue
+				}
+
+				w.resolveReproduction(circle.ID, tick, contactOrigin)
+				w.activeOverlapPairs = currentOverlapPairs
+				return
+			}
+
+			w.resolveFight(circle.ID, contactOrigin)
 			w.activeOverlapPairs = currentOverlapPairs
 			return
 		}
+	}
 
-		w.resolveFight(circle.ID, contactOrigin)
-		w.activeOverlapPairs = currentOverlapPairs
-		return
+	for left := 0; left < len(w.autonomousCircles); left++ {
+		for right := left + 1; right < len(w.autonomousCircles); right++ {
+			leftCircle := w.autonomousCircles[left]
+			rightCircle := w.autonomousCircles[right]
+			contactOrigin, interacting := autonomousCirclesInteract(leftCircle, rightCircle, tick)
+			if !interacting {
+				continue
+			}
+
+			pairKey := overlapPairKey(leftCircle.ID, rightCircle.ID)
+			currentOverlapPairs[pairKey] = struct{}{}
+
+			if leftCircle.Shape != rightCircle.Shape {
+				if _, exists := w.activeOverlapPairs[pairKey]; exists {
+					continue
+				}
+
+				w.resolveAutonomousReproduction(left, right, tick, contactOrigin)
+				w.activeOverlapPairs = currentOverlapPairs
+				return
+			}
+
+			w.resolveAutonomousFight(left, right, contactOrigin)
+			w.activeOverlapPairs = currentOverlapPairs
+			return
+		}
 	}
 
 	w.activeOverlapPairs = currentOverlapPairs
@@ -514,6 +539,39 @@ func circlesInteract(player PlayerCircle, autonomous AutonomousCircle, tick int6
 	for _, playerChild := range playerChildren {
 		for _, autonomousChild := range autonomousChildren {
 			if overlaps(playerChild.X, playerChild.Y, playerChild.Radius, autonomousChild.X, autonomousChild.Y, autonomousChild.Radius) {
+				return "attached_child", true
+			}
+		}
+	}
+
+	if parentBodyOverlap {
+		return "parent_body", true
+	}
+
+	return "", false
+}
+
+func autonomousCirclesInteract(left AutonomousCircle, right AutonomousCircle, tick int64) (string, bool) {
+	parentBodyOverlap := overlaps(left.X, left.Y, left.Radius, right.X, right.Y, right.Radius)
+
+	leftChildren := layoutAttachedChildren(left.ID, left.X, left.Y, left.Radius, left.AttachedChildren, tick)
+	rightChildren := layoutAttachedChildren(right.ID, right.X, right.Y, right.Radius, right.AttachedChildren, tick)
+
+	for _, child := range leftChildren {
+		if overlaps(child.X, child.Y, child.Radius, right.X, right.Y, right.Radius) {
+			return "attached_child", true
+		}
+	}
+
+	for _, child := range rightChildren {
+		if overlaps(left.X, left.Y, left.Radius, child.X, child.Y, child.Radius) {
+			return "attached_child", true
+		}
+	}
+
+	for _, leftChild := range leftChildren {
+		for _, rightChild := range rightChildren {
+			if overlaps(leftChild.X, leftChild.Y, leftChild.Radius, rightChild.X, rightChild.Y, rightChild.Radius) {
 				return "attached_child", true
 			}
 		}
@@ -620,6 +678,110 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactOrigin
 		ContactOrigin: contactOrigin,
 		SourceID:      w.player.ID,
 		TargetID:      opponent.ID,
+	}
+}
+
+func determineAutonomousFightOutcome(left AutonomousCircle, right AutonomousCircle) (string, string) {
+	if left.Energy > right.Energy {
+		return left.ID, right.ID
+	}
+	if right.Energy > left.Energy {
+		return right.ID, left.ID
+	}
+	if left.ChildrenCount > right.ChildrenCount {
+		return left.ID, right.ID
+	}
+	if right.ChildrenCount > left.ChildrenCount {
+		return right.ID, left.ID
+	}
+	if left.Radius > right.Radius {
+		return left.ID, right.ID
+	}
+	if right.Radius > left.Radius {
+		return right.ID, left.ID
+	}
+	if left.ID < right.ID {
+		return left.ID, right.ID
+	}
+
+	return right.ID, left.ID
+}
+
+func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactOrigin string) {
+	if leftIndex < 0 || rightIndex < 0 || leftIndex >= len(w.autonomousCircles) || rightIndex >= len(w.autonomousCircles) {
+		return
+	}
+
+	leftCircle := w.autonomousCircles[leftIndex]
+	rightCircle := w.autonomousCircles[rightIndex]
+	winnerID, loserID := determineAutonomousFightOutcome(leftCircle, rightCircle)
+
+	w.lastInteraction = &InteractionClassification{
+		Active:        false,
+		Resolved:      true,
+		Kind:          "",
+		ContactOrigin: contactOrigin,
+		SourceID:      leftCircle.ID,
+		TargetID:      rightCircle.ID,
+		WinnerID:      winnerID,
+		LoserID:       loserID,
+	}
+
+	loserIndex := leftIndex
+	if loserID == rightCircle.ID {
+		loserIndex = rightIndex
+	}
+	loser := w.autonomousCircles[loserIndex]
+	if loser.ChildrenCount > 0 {
+		consumeAutonomousChild(&loser)
+		w.autonomousCircles[loserIndex] = loser
+		w.lastInteraction.Kind = "fight_absorbed_child"
+		return
+	}
+
+	w.lastInteraction.Kind = "fight_resolved"
+	replacedLoser, active := replaceOrRemoveAutonomous(loser)
+	if active {
+		w.autonomousCircles[loserIndex] = replacedLoser
+		return
+	}
+
+	w.autonomousCircles = append(w.autonomousCircles[:loserIndex], w.autonomousCircles[loserIndex+1:]...)
+	w.autonomousDirections = append(w.autonomousDirections[:loserIndex], w.autonomousDirections[loserIndex+1:]...)
+}
+
+func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tick int64, contactOrigin string) {
+	if leftIndex < 0 || rightIndex < 0 || leftIndex >= len(w.autonomousCircles) || rightIndex >= len(w.autonomousCircles) {
+		return
+	}
+
+	leftCircle := w.autonomousCircles[leftIndex]
+	rightCircle := w.autonomousCircles[rightIndex]
+	leftPaid, leftCircle := payAutonomousReproductionCost(leftCircle)
+	rightPaid, rightCircle := payAutonomousReproductionCost(rightCircle)
+	if !leftPaid || !rightPaid {
+		w.lastInteraction = &InteractionClassification{
+			Active:        false,
+			Resolved:      true,
+			Kind:          "reproduce_blocked_energy",
+			ContactOrigin: contactOrigin,
+			SourceID:      leftCircle.ID,
+			TargetID:      rightCircle.ID,
+		}
+		return
+	}
+
+	w.assignAutonomousPairReproductionChildren(&leftCircle, &rightCircle, tick)
+	w.autonomousCircles[leftIndex] = leftCircle
+	w.autonomousCircles[rightIndex] = rightCircle
+
+	w.lastInteraction = &InteractionClassification{
+		Active:        false,
+		Resolved:      true,
+		Kind:          "reproduce_resolved",
+		ContactOrigin: contactOrigin,
+		SourceID:      leftCircle.ID,
+		TargetID:      rightCircle.ID,
 	}
 }
 
@@ -907,6 +1069,11 @@ func reproductionDistributionCase(tick int64, player PlayerCircle, opponent Auto
 	return seed % 3
 }
 
+func autonomousReproductionDistributionCase(tick int64, left AutonomousCircle, right AutonomousCircle) int {
+	seed := int(tick) + len(left.ID) + len(right.ID) + left.Generation + right.Generation + left.ChildrenCount + right.ChildrenCount
+	return seed % 3
+}
+
 func (w *World) allocateChildID() string {
 	childID := "child-" + intToString(w.nextChildID)
 	w.nextChildID++
@@ -930,6 +1097,21 @@ func addAutonomousChild(circle *AutonomousCircle, childID string) {
 		OwnerID: circle.ID,
 	})
 	syncAutonomousChildrenState(circle)
+}
+
+func (w *World) assignAutonomousPairReproductionChildren(left *AutonomousCircle, right *AutonomousCircle, tick int64) {
+	distribution := autonomousReproductionDistributionCase(tick, *left, *right)
+	switch distribution {
+	case 0:
+		addAutonomousChild(left, w.allocateChildID())
+		addAutonomousChild(left, w.allocateChildID())
+	case 1:
+		addAutonomousChild(left, w.allocateChildID())
+		addAutonomousChild(right, w.allocateChildID())
+	case 2:
+		addAutonomousChild(right, w.allocateChildID())
+		addAutonomousChild(right, w.allocateChildID())
+	}
 }
 
 func consumePlayerChild(circle *PlayerCircle) {

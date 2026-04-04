@@ -347,6 +347,76 @@ func TestClientReceivesChildToChildTriggeredReproduction(t *testing.T) {
 	t.Fatal("expected child-to-child reproduction snapshot")
 }
 
+func TestClientReceivesAutonomousOnlyReproductionWithoutPlayerInput(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		AutonomousX:               200,
+		AutonomousY:               300,
+		SecondaryAutonomousX:      220,
+		SecondaryAutonomousY:      300,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: 100,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+		DisableFoodSeeking:        true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 10 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.Interaction == nil {
+			continue
+		}
+
+		if snapshot.Interaction.Kind != "reproduce_resolved" {
+			t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+		}
+		if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+			t.Fatalf("expected autonomous pair ids %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+		}
+		if len(snapshot.AutonomousCircles) != 2 {
+			t.Fatalf("expected both autonomous circles to remain, got %d", len(snapshot.AutonomousCircles))
+		}
+		if snapshot.Player == nil || snapshot.Player.X != initial.Player.X || snapshot.Player.Y != initial.Player.Y {
+			t.Fatalf("expected player to remain uninvolved at %+v, got %+v", initial.Player, snapshot.Player)
+		}
+		return
+	}
+
+	t.Fatal("expected autonomous-only reproduction snapshot")
+}
+
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())

@@ -913,6 +913,102 @@ func TestAttachedChildrenCanTriggerReproductionThroughChildToChildContact(t *tes
 	}
 }
 
+func TestAutonomousCirclesCanResolveFightWithoutPlayerInvolvement(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "square",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "triangle",
+		AutonomousX:               200,
+		AutonomousY:               300,
+		SecondaryAutonomousX:      220,
+		SecondaryAutonomousY:      300,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: 80,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+		DisableFoodSeeking:        true,
+	})
+	before := session.Snapshot()
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected autonomous-only fight interaction")
+	}
+	if snapshot.Interaction.Kind != "fight_resolved" {
+		t.Fatalf("expected fight_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+		t.Fatalf("expected autonomous pair ids %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+	if snapshot.Interaction.WinnerID != simulation.DefaultAutonomousID {
+		t.Fatalf("expected higher-energy autonomous winner %q, got %q", simulation.DefaultAutonomousID, snapshot.Interaction.WinnerID)
+	}
+	if len(snapshot.AutonomousCircles) != 1 {
+		t.Fatalf("expected losing autonomous circle to be removed, got %d circles", len(snapshot.AutonomousCircles))
+	}
+	if snapshot.Player == nil || snapshot.Player.X != before.Player.X || snapshot.Player.Y != before.Player.Y {
+		t.Fatalf("expected player to remain uninvolved at %+v, got %+v", before.Player, snapshot.Player)
+	}
+}
+
+func TestAutonomousCirclesCanResolveReproductionWithoutPlayerInvolvement(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		AutonomousX:               200,
+		AutonomousY:               300,
+		SecondaryAutonomousX:      220,
+		SecondaryAutonomousY:      300,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: 100,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+		DisableFoodSeeking:        true,
+	})
+	before := session.Snapshot()
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected autonomous-only reproduction interaction")
+	}
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+		t.Fatalf("expected autonomous pair ids %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+	if len(snapshot.AutonomousCircles) != 2 {
+		t.Fatalf("expected both autonomous parents to remain, got %d circles", len(snapshot.AutonomousCircles))
+	}
+	left, found := autonomousByID(snapshot.AutonomousCircles, simulation.DefaultAutonomousID)
+	if !found {
+		t.Fatalf("expected autonomous circle %q after reproduction", simulation.DefaultAutonomousID)
+	}
+	right, found := autonomousByID(snapshot.AutonomousCircles, simulation.DefaultSecondaryID)
+	if !found {
+		t.Fatalf("expected autonomous circle %q after reproduction", simulation.DefaultSecondaryID)
+	}
+	beforeLeft, _ := autonomousByID(before.AutonomousCircles, simulation.DefaultAutonomousID)
+	beforeRight, _ := autonomousByID(before.AutonomousCircles, simulation.DefaultSecondaryID)
+	if left.ChildrenCount+right.ChildrenCount != beforeLeft.ChildrenCount+beforeRight.ChildrenCount+2 {
+		t.Fatalf("expected reproduction to add two children across the autonomous pair, before left=%d right=%d after left=%d right=%d", beforeLeft.ChildrenCount, beforeRight.ChildrenCount, left.ChildrenCount, right.ChildrenCount)
+	}
+	if snapshot.Player == nil || snapshot.Player.X != before.Player.X || snapshot.Player.Y != before.Player.Y {
+		t.Fatalf("expected player to remain uninvolved at %+v, got %+v", before.Player, snapshot.Player)
+	}
+}
+
 func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	session := simulation.NewSessionWithShapes("triangle", "square")
 	before := session.Snapshot()
