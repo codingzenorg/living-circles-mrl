@@ -417,6 +417,56 @@ The next implementation-facing slice should explicitly choose:
 - the energy loop will remain partly governed by hidden geometric reach
 - the visible orbiting-child model will still be weaker in feeding than it appears
 - later removal of broader count-based shortcuts will remain harder to stage cleanly
+
+---
+
+## Change
+
+Reduce the encounter shortcut by making circle-to-circle contact depend on visible parent-core and attached-child bodies rather than enlarged derived parent radius alone.
+
+## Why This Matters
+
+The current implementation now makes food collection depend on visible bodies, but encounter initiation still uses enlarged parent radius for parent-body overlap. That means fights and reproduction can still begin because of a hidden grown reach even when no visible body touches. After tightening food collection, this is the clearest remaining embodied-versus-abstract mismatch.
+
+The next model pressure is to reduce one more shortcut where the orbiting-child model already provides a concrete visible geometry.
+
+## Impacted Areas
+
+### Simulation model
+
+- player-autonomous and autonomous-autonomous contact checks should depend on visible parent-core and attached-child overlap rather than enlarged parent radius alone
+- current fight and reproduction outcome rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because parent bodies, attached children, and `contact_origin` are already visible
+- build should add provenance only if embodied non-contact is too subtle to infer
+
+### Browser rendering
+
+- current rendering may already be enough because visible bodies and interaction outcomes are shown
+- minor HUD changes may still help if “grown radius but no contact” is hard to read
+
+### Existing semantics
+
+- child-triggered parent and child-to-child contact should remain unchanged
+- food collection should remain unchanged
+- fight winner ordering, reproduction payment, and continuity rules should remain unchanged
+- radius may remain a visual and other-domain property for now even if it stops silently enlarging contact reach
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether visible parent-core and attached-child overlap are the only valid contact paths
+- how to preserve exact-once pair contact when multiple visible bodies overlap
+- whether the current snapshot contract is sufficient to explain embodied non-contact
+
+## Risks If Ignored
+
+- fights and reproduction will remain partly governed by hidden geometric reach
+- the visible orbiting-child model will still be weaker in encounter initiation than it appears
+- later removal of broader count-based shortcuts will remain harder to stage cleanly
 - later autonomy slices will keep carrying a gap between steering and the current fight model
 
 ---
