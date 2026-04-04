@@ -987,12 +987,6 @@ func determineAutonomousFightOutcome(left AutonomousCircle, right AutonomousCirc
 	if right.ChildrenCount > left.ChildrenCount {
 		return right.ID, left.ID
 	}
-	if left.Radius > right.Radius {
-		return left.ID, right.ID
-	}
-	if right.Radius > left.Radius {
-		return right.ID, left.ID
-	}
 	if left.ID < right.ID {
 		return left.ID, right.ID
 	}
@@ -1094,12 +1088,6 @@ func determineFightOutcome(player PlayerCircle, opponent AutonomousCircle) (stri
 		return player.ID, opponent.ID
 	}
 	if opponent.ChildrenCount > player.ChildrenCount {
-		return opponent.ID, player.ID
-	}
-	if player.Radius > opponent.Radius {
-		return player.ID, opponent.ID
-	}
-	if opponent.Radius > player.Radius {
 		return opponent.ID, player.ID
 	}
 

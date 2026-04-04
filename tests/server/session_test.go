@@ -2223,13 +2223,13 @@ func TestHigherEnergyCircleWinsFight(t *testing.T) {
 	}
 }
 
-func TestLargerRadiusBreaksEqualEnergyFightTie(t *testing.T) {
+func TestPlayerWinsExactEqualEnergyAndChildFightTie(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:             "triangle",
 		AutonomousShape:         "triangle",
 		PlayerEnergy:            100,
 		AutonomousEnergy:        100,
-		PlayerChildrenCount:     1,
+		PlayerChildrenCount:     0,
 		AutonomousChildrenCount: 0,
 		DisableThreatAvoidance:  true,
 	})
@@ -2246,7 +2246,7 @@ func TestLargerRadiusBreaksEqualEnergyFightTie(t *testing.T) {
 		t.Fatal("expected fight resolution")
 	}
 	if snapshot.Interaction.WinnerID != "player-1" {
-		t.Fatalf("expected larger-radius player to win tie-break fight, got %q", snapshot.Interaction.WinnerID)
+		t.Fatalf("expected player to win exact equal-energy equal-child tie, got %q", snapshot.Interaction.WinnerID)
 	}
 }
 
@@ -2275,6 +2275,42 @@ func TestHigherChildCountWinsEqualEnergyFight(t *testing.T) {
 	}
 	if snapshot.Interaction.WinnerID != simulation.DefaultAutonomousID {
 		t.Fatalf("expected higher-child autonomous circle to win, got %q", snapshot.Interaction.WinnerID)
+	}
+}
+
+func TestAutonomousLowerIDWinsExactEqualEnergyAndChildFightTie(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "square",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "triangle",
+		AutonomousX:               200,
+		AutonomousY:               300,
+		SecondaryAutonomousX:      220,
+		SecondaryAutonomousY:      300,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: 100,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+		DisableFoodSeeking:        true,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected fight resolution")
+	}
+	if snapshot.Interaction.WinnerID != simulation.DefaultAutonomousID {
+		t.Fatalf("expected lower-id autonomous circle to win exact tie, got %q", snapshot.Interaction.WinnerID)
 	}
 }
 

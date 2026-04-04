@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_embodied_circle_contact_reach.md`
+`docs/slices/initial_embodied_fight_tie_break_without_radius.md`
 
 ## Implemented Shape
 
@@ -46,6 +46,7 @@
 - child-paid reproduction is now explicitly distinguished from ordinary energy-paid reproduction in resolved interaction outcomes
 - food collection now depends on visible parent-core and attached-child overlap rather than enlarged derived radius alone
 - circle-to-circle contact now depends on visible parent-core and attached-child overlap rather than enlarged derived parent radius alone
+- same-shape fights no longer use derived radius as a tie-break after energy and child count
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -197,6 +198,7 @@ The slice needed these implementation choices not fully specified in the refined
 - resolved reproduction now distinguishes ordinary `reproduce_resolved` from `reproduce_paid_child` when a participant consumed one child as reserve payment
 - food collection now uses a fixed parent-core body plus attached-child bodies rather than the derived grown radius as silent collection reach
 - circle contact now uses a fixed parent-core body plus attached-child bodies rather than the derived grown radius as silent parent contact reach
+- same-shape fight ordering now resolves exact ties deterministically without consulting derived radius
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID
@@ -212,6 +214,7 @@ The slice needed these implementation choices not fully specified in the refined
 - shape meaning now influences interaction-target ordering before nearest-target fallback
 - infeasible reproduction targets now fall back to the nearest remaining eligible target
 - same-shape fight ordering is: higher energy, then higher child count, then larger radius, then player exact tie-break
+- same-shape fight ordering is now: higher energy, then higher child count, then deterministic exact tie resolution
 - a same-shape loser with at least one attached child loses exactly one attached child and remains active on that tick
 - different-shape overlap without enough energy or an available child payment resolves as `reproduce_blocked_energy`
 - resolved reproduction creates exactly two new child units and assigns them deterministically across the participating parents
