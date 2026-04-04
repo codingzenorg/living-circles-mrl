@@ -390,7 +390,7 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int) Vector {
 		}
 	}
 
-	interactionTarget, interactionFound := nearestAutonomousInteractionTarget(circle, w.autonomousCircles)
+	interactionTarget, interactionFound := nearestInteractionTarget(circle, w.player, w.autonomousCircles)
 	if interactionFound {
 		return Vector{
 			X: interactionTarget.X - circle.X,
@@ -425,10 +425,19 @@ func nearestFoodTarget(circle AutonomousCircle, foods []Food) (Food, bool) {
 	return selected, found
 }
 
-func nearestAutonomousInteractionTarget(circle AutonomousCircle, candidates []AutonomousCircle) (AutonomousCircle, bool) {
-	var selected AutonomousCircle
+func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle) (Vector, bool) {
+	var selected Vector
+	selectedID := ""
 	bestDistance := 0.0
 	found := false
+
+	if player != nil && player.Energy > 0 {
+		distance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
+		selected = Vector{X: player.X, Y: player.Y}
+		selectedID = player.ID
+		bestDistance = distance
+		found = true
+	}
 
 	for _, candidate := range candidates {
 		if candidate.ID == circle.ID || candidate.Energy <= 0 {
@@ -436,8 +445,9 @@ func nearestAutonomousInteractionTarget(circle AutonomousCircle, candidates []Au
 		}
 
 		distance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
-		if !found || distance < bestDistance || (distance == bestDistance && candidate.ID < selected.ID) {
-			selected = candidate
+		if !found || distance < bestDistance || (distance == bestDistance && candidate.ID < selectedID) {
+			selected = Vector{X: candidate.X, Y: candidate.Y}
+			selectedID = candidate.ID
 			bestDistance = distance
 			found = true
 		}
