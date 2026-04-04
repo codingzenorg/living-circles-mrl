@@ -1248,11 +1248,11 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.AutonomousCircles[1].LineageID != "lineage-circle-3" || initial.AutonomousCircles[1].Generation != 0 {
 		t.Fatalf("expected second autonomous lineage state, got lineage=%q generation=%d", initial.AutonomousCircles[1].LineageID, initial.AutonomousCircles[1].Generation)
 	}
-	if initial.Player.Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
-		t.Fatalf("expected player demo radius %v, got %v", simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain, initial.Player.Radius)
+	if initial.Player.Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected fixed player radius %v, got %v", simulation.DefaultPlayerRadius, initial.Player.Radius)
 	}
-	if initial.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
-		t.Fatalf("expected first autonomous radius %v, got %v", simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain, initial.AutonomousCircles[0].Radius)
+	if initial.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected fixed first autonomous radius %v, got %v", simulation.DefaultPlayerRadius, initial.AutonomousCircles[0].Radius)
 	}
 }
 

@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_embodied_child_orbit_distance_without_radius.md`
+`docs/slices/initial_fixed_parent_body_without_child_radius_growth.md`
 
 ## Implemented Shape
 
@@ -49,6 +49,7 @@
 - same-shape fights no longer use derived radius as a tie-break after energy and child count
 - parent movement boundary clamping now uses the visible parent-core body rather than grown derived radius
 - attached-child orbit distance now uses the visible parent-core body rather than grown derived radius
+- parent `radius` in snapshots and rendering now stays fixed at the visible parent-core body rather than growing from child count
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -203,6 +204,7 @@ The slice needed these implementation choices not fully specified in the refined
 - same-shape fight ordering now resolves exact ties deterministically without consulting derived radius
 - parent movement clamping now uses the fixed visible parent-core body rather than the derived grown radius
 - attached-child orbit distance now uses the fixed visible parent-core body rather than the derived grown radius
+- parent `radius` now stays fixed at the visible parent-core body even when child count changes
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID

@@ -274,8 +274,8 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.Player.Generation != 0 {
 		t.Fatalf("expected player generation 0, got %d", snapshot.Player.Generation)
 	}
-	if snapshot.Player.Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
-		t.Fatalf("expected player demo radius %v, got %v", simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain, snapshot.Player.Radius)
+	if snapshot.Player.Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected fixed player radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.Player.Radius)
 	}
 
 	if snapshot.AutonomousCircles[0].Shape != snapshot.Player.Shape {
@@ -293,8 +293,8 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.AutonomousCircles[0].Generation != 0 {
 		t.Fatalf("expected first autonomous generation 0, got %d", snapshot.AutonomousCircles[0].Generation)
 	}
-	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain {
-		t.Fatalf("expected first autonomous radius %v, got %v", simulation.DefaultPlayerRadius+simulation.DefaultChildRadiusGain, snapshot.AutonomousCircles[0].Radius)
+	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected fixed first autonomous radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.AutonomousCircles[0].Radius)
 	}
 
 	if snapshot.AutonomousCircles[1].Shape != simulation.DefaultAutoShape {
@@ -438,7 +438,7 @@ func TestFoodRegenerationDoesNotDuplicateActiveSlots(t *testing.T) {
 	}
 }
 
-func TestInitialChildrenIncreaseRadiusDeterministically(t *testing.T) {
+func TestInitialChildrenDoNotChangeVisibleParentRadius(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:             "triangle",
 		AutonomousShape:         "square",
@@ -449,14 +449,17 @@ func TestInitialChildrenIncreaseRadiusDeterministically(t *testing.T) {
 	})
 	snapshot := session.Snapshot()
 
-	expectedPlayerRadius := simulation.DefaultPlayerRadius + 2*simulation.DefaultChildRadiusGain
-	expectedAutonomousRadius := simulation.DefaultPlayerRadius + simulation.DefaultChildRadiusGain
-
-	if snapshot.Player.Radius != expectedPlayerRadius {
-		t.Fatalf("expected player radius %v, got %v", expectedPlayerRadius, snapshot.Player.Radius)
+	if snapshot.Player.Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected fixed player radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.Player.Radius)
 	}
-	if snapshot.AutonomousCircles[0].Radius != expectedAutonomousRadius {
-		t.Fatalf("expected autonomous radius %v, got %v", expectedAutonomousRadius, snapshot.AutonomousCircles[0].Radius)
+	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected fixed autonomous radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.AutonomousCircles[0].Radius)
+	}
+	if len(snapshot.Player.AttachedChildren) != 2 {
+		t.Fatalf("expected player children to remain visible, got %d", len(snapshot.Player.AttachedChildren))
+	}
+	if len(snapshot.AutonomousCircles[0].AttachedChildren) != 1 {
+		t.Fatalf("expected autonomous children to remain visible, got %d", len(snapshot.AutonomousCircles[0].AttachedChildren))
 	}
 }
 
@@ -1583,11 +1586,11 @@ func TestDefaultWorldSupportsDifferentShapeReproductionPath(t *testing.T) {
 	if snapshot.AutonomousCircles[1].Energy >= before.AutonomousCircles[1].Energy {
 		t.Fatalf("expected autonomous energy to decrease through movement and reproduction, before=%v after=%v", before.AutonomousCircles[1].Energy, snapshot.AutonomousCircles[1].Energy)
 	}
-	if snapshot.Player.ChildrenCount > 0 && snapshot.Player.Radius <= before.Player.Radius {
-		t.Fatalf("expected player radius growth when player owns children, before=%v after=%v", before.Player.Radius, snapshot.Player.Radius)
+	if snapshot.Player.Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected fixed player radius after reproduction, got %v", snapshot.Player.Radius)
 	}
-	if snapshot.AutonomousCircles[1].ChildrenCount > before.AutonomousCircles[1].ChildrenCount && snapshot.AutonomousCircles[1].Radius <= before.AutonomousCircles[1].Radius {
-		t.Fatalf("expected autonomous radius growth when autonomous owns children, before=%v after=%v", before.AutonomousCircles[1].Radius, snapshot.AutonomousCircles[1].Radius)
+	if snapshot.AutonomousCircles[1].Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected fixed autonomous radius after reproduction, got %v", snapshot.AutonomousCircles[1].Radius)
 	}
 }
 
@@ -1984,11 +1987,11 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	if snapshot.AutonomousCircles[0].Energy >= before.AutonomousCircles[0].Energy {
 		t.Fatalf("expected autonomous energy to decrease through reproduction, before=%v after=%v", before.AutonomousCircles[0].Energy, snapshot.AutonomousCircles[0].Energy)
 	}
-	if snapshot.Player.ChildrenCount > 0 && snapshot.Player.Radius <= before.Player.Radius {
-		t.Fatalf("expected player radius growth when player owns children, before=%v after=%v", before.Player.Radius, snapshot.Player.Radius)
+	if snapshot.Player.Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected fixed player radius after reproduction, got %v", snapshot.Player.Radius)
 	}
-	if snapshot.AutonomousCircles[0].ChildrenCount > before.AutonomousCircles[0].ChildrenCount && snapshot.AutonomousCircles[0].Radius <= before.AutonomousCircles[0].Radius {
-		t.Fatalf("expected autonomous radius growth when autonomous owns children, before=%v after=%v", before.AutonomousCircles[0].Radius, snapshot.AutonomousCircles[0].Radius)
+	if snapshot.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius {
+		t.Fatalf("expected fixed autonomous radius after reproduction, got %v", snapshot.AutonomousCircles[0].Radius)
 	}
 }
 

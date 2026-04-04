@@ -180,7 +180,7 @@ func NewWorldWithConfig(config Config) *World {
 			Shape:            config.AutonomousShape,
 			X:                autonomousX,
 			Y:                autonomousY,
-			Radius:           derivedRadius(config.AutonomousChildrenCount),
+			Radius:           derivedRadius(0),
 			Energy:           config.AutonomousEnergy,
 			ChildrenCount:    config.AutonomousChildrenCount,
 			AttachedChildren: initialAttachedChildren(DefaultAutonomousID, config.AutonomousChildrenCount),
@@ -196,7 +196,7 @@ func NewWorldWithConfig(config Config) *World {
 			Shape:            config.SecondaryAutonomousShape,
 			X:                secondaryX,
 			Y:                secondaryY,
-			Radius:           derivedRadius(config.SecondaryChildrenCount),
+			Radius:           derivedRadius(0),
 			Energy:           config.SecondaryAutonomousEnergy,
 			ChildrenCount:    config.SecondaryChildrenCount,
 			AttachedChildren: initialAttachedChildren(DefaultSecondaryID, config.SecondaryChildrenCount),
@@ -221,7 +221,7 @@ func NewWorldWithConfig(config Config) *World {
 			Shape:            config.PlayerShape,
 			X:                playerX,
 			Y:                playerY,
-			Radius:           derivedRadius(config.PlayerChildrenCount),
+			Radius:           derivedRadius(0),
 			Energy:           config.PlayerEnergy,
 			ChildrenCount:    config.PlayerChildrenCount,
 			AttachedChildren: initialAttachedChildren(playerID, config.PlayerChildrenCount),
@@ -1117,7 +1117,8 @@ func initialAutonomousDirections(count int) []Vector {
 }
 
 func derivedRadius(childrenCount int) float64 {
-	return DefaultPlayerRadius + float64(childrenCount)*DefaultChildRadiusGain
+	_ = childrenCount
+	return DefaultPlayerRadius
 }
 
 func lineageIDFor(circleID string) string {
