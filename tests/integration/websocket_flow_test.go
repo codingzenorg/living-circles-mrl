@@ -1732,6 +1732,7 @@ func TestClientReceivesFoodCollectionThroughAttachedChild(t *testing.T) {
 		PlayerShape:               "triangle",
 		AutonomousShape:           "square",
 		SecondaryAutonomousShape:  "",
+		PlayerX:                   389,
 		PlayerEnergy:              80,
 		PlayerChildrenCount:       2,
 		AutonomousEnergy:          0,

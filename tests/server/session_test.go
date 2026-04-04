@@ -426,7 +426,7 @@ func TestFoodRecoveryRespectsEnergyCap(t *testing.T) {
 	}
 }
 
-func TestChildGrowthImprovesFoodCollectionReach(t *testing.T) {
+func TestChildGrowthAloneDoesNotImproveFoodCollectionReach(t *testing.T) {
 	baseSession := simulation.NewSession()
 	baseSession.ApplyIntent(simulation.Vector{X: 1, Y: 0})
 	baseAfter := baseSession.Advance()
@@ -445,11 +445,12 @@ func TestChildGrowthImprovesFoodCollectionReach(t *testing.T) {
 	if len(baseAfter.Foods) != 3 {
 		t.Fatalf("expected base-radius player to miss food on first move, got %d foods", len(baseAfter.Foods))
 	}
-	if len(after.Foods) != 2 {
-		t.Fatalf("expected larger-radius player to consume food on first move, got %d foods", len(after.Foods))
+	if len(after.Foods) != 3 {
+		t.Fatalf("expected enlarged derived radius alone to miss food on first move, got %d foods", len(after.Foods))
 	}
-	if after.Player.Energy != simulation.DefaultMaxEnergy {
-		t.Fatalf("expected immediate food recovery from grown reach, got %v", after.Player.Energy)
+	expectedEnergy := simulation.DefaultPlayerEnergy - simulation.DefaultMoveCost
+	if after.Player.Energy != expectedEnergy {
+		t.Fatalf("expected no immediate food recovery from derived radius alone, got %v", after.Player.Energy)
 	}
 }
 
@@ -457,6 +458,7 @@ func TestAttachedChildCanCollectFoodForPlayer(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:              "triangle",
 		AutonomousShape:          "square",
+		PlayerX:                  389,
 		PlayerEnergy:             80,
 		PlayerChildrenCount:      2,
 		AutonomousEnergy:         0,

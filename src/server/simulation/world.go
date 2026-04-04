@@ -718,7 +718,7 @@ func overlaps(ax, ay, ar, bx, by, br float64) bool {
 }
 
 func playerCollectsFood(circle PlayerCircle, food Food, tick int64) bool {
-	if overlaps(circle.X, circle.Y, circle.Radius, food.X, food.Y, food.Radius) {
+	if overlaps(circle.X, circle.Y, DefaultPlayerRadius, food.X, food.Y, food.Radius) {
 		return true
 	}
 
@@ -733,7 +733,7 @@ func playerCollectsFood(circle PlayerCircle, food Food, tick int64) bool {
 }
 
 func autonomousCollectsFood(circle AutonomousCircle, food Food, tick int64) bool {
-	if overlaps(circle.X, circle.Y, circle.Radius, food.X, food.Y, food.Radius) {
+	if overlaps(circle.X, circle.Y, DefaultPlayerRadius, food.X, food.Y, food.Radius) {
 		return true
 	}
 
