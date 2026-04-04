@@ -1021,6 +1021,108 @@ func TestDistantBlockedDifferentShapeTargetDoesNotOverrideOrdinarySteering(t *te
 	}
 }
 
+func TestAttachedChildCanMakeDifferentShapeTargetEffectivelyNearestForPursuit(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         "square",
+		PlayerX:                             225,
+		PlayerY:                             500,
+		PlayerEnergy:                        100,
+		PlayerChildrenCount:                 1,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "square",
+		AutonomousX:                         100,
+		AutonomousY:                         500,
+		SecondaryAutonomousX:                100,
+		SecondaryAutonomousY:                620,
+		AutonomousEnergy:                    100,
+		SecondaryAutonomousEnergy:           100,
+		AutonomousChildrenCount:             0,
+		SecondaryChildrenCount:              0,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	before := session.Snapshot()
+	if before.Player == nil {
+		t.Fatal("expected player in initial snapshot")
+	}
+	playerParentDistance := math.Hypot(before.Player.X-before.AutonomousCircles[0].X, before.Player.Y-before.AutonomousCircles[0].Y)
+	secondaryDistance := math.Hypot(before.AutonomousCircles[1].X-before.AutonomousCircles[0].X, before.AutonomousCircles[1].Y-before.AutonomousCircles[0].Y)
+	if playerParentDistance <= secondaryDistance {
+		t.Fatalf("expected player parent body to be farther than secondary target, player=%v secondary=%v", playerParentDistance, secondaryDistance)
+	}
+
+	playerChildDistance := playerParentDistance
+	for _, child := range before.Player.AttachedChildren {
+		distance := math.Hypot(child.X-before.AutonomousCircles[0].X, child.Y-before.AutonomousCircles[0].Y)
+		if distance < playerChildDistance {
+			playerChildDistance = distance
+		}
+	}
+	if playerChildDistance >= secondaryDistance {
+		t.Fatalf("expected player attached child to be effectively nearer than secondary target, child=%v secondary=%v", playerChildDistance, secondaryDistance)
+	}
+
+	snapshot := session.Advance()
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction during child-aware pursuit, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].X <= before.AutonomousCircles[0].X {
+		t.Fatalf("expected autonomous circle to move right toward player effective target, before=%v after=%v", before.AutonomousCircles[0].X, snapshot.AutonomousCircles[0].X)
+	}
+}
+
+func TestAttachedChildCanMakeWinningSameShapeFallbackEffectivelyNearest(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         "triangle",
+		PlayerX:                             225,
+		PlayerY:                             500,
+		PlayerEnergy:                        20,
+		PlayerChildrenCount:                 1,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "triangle",
+		AutonomousX:                         100,
+		AutonomousY:                         500,
+		SecondaryAutonomousX:                100,
+		SecondaryAutonomousY:                620,
+		AutonomousEnergy:                    100,
+		SecondaryAutonomousEnergy:           20,
+		AutonomousChildrenCount:             1,
+		SecondaryChildrenCount:              0,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	before := session.Snapshot()
+	if before.Player == nil {
+		t.Fatal("expected player in initial snapshot")
+	}
+	playerParentDistance := math.Hypot(before.Player.X-before.AutonomousCircles[0].X, before.Player.Y-before.AutonomousCircles[0].Y)
+	secondaryDistance := math.Hypot(before.AutonomousCircles[1].X-before.AutonomousCircles[0].X, before.AutonomousCircles[1].Y-before.AutonomousCircles[0].Y)
+	if playerParentDistance <= secondaryDistance {
+		t.Fatalf("expected player parent body to be farther than secondary fallback target, player=%v secondary=%v", playerParentDistance, secondaryDistance)
+	}
+
+	playerChildDistance := playerParentDistance
+	for _, child := range before.Player.AttachedChildren {
+		distance := math.Hypot(child.X-before.AutonomousCircles[0].X, child.Y-before.AutonomousCircles[0].Y)
+		if distance < playerChildDistance {
+			playerChildDistance = distance
+		}
+	}
+	if playerChildDistance >= secondaryDistance {
+		t.Fatalf("expected player attached child to be effectively nearer than secondary fallback target, child=%v secondary=%v", playerChildDistance, secondaryDistance)
+	}
+
+	snapshot := session.Advance()
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction during child-aware same-shape fallback pursuit, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].X <= before.AutonomousCircles[0].X {
+		t.Fatalf("expected autonomous circle to move right toward player fallback target, before=%v after=%v", before.AutonomousCircles[0].X, snapshot.AutonomousCircles[0].X)
+	}
+}
+
 func TestAttachedChildCanTriggerSameShapeThreatAvoidanceBeforeParentOverlap(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:              "triangle",

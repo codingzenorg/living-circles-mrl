@@ -980,6 +980,85 @@ func TestClientReceivesChildTriggeredBlockedReproductionAvoidanceBeforeParentOve
 	t.Fatal("expected autonomous circle to retreat from child-triggered blocked-reproduction target")
 }
 
+func TestClientReceivesChildAwareDifferentShapePursuitBeforeParentCoreNearest(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         "square",
+		PlayerX:                             225,
+		PlayerY:                             500,
+		PlayerEnergy:                        100,
+		PlayerChildrenCount:                 1,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "square",
+		AutonomousX:                         100,
+		AutonomousY:                         500,
+		SecondaryAutonomousX:                100,
+		SecondaryAutonomousY:                620,
+		AutonomousEnergy:                    100,
+		SecondaryAutonomousEnergy:           100,
+		AutonomousChildrenCount:             0,
+		SecondaryChildrenCount:              0,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	playerParentDistance := math.Hypot(initial.Player.X-initial.AutonomousCircles[0].X, initial.Player.Y-initial.AutonomousCircles[0].Y)
+	secondaryDistance := math.Hypot(initial.AutonomousCircles[1].X-initial.AutonomousCircles[0].X, initial.AutonomousCircles[1].Y-initial.AutonomousCircles[0].Y)
+	if playerParentDistance <= secondaryDistance {
+		t.Fatalf("expected player parent body to stay farther than secondary target, player=%v secondary=%v", playerParentDistance, secondaryDistance)
+	}
+	playerChildDistance := playerParentDistance
+	for _, child := range initial.Player.AttachedChildren {
+		distance := math.Hypot(child.X-initial.AutonomousCircles[0].X, child.Y-initial.AutonomousCircles[0].Y)
+		if distance < playerChildDistance {
+			playerChildDistance = distance
+		}
+	}
+	if playerChildDistance >= secondaryDistance {
+		t.Fatalf("expected player attached child to be effectively nearer than secondary target, child=%v secondary=%v", playerChildDistance, secondaryDistance)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 6 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+		if snapshot.Interaction != nil {
+			t.Fatalf("expected no immediate interaction during child-aware pursuit, got %+v", snapshot.Interaction)
+		}
+		if snapshot.AutonomousCircles[0].X > initial.AutonomousCircles[0].X {
+			return
+		}
+	}
+
+	t.Fatal("expected autonomous circle to move toward child-aware different-shape target")
+}
+
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())

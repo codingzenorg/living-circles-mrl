@@ -422,7 +422,7 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int, tick int64)
 		}
 	}
 
-	interactionTarget, _, interactionFound := nearestInteractionTarget(circle, w.player, w.autonomousCircles)
+	interactionTarget, _, interactionFound := nearestInteractionTarget(circle, w.player, w.autonomousCircles, tick)
 	if interactionFound {
 		return Vector{
 			X: interactionTarget.X - circle.X,
@@ -457,7 +457,7 @@ func nearestFoodTarget(circle AutonomousCircle, foods []Food) (Food, bool) {
 	return selected, found
 }
 
-func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle) (Vector, string, bool) {
+func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle, tick int64) (Vector, string, bool) {
 	var selected Vector
 	selectedID := ""
 	bestDistance := 0.0
@@ -467,8 +467,8 @@ func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, can
 	if player != nil && player.Energy > 0 {
 		playerPriority := interactionTargetPriorityAgainstPlayer(circle, *player)
 		if playerPriority > 0 {
-			distance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
-			selected = Vector{X: player.X, Y: player.Y}
+			target, distance := nearestInteractionPointToPlayer(circle, *player, tick)
+			selected = target
 			selectedID = player.ID
 			bestDistance = distance
 			found = true
@@ -486,11 +486,11 @@ func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, can
 			continue
 		}
 
-		distance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
+		target, distance := nearestInteractionPointToAutonomous(circle, candidate, tick)
 		if !found ||
 			candidatePriority > selectedPriority ||
 			(candidatePriority == selectedPriority && (distance < bestDistance || (distance == bestDistance && candidate.ID < selectedID))) {
-			selected = Vector{X: candidate.X, Y: candidate.Y}
+			selected = target
 			selectedID = candidate.ID
 			bestDistance = distance
 			found = true
@@ -508,7 +508,7 @@ func nearestThreatTarget(circle AutonomousCircle, player *PlayerCircle, candidat
 	found := false
 
 	if player != nil && player.Energy > 0 && playerThreatensAutonomous(circle, *player) {
-		target, distance := nearestThreatPointToPlayer(circle, *player, tick)
+		target, distance := nearestInteractionPointToPlayer(circle, *player, tick)
 		if distance < DefaultThreatAvoidanceDistance {
 			selected = target
 			selectedID = player.ID
@@ -522,7 +522,7 @@ func nearestThreatTarget(circle AutonomousCircle, player *PlayerCircle, candidat
 			continue
 		}
 
-		target, distance := nearestThreatPointToAutonomous(circle, candidate, tick)
+		target, distance := nearestInteractionPointToAutonomous(circle, candidate, tick)
 		if distance >= DefaultThreatAvoidanceDistance {
 			continue
 		}
@@ -545,7 +545,7 @@ func nearestBlockedReproductionTarget(circle AutonomousCircle, player *PlayerCir
 	found := false
 
 	if player != nil && player.Energy > 0 && blockedReproductionWithPlayer(circle, *player) {
-		target, distance := nearestThreatPointToPlayer(circle, *player, tick)
+		target, distance := nearestInteractionPointToPlayer(circle, *player, tick)
 		if distance < DefaultBlockedReproductionAvoidanceDistance {
 			selected = target
 			selectedID = player.ID
@@ -559,7 +559,7 @@ func nearestBlockedReproductionTarget(circle AutonomousCircle, player *PlayerCir
 			continue
 		}
 
-		target, distance := nearestThreatPointToAutonomous(circle, candidate, tick)
+		target, distance := nearestInteractionPointToAutonomous(circle, candidate, tick)
 		if distance >= DefaultBlockedReproductionAvoidanceDistance {
 			continue
 		}
@@ -575,7 +575,7 @@ func nearestBlockedReproductionTarget(circle AutonomousCircle, player *PlayerCir
 	return selected, found
 }
 
-func nearestThreatPointToPlayer(circle AutonomousCircle, player PlayerCircle, tick int64) (Vector, float64) {
+func nearestInteractionPointToPlayer(circle AutonomousCircle, player PlayerCircle, tick int64) (Vector, float64) {
 	selected := Vector{X: player.X, Y: player.Y}
 	bestDistance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
 
@@ -590,7 +590,7 @@ func nearestThreatPointToPlayer(circle AutonomousCircle, player PlayerCircle, ti
 	return selected, bestDistance
 }
 
-func nearestThreatPointToAutonomous(circle AutonomousCircle, candidate AutonomousCircle, tick int64) (Vector, float64) {
+func nearestInteractionPointToAutonomous(circle AutonomousCircle, candidate AutonomousCircle, tick int64) (Vector, float64) {
 	selected := Vector{X: candidate.X, Y: candidate.Y}
 	bestDistance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
 
