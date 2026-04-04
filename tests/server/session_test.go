@@ -1978,8 +1978,8 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	if snapshot.Interaction == nil {
 		t.Fatal("expected reproduction interaction")
 	}
-	if snapshot.Interaction.Kind != "reproduce_resolved" {
-		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+	if snapshot.Interaction.Kind != "reproduce_paid_child" {
+		t.Fatalf("expected reproduce_paid_child, got %q", snapshot.Interaction.Kind)
 	}
 	if snapshot.Player.ChildrenCount+snapshot.AutonomousCircles[0].ChildrenCount != before.Player.ChildrenCount+before.AutonomousCircles[0].ChildrenCount+1 {
 		t.Fatalf("expected one child to be spent and two children to be redistributed, before player=%d autonomous=%d after player=%d autonomous=%d", before.Player.ChildrenCount, before.AutonomousCircles[0].ChildrenCount, snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
@@ -1990,6 +1990,31 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	}
 	if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount || len(snapshot.AutonomousCircles[0].AttachedChildren) != snapshot.AutonomousCircles[0].ChildrenCount {
 		t.Fatalf("expected attached children to match counts after child-payment reproduction, player attached=%d count=%d autonomous attached=%d count=%d", len(snapshot.Player.AttachedChildren), snapshot.Player.ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren), snapshot.AutonomousCircles[0].ChildrenCount)
+	}
+}
+
+func TestDifferentShapeOverlapPaidByEnergyRemainsOrdinaryResolvedReproduction(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         "triangle",
+		AutonomousShape:                     "square",
+		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:                    simulation.DefaultPlayerEnergy,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected reproduction interaction")
+	}
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected reproduce_resolved for energy-paid reproduction, got %q", snapshot.Interaction.Kind)
 	}
 }
 

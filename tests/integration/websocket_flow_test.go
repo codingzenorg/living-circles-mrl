@@ -1421,8 +1421,8 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 			continue
 		}
 
-		if snapshot.Interaction.Kind != "reproduce_resolved" {
-			t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+		if snapshot.Interaction.Kind != "reproduce_paid_child" {
+			t.Fatalf("expected reproduce_paid_child, got %q", snapshot.Interaction.Kind)
 		}
 		if snapshot.Player.ChildrenCount+snapshot.AutonomousCircles[0].ChildrenCount != previous.Player.ChildrenCount+previous.AutonomousCircles[0].ChildrenCount+1 {
 			t.Fatalf("expected one child payment plus two redistributed children, before player=%d autonomous=%d after player=%d autonomous=%d", previous.Player.ChildrenCount, previous.AutonomousCircles[0].ChildrenCount, snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
@@ -1438,6 +1438,51 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 	}
 
 	t.Fatal("expected reproduction snapshot paid by child")
+}
+
+func TestClientReceivesOrdinaryResolvedReproductionWhenNoChildPaymentIsUsed(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         "triangle",
+		AutonomousShape:                     "square",
+		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:                    simulation.DefaultPlayerEnergy,
+		DisableBlockedReproductionAvoidance: true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 40 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.Interaction == nil {
+			continue
+		}
+
+		if snapshot.Interaction.Kind != "reproduce_resolved" {
+			t.Fatalf("expected reproduce_resolved for energy-paid reproduction, got %q", snapshot.Interaction.Kind)
+		}
+		return
+	}
+
+	t.Fatal("expected ordinary resolved reproduction snapshot")
 }
 
 func TestResetEndpointReturnsAndBroadcastsInitialSnapshot(t *testing.T) {

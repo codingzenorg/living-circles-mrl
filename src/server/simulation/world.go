@@ -942,8 +942,8 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactOrigin
 	}
 
 	opponent := w.autonomousCircles[opponentIndex]
-	playerPaid := payPlayerReproductionCost(w.player)
-	opponentPaid, opponent := payAutonomousReproductionCost(opponent)
+	playerPaid, playerUsedChild := payPlayerReproductionCost(w.player)
+	opponentPaid, opponentUsedChild, opponent := payAutonomousReproductionCost(opponent)
 	if !playerPaid || !opponentPaid {
 		w.lastInteraction = &InteractionClassification{
 			Active:        false,
@@ -959,10 +959,15 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactOrigin
 	w.assignReproductionChildren(&opponent, tick)
 	w.autonomousCircles[opponentIndex] = opponent
 
+	kind := "reproduce_resolved"
+	if playerUsedChild || opponentUsedChild {
+		kind = "reproduce_paid_child"
+	}
+
 	w.lastInteraction = &InteractionClassification{
 		Active:        false,
 		Resolved:      true,
-		Kind:          "reproduce_resolved",
+		Kind:          kind,
 		ContactOrigin: contactOrigin,
 		SourceID:      w.player.ID,
 		TargetID:      opponent.ID,
@@ -1045,8 +1050,8 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 
 	leftCircle := w.autonomousCircles[leftIndex]
 	rightCircle := w.autonomousCircles[rightIndex]
-	leftPaid, leftCircle := payAutonomousReproductionCost(leftCircle)
-	rightPaid, rightCircle := payAutonomousReproductionCost(rightCircle)
+	leftPaid, leftUsedChild, leftCircle := payAutonomousReproductionCost(leftCircle)
+	rightPaid, rightUsedChild, rightCircle := payAutonomousReproductionCost(rightCircle)
 	if !leftPaid || !rightPaid {
 		w.lastInteraction = &InteractionClassification{
 			Active:        false,
@@ -1063,10 +1068,15 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 	w.autonomousCircles[leftIndex] = leftCircle
 	w.autonomousCircles[rightIndex] = rightCircle
 
+	kind := "reproduce_resolved"
+	if leftUsedChild || rightUsedChild {
+		kind = "reproduce_paid_child"
+	}
+
 	w.lastInteraction = &InteractionClassification{
 		Active:        false,
 		Resolved:      true,
-		Kind:          "reproduce_resolved",
+		Kind:          kind,
 		ContactOrigin: contactOrigin,
 		SourceID:      leftCircle.ID,
 		TargetID:      rightCircle.ID,
@@ -1150,43 +1160,43 @@ func intToString(value int) string {
 	return sign + string(digits)
 }
 
-func payPlayerReproductionCost(circle *PlayerCircle) bool {
+func payPlayerReproductionCost(circle *PlayerCircle) (bool, bool) {
 	if circle == nil {
-		return false
+		return false, false
 	}
 	if reproductionCapacity(circle.Energy, circle.ChildrenCount) < DefaultReproductionMinEnergy {
-		return false
+		return false, false
 	}
 	if circle.Energy >= DefaultReproductionCost {
 		circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
-		return true
+		return true, false
 	}
 	if circle.ChildrenCount == 0 {
-		return false
+		return false, false
 	}
 
 	consumePlayerChild(circle)
 	circle.Energy += DefaultReproductionCost
 	circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
-	return true
+	return true, true
 }
 
-func payAutonomousReproductionCost(circle AutonomousCircle) (bool, AutonomousCircle) {
+func payAutonomousReproductionCost(circle AutonomousCircle) (bool, bool, AutonomousCircle) {
 	if reproductionCapacity(circle.Energy, circle.ChildrenCount) < DefaultReproductionMinEnergy {
-		return false, circle
+		return false, false, circle
 	}
 	if circle.Energy >= DefaultReproductionCost {
 		circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
-		return true, circle
+		return true, false, circle
 	}
 	if circle.ChildrenCount == 0 {
-		return false, circle
+		return false, false, circle
 	}
 
 	consumeAutonomousChild(&circle)
 	circle.Energy += DefaultReproductionCost
 	circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
-	return true, circle
+	return true, true, circle
 }
 
 func reproductionCapacity(energy float64, childrenCount int) float64 {
