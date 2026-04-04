@@ -254,7 +254,7 @@ func configuredOrDefault(value, fallback float64) float64 {
 func (w *World) Advance(tick int64, intent Vector) Snapshot {
 	w.lastInteraction = nil
 	w.player = w.advanceCircle(w.player, intent)
-	w.advanceAutonomousCircles()
+	w.advanceAutonomousCircles(tick)
 
 	w.consumeOverlappingFood(tick)
 	w.regenerateFood(tick)
@@ -364,13 +364,13 @@ func (w *World) advanceCircle(circle *PlayerCircle, intent Vector) *PlayerCircle
 	return circle
 }
 
-func (w *World) advanceAutonomousCircles() {
+func (w *World) advanceAutonomousCircles(tick int64) {
 	for index, circle := range w.autonomousCircles {
 		if circle.Energy <= 0 {
 			continue
 		}
 
-		intent := w.autonomousIntent(circle, index)
+		intent := w.autonomousIntent(circle, index, tick)
 		normalized := normalize(intent)
 		if normalized.X == 0 && normalized.Y == 0 {
 			continue
@@ -386,7 +386,7 @@ func (w *World) advanceAutonomousCircles() {
 	}
 }
 
-func (w *World) autonomousIntent(circle AutonomousCircle, index int) Vector {
+func (w *World) autonomousIntent(circle AutonomousCircle, index int, tick int64) Vector {
 	if w.disableFoodSeeking {
 		return w.autonomousDirections[index]
 	}
@@ -399,7 +399,7 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int) Vector {
 		}
 	}
 
-	threatTarget, threatFound := nearestThreatTarget(circle, w.player, w.autonomousCircles)
+	threatTarget, threatFound := nearestThreatTarget(circle, w.player, w.autonomousCircles, tick)
 	if !w.disableThreatAvoidance && threatFound {
 		return Vector{
 			X: circle.X - threatTarget.X,
@@ -407,7 +407,7 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int) Vector {
 		}
 	}
 
-	blockedTarget, blockedFound := nearestBlockedReproductionTarget(circle, w.player, w.autonomousCircles)
+	blockedTarget, blockedFound := nearestBlockedReproductionTarget(circle, w.player, w.autonomousCircles, tick)
 	if !w.disableBlockedReproductionAvoidance && blockedFound {
 		return Vector{
 			X: circle.X - blockedTarget.X,
@@ -501,16 +501,16 @@ func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, can
 	return selected, selectedID, found
 }
 
-func nearestThreatTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle) (Vector, bool) {
+func nearestThreatTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle, tick int64) (Vector, bool) {
 	var selected Vector
 	selectedID := ""
 	bestDistance := 0.0
 	found := false
 
 	if player != nil && player.Energy > 0 && playerThreatensAutonomous(circle, *player) {
-		distance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
+		target, distance := nearestThreatPointToPlayer(circle, *player, tick)
 		if distance < DefaultThreatAvoidanceDistance {
-			selected = Vector{X: player.X, Y: player.Y}
+			selected = target
 			selectedID = player.ID
 			bestDistance = distance
 			found = true
@@ -522,13 +522,13 @@ func nearestThreatTarget(circle AutonomousCircle, player *PlayerCircle, candidat
 			continue
 		}
 
-		distance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
+		target, distance := nearestThreatPointToAutonomous(circle, candidate, tick)
 		if distance >= DefaultThreatAvoidanceDistance {
 			continue
 		}
 
 		if !found || distance < bestDistance || (distance == bestDistance && candidate.ID < selectedID) {
-			selected = Vector{X: candidate.X, Y: candidate.Y}
+			selected = target
 			selectedID = candidate.ID
 			bestDistance = distance
 			found = true
@@ -538,16 +538,16 @@ func nearestThreatTarget(circle AutonomousCircle, player *PlayerCircle, candidat
 	return selected, found
 }
 
-func nearestBlockedReproductionTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle) (Vector, bool) {
+func nearestBlockedReproductionTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle, tick int64) (Vector, bool) {
 	var selected Vector
 	selectedID := ""
 	bestDistance := 0.0
 	found := false
 
 	if player != nil && player.Energy > 0 && blockedReproductionWithPlayer(circle, *player) {
-		distance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
+		target, distance := nearestThreatPointToPlayer(circle, *player, tick)
 		if distance < DefaultBlockedReproductionAvoidanceDistance {
-			selected = Vector{X: player.X, Y: player.Y}
+			selected = target
 			selectedID = player.ID
 			bestDistance = distance
 			found = true
@@ -559,13 +559,13 @@ func nearestBlockedReproductionTarget(circle AutonomousCircle, player *PlayerCir
 			continue
 		}
 
-		distance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
+		target, distance := nearestThreatPointToAutonomous(circle, candidate, tick)
 		if distance >= DefaultBlockedReproductionAvoidanceDistance {
 			continue
 		}
 
 		if !found || distance < bestDistance || (distance == bestDistance && candidate.ID < selectedID) {
-			selected = Vector{X: candidate.X, Y: candidate.Y}
+			selected = target
 			selectedID = candidate.ID
 			bestDistance = distance
 			found = true
@@ -573,6 +573,36 @@ func nearestBlockedReproductionTarget(circle AutonomousCircle, player *PlayerCir
 	}
 
 	return selected, found
+}
+
+func nearestThreatPointToPlayer(circle AutonomousCircle, player PlayerCircle, tick int64) (Vector, float64) {
+	selected := Vector{X: player.X, Y: player.Y}
+	bestDistance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
+
+	for _, child := range layoutAttachedChildren(player.ID, player.X, player.Y, player.Radius, player.AttachedChildren, tick) {
+		distance := distanceBetween(circle.X, circle.Y, child.X, child.Y)
+		if distance < bestDistance {
+			selected = Vector{X: child.X, Y: child.Y}
+			bestDistance = distance
+		}
+	}
+
+	return selected, bestDistance
+}
+
+func nearestThreatPointToAutonomous(circle AutonomousCircle, candidate AutonomousCircle, tick int64) (Vector, float64) {
+	selected := Vector{X: candidate.X, Y: candidate.Y}
+	bestDistance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
+
+	for _, child := range layoutAttachedChildren(candidate.ID, candidate.X, candidate.Y, candidate.Radius, candidate.AttachedChildren, tick) {
+		distance := distanceBetween(circle.X, circle.Y, child.X, child.Y)
+		if distance < bestDistance {
+			selected = Vector{X: child.X, Y: child.Y}
+			bestDistance = distance
+		}
+	}
+
+	return selected, bestDistance
 }
 
 func interactionTargetPriorityAgainstPlayer(circle AutonomousCircle, player PlayerCircle) int {

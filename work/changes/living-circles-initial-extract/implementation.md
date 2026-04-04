@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_blocked_reproduction_avoidance_autonomy.md`
+`docs/slices/initial_attached_child_aware_avoidance.md`
 
 ## Implemented Shape
 
@@ -40,6 +40,7 @@
 - interaction-seeking autonomous circles now treat same-shape fallback targets as eligible only when the current fight ordering says they would not lose
 - autonomous circles can now retreat from nearby stronger same-shape threats before ordinary pursuit resumes
 - autonomous circles can now retreat from nearby different-shape targets when reproduction is currently blocked
+- attached-child positions can now trigger same-shape threat and blocked-reproduction avoidance before parent-core overlap
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -185,6 +186,7 @@ The slice needed these implementation choices not fully specified in the refined
 - threat avoidance steers directly away from the nearest qualifying same-shape threat, breaking equal-distance ties by target ID
 - blocked different-shape targets within `120` units now override ordinary pursuit when the current reproduction feasibility rule says the pair cannot currently reproduce
 - blocked-reproduction avoidance steers directly away from the nearest qualifying different-shape target, breaking equal-distance ties by target ID
+- same-shape threat and blocked-reproduction avoidance now measure nearness against the target parent body and its current attached-child positions
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID
@@ -227,4 +229,4 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 - deterministic server tests for child accumulation, attached orbiting child ownership, attached-child food collection, child absorption during hostile conflict, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity on zero-energy collapse, lineage preservation, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
 - contract test for explicit snapshot shape including child counts, attached child state, lineage fields, and resolved, blocked, absorbed, or promoted interaction outcomes
-- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, child-triggered contact before parent core overlap, child-to-child-triggered contact, autonomous-only interaction outcomes, interaction-seeking autonomous outcomes, player-targeted autonomous outcomes, low-energy food-priority steering, shape-aware target choice, feasibility-aware target fallback, fight-feasibility-aware food fallback, threat avoidance against stronger same-shape circles, blocked-reproduction avoidance against nearby different-shape circles, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset
+- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, child-triggered contact before parent core overlap, child-to-child-triggered contact, child-triggered avoidance before parent-core overlap, autonomous-only interaction outcomes, interaction-seeking autonomous outcomes, player-targeted autonomous outcomes, low-energy food-priority steering, shape-aware target choice, feasibility-aware target fallback, fight-feasibility-aware food fallback, threat avoidance against stronger same-shape circles, blocked-reproduction avoidance against nearby different-shape circles, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset

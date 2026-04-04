@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"math"
 	"testing"
 
 	"github.com/codingzen/living-circles-mrl/src/server/simulation"
@@ -479,7 +480,18 @@ func TestAttachedChildCanCollectFoodForPlayer(t *testing.T) {
 }
 
 func TestAutonomousCircleMovesWithoutPlayerInput(t *testing.T) {
-	session := simulation.NewSession()
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         simulation.DefaultPlayerShape,
+		AutonomousShape:                     simulation.DefaultPlayerShape,
+		SecondaryAutonomousShape:            simulation.DefaultAutoShape,
+		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
+		PlayerChildrenCount:                 1,
+		AutonomousEnergy:                    80,
+		SecondaryAutonomousEnergy:           simulation.DefaultPlayerEnergy,
+		AutonomousChildrenCount:             1,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
 	before := session.Snapshot()
 	after := session.Advance()
 
@@ -492,7 +504,18 @@ func TestAutonomousCircleMovesWithoutPlayerInput(t *testing.T) {
 }
 
 func TestAutonomousCircleSteersTowardNearestFood(t *testing.T) {
-	session := simulation.NewSession()
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         simulation.DefaultPlayerShape,
+		AutonomousShape:                     simulation.DefaultPlayerShape,
+		SecondaryAutonomousShape:            simulation.DefaultAutoShape,
+		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
+		PlayerChildrenCount:                 1,
+		AutonomousEnergy:                    80,
+		SecondaryAutonomousEnergy:           simulation.DefaultPlayerEnergy,
+		AutonomousChildrenCount:             1,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
 	before := session.Snapshot()
 	after := session.Advance()
 
@@ -505,7 +528,18 @@ func TestAutonomousCircleSteersTowardNearestFood(t *testing.T) {
 }
 
 func TestAutonomousCircleConsumesEnergyWhenMoving(t *testing.T) {
-	session := simulation.NewSession()
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         simulation.DefaultPlayerShape,
+		AutonomousShape:                     simulation.DefaultPlayerShape,
+		SecondaryAutonomousShape:            simulation.DefaultAutoShape,
+		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
+		PlayerChildrenCount:                 1,
+		AutonomousEnergy:                    80,
+		SecondaryAutonomousEnergy:           simulation.DefaultPlayerEnergy,
+		AutonomousChildrenCount:             1,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
 	before := session.Snapshot()
 	after := session.Advance()
 
@@ -518,7 +552,18 @@ func TestAutonomousCircleConsumesEnergyWhenMoving(t *testing.T) {
 }
 
 func TestAutonomousCircleCanConsumeFoodAndRecoverEnergy(t *testing.T) {
-	session := simulation.NewSession()
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         simulation.DefaultPlayerShape,
+		AutonomousShape:                     simulation.DefaultPlayerShape,
+		SecondaryAutonomousShape:            simulation.DefaultAutoShape,
+		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
+		PlayerChildrenCount:                 1,
+		AutonomousEnergy:                    80,
+		SecondaryAutonomousEnergy:           simulation.DefaultPlayerEnergy,
+		AutonomousChildrenCount:             1,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
 	firstTick := session.Advance()
 	secondTick := session.Advance()
 
@@ -973,6 +1018,94 @@ func TestDistantBlockedDifferentShapeTargetDoesNotOverrideOrdinarySteering(t *te
 	}
 	if snapshot.AutonomousCircles[0].Y >= 500 {
 		t.Fatalf("expected distant blocked target to leave ordinary food steering in control, got y=%v", snapshot.AutonomousCircles[0].Y)
+	}
+}
+
+func TestAttachedChildCanTriggerSameShapeThreatAvoidanceBeforeParentOverlap(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		PlayerX:                  230,
+		PlayerY:                  500,
+		PlayerEnergy:             100,
+		PlayerChildrenCount:      4,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         40,
+		AutonomousChildrenCount:  0,
+	})
+
+	before := session.Snapshot()
+	if before.Player == nil {
+		t.Fatal("expected player in initial snapshot")
+	}
+	parentDistance := math.Hypot(before.Player.X-before.AutonomousCircles[0].X, before.Player.Y-before.AutonomousCircles[0].Y)
+	if parentDistance < simulation.DefaultThreatAvoidanceDistance {
+		t.Fatalf("expected parent body to stay outside threat window, got distance=%v", parentDistance)
+	}
+	childInsideWindow := false
+	for _, child := range before.Player.AttachedChildren {
+		distance := math.Hypot(child.X-before.AutonomousCircles[0].X, child.Y-before.AutonomousCircles[0].Y)
+		if distance < simulation.DefaultThreatAvoidanceDistance {
+			childInsideWindow = true
+			break
+		}
+	}
+	if !childInsideWindow {
+		t.Fatal("expected attached child to enter threat window before parent body")
+	}
+
+	snapshot := session.Advance()
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction during child-triggered threat avoidance, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].X >= before.AutonomousCircles[0].X {
+		t.Fatalf("expected autonomous circle to retreat from child-triggered same-shape threat, before=%v after=%v", before.AutonomousCircles[0].X, snapshot.AutonomousCircles[0].X)
+	}
+}
+
+func TestAttachedChildCanTriggerBlockedReproductionAvoidanceBeforeParentOverlap(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "square",
+		PlayerX:                  225,
+		PlayerY:                  500,
+		PlayerEnergy:             1,
+		PlayerChildrenCount:      1,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         100,
+		AutonomousChildrenCount:  0,
+	})
+
+	before := session.Snapshot()
+	if before.Player == nil {
+		t.Fatal("expected player in initial snapshot")
+	}
+	parentDistance := math.Hypot(before.Player.X-before.AutonomousCircles[0].X, before.Player.Y-before.AutonomousCircles[0].Y)
+	if parentDistance < simulation.DefaultBlockedReproductionAvoidanceDistance {
+		t.Fatalf("expected parent body to stay outside blocked-reproduction window, got distance=%v", parentDistance)
+	}
+	childInsideWindow := false
+	for _, child := range before.Player.AttachedChildren {
+		distance := math.Hypot(child.X-before.AutonomousCircles[0].X, child.Y-before.AutonomousCircles[0].Y)
+		if distance < simulation.DefaultBlockedReproductionAvoidanceDistance {
+			childInsideWindow = true
+			break
+		}
+	}
+	if !childInsideWindow {
+		t.Fatal("expected attached child to enter blocked-reproduction window before parent body")
+	}
+
+	snapshot := session.Advance()
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction during child-triggered blocked-reproduction avoidance, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].X >= before.AutonomousCircles[0].X {
+		t.Fatalf("expected autonomous circle to retreat from child-triggered blocked-reproduction target, before=%v after=%v", before.AutonomousCircles[0].X, snapshot.AutonomousCircles[0].X)
 	}
 }
 
