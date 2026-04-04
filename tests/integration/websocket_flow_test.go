@@ -350,6 +350,57 @@ func TestClientReceivesChildToChildTriggeredReproduction(t *testing.T) {
 	t.Fatal("expected child-to-child reproduction snapshot")
 }
 
+func TestClientDoesNotReceiveContactFromDerivedRadiusAlone(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerX:                   200,
+		PlayerY:                   300,
+		AutonomousX:               227,
+		AutonomousY:               308,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       2,
+		AutonomousEnergy:          0,
+		AutonomousChildrenCount:   0,
+		SecondaryAutonomousEnergy: 0,
+		DisableFoodSeeking:        true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 6 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+		if snapshot.Tick == 0 {
+			continue
+		}
+		if snapshot.Interaction != nil {
+			t.Fatalf("expected no interaction when only derived parent radius would have overlapped, got %+v", snapshot.Interaction)
+		}
+		return
+	}
+
+	t.Fatal("expected at least one post-initial snapshot without interaction")
+}
+
 func TestClientReceivesAutonomousOnlyReproductionWithoutPlayerInput(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:               "triangle",
@@ -1386,10 +1437,15 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:                         "triangle",
 		AutonomousShape:                     "square",
+		PlayerX:                             200,
+		PlayerY:                             300,
+		AutonomousX:                         232,
+		AutonomousY:                         300,
 		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
 		AutonomousEnergy:                    simulation.DefaultReproductionCost - 1,
 		AutonomousChildrenCount:             1,
 		DisableBlockedReproductionAvoidance: true,
+		DisableFoodSeeking:                  true,
 	}))
 	httpServer := httptest.NewServer(server.Handler())
 	defer httpServer.Close()

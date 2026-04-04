@@ -807,19 +807,19 @@ func (w *World) resolveCircleInteractions(tick int64) {
 }
 
 func circlesInteract(player PlayerCircle, autonomous AutonomousCircle, tick int64) (string, bool) {
-	parentBodyOverlap := overlaps(player.X, player.Y, player.Radius, autonomous.X, autonomous.Y, autonomous.Radius)
+	parentBodyOverlap := overlaps(player.X, player.Y, DefaultPlayerRadius, autonomous.X, autonomous.Y, DefaultPlayerRadius)
 
 	playerChildren := layoutAttachedChildren(player.ID, player.X, player.Y, player.Radius, player.AttachedChildren, tick)
 	autonomousChildren := layoutAttachedChildren(autonomous.ID, autonomous.X, autonomous.Y, autonomous.Radius, autonomous.AttachedChildren, tick)
 
 	for _, child := range playerChildren {
-		if overlaps(child.X, child.Y, child.Radius, autonomous.X, autonomous.Y, autonomous.Radius) {
+		if overlaps(child.X, child.Y, child.Radius, autonomous.X, autonomous.Y, DefaultPlayerRadius) {
 			return "attached_child", true
 		}
 	}
 
 	for _, child := range autonomousChildren {
-		if overlaps(player.X, player.Y, player.Radius, child.X, child.Y, child.Radius) {
+		if overlaps(player.X, player.Y, DefaultPlayerRadius, child.X, child.Y, child.Radius) {
 			return "attached_child", true
 		}
 	}
@@ -840,19 +840,19 @@ func circlesInteract(player PlayerCircle, autonomous AutonomousCircle, tick int6
 }
 
 func autonomousCirclesInteract(left AutonomousCircle, right AutonomousCircle, tick int64) (string, bool) {
-	parentBodyOverlap := overlaps(left.X, left.Y, left.Radius, right.X, right.Y, right.Radius)
+	parentBodyOverlap := overlaps(left.X, left.Y, DefaultPlayerRadius, right.X, right.Y, DefaultPlayerRadius)
 
 	leftChildren := layoutAttachedChildren(left.ID, left.X, left.Y, left.Radius, left.AttachedChildren, tick)
 	rightChildren := layoutAttachedChildren(right.ID, right.X, right.Y, right.Radius, right.AttachedChildren, tick)
 
 	for _, child := range leftChildren {
-		if overlaps(child.X, child.Y, child.Radius, right.X, right.Y, right.Radius) {
+		if overlaps(child.X, child.Y, child.Radius, right.X, right.Y, DefaultPlayerRadius) {
 			return "attached_child", true
 		}
 	}
 
 	for _, child := range rightChildren {
-		if overlaps(left.X, left.Y, left.Radius, child.X, child.Y, child.Radius) {
+		if overlaps(left.X, left.Y, DefaultPlayerRadius, child.X, child.Y, child.Radius) {
 			return "attached_child", true
 		}
 	}

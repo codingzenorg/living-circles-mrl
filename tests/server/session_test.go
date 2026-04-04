@@ -1783,6 +1783,30 @@ func TestAttachedChildrenCanTriggerReproductionThroughChildToChildContact(t *tes
 	}
 }
 
+func TestDerivedRadiusAloneDoesNotStartContactWithoutVisibleOverlap(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerX:                   200,
+		PlayerY:                   300,
+		AutonomousX:               227,
+		AutonomousY:               308,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       2,
+		AutonomousEnergy:          0,
+		AutonomousChildrenCount:   0,
+		SecondaryAutonomousEnergy: 0,
+		DisableFoodSeeking:        true,
+	})
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no interaction when only derived parent radius would have overlapped, got %+v", snapshot.Interaction)
+	}
+}
+
 func TestAutonomousCirclesCanResolveFightWithoutPlayerInvolvement(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:               "square",
@@ -1961,10 +1985,15 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:                         "triangle",
 		AutonomousShape:                     "square",
+		PlayerX:                             200,
+		PlayerY:                             300,
+		AutonomousX:                         232,
+		AutonomousY:                         300,
 		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
 		AutonomousEnergy:                    simulation.DefaultReproductionCost - 1,
 		AutonomousChildrenCount:             1,
 		DisableBlockedReproductionAvoidance: true,
+		DisableFoodSeeking:                  true,
 	})
 
 	var snapshot simulation.Snapshot
