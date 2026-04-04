@@ -123,6 +123,56 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Allow autonomous circles to steer toward interaction opportunities instead of relying almost entirely on food-seeking and drift.
+
+## Why This Matters
+
+The current implementation can now resolve autonomous-autonomous encounters, but autonomous circles still do not actively help create those encounters. That keeps the ecosystem more passive than the model hypothesis suggests and leaves the new shared-rule interaction engine underexercised in ordinary play.
+
+The next model pressure is to make non-player circles behave more like participants in the ecosystem without introducing explicit AI personalities or strategy trees.
+
+## Impacted Areas
+
+### Simulation model
+
+- autonomous target-selection logic should consider other circles, not only food
+- deterministic target ordering becomes more important when several eligible circles exist
+- current movement, energy, and interaction outcome rules should remain unchanged after target selection
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because motion and interaction outcomes are already visible
+- build may need steering provenance only if the new motion is too hard to understand from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because circle positions, labels, and the interaction HUD are visible
+- minor HUD improvements may still be useful if autonomous target choice becomes hard to infer
+
+### Existing semantics
+
+- current food-seeking autonomy should coexist with the new interaction-seeking rule
+- player-autonomous and autonomous-autonomous outcomes should remain governed by the same downstream rules
+- the model should avoid slipping into hard-coded roles or tactical AI framing
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- when interaction seeking takes priority over food seeking
+- how target choice is ordered deterministically across multiple circles
+- whether the player is always an eligible target or only under bounded conditions
+
+## Risks If Ignored
+
+- autonomous-autonomous interaction will remain correct but underutilized
+- the ecosystem will continue to depend too much on player movement or lucky geometry
+- later emergence-oriented slices will rest on still-passive non-player steering
+
+---
+
+## Change
+
 Allow autonomous circles to resolve interactions with other autonomous circles under the same current rules used for player-involved encounters.
 
 ## Why This Matters
