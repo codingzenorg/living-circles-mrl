@@ -1331,3 +1331,53 @@ The next implementation-facing slice should explicitly choose:
 - continuity remains more abstract than the now-visible child model
 - lineage survival will feel weaker than feeding and conflict roles for children
 - later removal of counter-only shortcuts will be harder because death continuity still will not be visibly grounded
+
+---
+
+## Change
+
+Make attached children the single authoritative child state and derive `children_count`.
+
+## Why This Matters
+
+The current model now treats attached children as real visible entities for feeding, contact, payment, absorption, and continuity. But the simulation still stores and reads a separate `children_count` authority in many places. That means child semantics are still split between visible child entities and mirrored bookkeeping.
+
+The next model pressure is to make attached children the real authoritative child state and reduce `children_count` to a derived convenience view. That removes a remaining duplication point without changing the current readable contract or child-dependent behaviors.
+
+## Impacted Areas
+
+### Simulation model
+
+- child-dependent rules should derive quantity from attached children rather than a separate stored count authority
+- player and autonomous circles should continue sharing one deterministic child-state rule
+- current child-based behaviors should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient if `children_count` remains as a derived field
+- attached-child arrays become the clearly authoritative child representation
+
+### Browser rendering
+
+- current rendering should remain unchanged because attached children and `children_count` can still be exposed
+- no visual changes should be required in this slice
+
+### Existing semantics
+
+- child-based fight power, reproduction payment, and continuity can remain unchanged
+- food, contact, movement, orbit, reproduction, and steering should remain unchanged
+- later slices may still remove additional child-count shortcuts from rule semantics, but this slice only removes duplicated authority
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether `children_count` remains in snapshots as a derived convenience field
+- which child-dependent rules should stop reading separate stored count state first
+- how tests should prove that visible child entities and readable child counts can no longer drift apart
+
+## Risks If Ignored
+
+- visible child state and rule inputs will continue to rely on duplicated authority
+- future child-model refinement will keep paying synchronization complexity
+- later removal of remaining child-count shortcuts will be harder because the model will still have two competing child representations
