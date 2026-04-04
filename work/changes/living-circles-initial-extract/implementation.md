@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_attached_child_aware_interaction_targeting.md`
+`docs/slices/initial_attached_child_aware_food_targeting.md`
 
 ## Implemented Shape
 
@@ -42,6 +42,7 @@
 - autonomous circles can now retreat from nearby different-shape targets when reproduction is currently blocked
 - attached-child positions can now trigger same-shape threat and blocked-reproduction avoidance before parent-core overlap
 - attached-child positions can now also influence which eligible social target is effectively nearest during positive interaction seeking
+- attached-child positions can now also influence which food slot is effectively nearest during food targeting
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -189,6 +190,7 @@ The slice needed these implementation choices not fully specified in the refined
 - blocked-reproduction avoidance steers directly away from the nearest qualifying different-shape target, breaking equal-distance ties by target ID
 - same-shape threat and blocked-reproduction avoidance now measure nearness against the target parent body and its current attached-child positions
 - interaction-seeking target selection now measures social nearness against the target parent body and its current attached-child positions
+- food-target selection now measures food nearness against the acting parent body and its current attached-child positions
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID
@@ -231,4 +233,4 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 - deterministic server tests for child accumulation, attached orbiting child ownership, attached-child food collection, child absorption during hostile conflict, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity on zero-energy collapse, lineage preservation, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
 - contract test for explicit snapshot shape including child counts, attached child state, lineage fields, and resolved, blocked, absorbed, or promoted interaction outcomes
-- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, child-triggered contact before parent core overlap, child-to-child-triggered contact, child-triggered avoidance before parent-core overlap, child-aware positive pursuit before parent-core nearness, autonomous-only interaction outcomes, interaction-seeking autonomous outcomes, player-targeted autonomous outcomes, low-energy food-priority steering, shape-aware target choice, feasibility-aware target fallback, fight-feasibility-aware food fallback, threat avoidance against stronger same-shape circles, blocked-reproduction avoidance against nearby different-shape circles, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset
+- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, child-triggered contact before parent core overlap, child-to-child-triggered contact, child-triggered avoidance before parent-core overlap, child-aware positive pursuit before parent-core nearness, child-aware food pursuit before parent-core nearness, autonomous-only interaction outcomes, interaction-seeking autonomous outcomes, player-targeted autonomous outcomes, low-energy food-priority steering, shape-aware target choice, feasibility-aware target fallback, fight-feasibility-aware food fallback, threat avoidance against stronger same-shape circles, blocked-reproduction avoidance against nearby different-shape circles, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset

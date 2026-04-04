@@ -1059,6 +1059,82 @@ func TestClientReceivesChildAwareDifferentShapePursuitBeforeParentCoreNearest(t 
 	t.Fatal("expected autonomous circle to move toward child-aware different-shape target")
 }
 
+func TestClientReceivesChildAwareFoodTargetingBeforeParentCoreNearest(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         "square",
+		PlayerX:                             700,
+		PlayerY:                             500,
+		PlayerEnergy:                        100,
+		PlayerChildrenCount:                 0,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "",
+		AutonomousX:                         369,
+		AutonomousY:                         300,
+		AutonomousEnergy:                    100,
+		AutonomousChildrenCount:             1,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	parentToFoodOne := math.Hypot(initial.Foods[0].X-initial.AutonomousCircles[0].X, initial.Foods[0].Y-initial.AutonomousCircles[0].Y)
+	parentToFoodTwo := math.Hypot(initial.Foods[1].X-initial.AutonomousCircles[0].X, initial.Foods[1].Y-initial.AutonomousCircles[0].Y)
+	if parentToFoodOne >= parentToFoodTwo {
+		t.Fatalf("expected parent body to be nearer to food-1 than food-2, food-1=%v food-2=%v", parentToFoodOne, parentToFoodTwo)
+	}
+
+	childToFoodTwo := parentToFoodTwo
+	for _, child := range initial.AutonomousCircles[0].AttachedChildren {
+		distance := math.Hypot(initial.Foods[1].X-child.X, initial.Foods[1].Y-child.Y)
+		if distance < childToFoodTwo {
+			childToFoodTwo = distance
+		}
+	}
+	if childToFoodTwo >= parentToFoodOne {
+		t.Fatalf("expected attached child to make food-2 effectively nearer than food-1, food-1=%v food-2=%v", parentToFoodOne, childToFoodTwo)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 6 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+		if snapshot.Interaction != nil {
+			t.Fatalf("expected no immediate interaction during child-aware food targeting, got %+v", snapshot.Interaction)
+		}
+		if snapshot.AutonomousCircles[0].X < initial.AutonomousCircles[0].X {
+			return
+		}
+	}
+
+	t.Fatal("expected autonomous circle to move left toward child-aware food target")
+}
+
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())

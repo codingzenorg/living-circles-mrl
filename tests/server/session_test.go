@@ -624,6 +624,78 @@ func TestAutonomousFoodSeekingCanCollectOffLaneFood(t *testing.T) {
 	}
 }
 
+func TestAttachedChildCanMakeFoodEffectivelyNearestForTargeting(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         "square",
+		PlayerX:                             700,
+		PlayerY:                             500,
+		PlayerEnergy:                        100,
+		PlayerChildrenCount:                 0,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "",
+		AutonomousX:                         369,
+		AutonomousY:                         300,
+		AutonomousEnergy:                    100,
+		AutonomousChildrenCount:             1,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	before := session.Snapshot()
+	parentToFoodOne := math.Hypot(before.Foods[0].X-before.AutonomousCircles[0].X, before.Foods[0].Y-before.AutonomousCircles[0].Y)
+	parentToFoodTwo := math.Hypot(before.Foods[1].X-before.AutonomousCircles[0].X, before.Foods[1].Y-before.AutonomousCircles[0].Y)
+	if parentToFoodOne >= parentToFoodTwo {
+		t.Fatalf("expected parent body to be nearer to food-1 than food-2, food-1=%v food-2=%v", parentToFoodOne, parentToFoodTwo)
+	}
+
+	childToFoodTwo := parentToFoodTwo
+	for _, child := range before.AutonomousCircles[0].AttachedChildren {
+		distance := math.Hypot(before.Foods[1].X-child.X, before.Foods[1].Y-child.Y)
+		if distance < childToFoodTwo {
+			childToFoodTwo = distance
+		}
+	}
+	if childToFoodTwo >= parentToFoodOne {
+		t.Fatalf("expected attached child to make food-2 effectively nearer than food-1, food-1=%v food-2=%v", parentToFoodOne, childToFoodTwo)
+	}
+
+	snapshot := session.Advance()
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction during child-aware food targeting, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].X >= before.AutonomousCircles[0].X {
+		t.Fatalf("expected autonomous circle to move left toward child-aware food target, before=%v after=%v", before.AutonomousCircles[0].X, snapshot.AutonomousCircles[0].X)
+	}
+}
+
+func TestLowEnergyChildAwareFoodTargetingCanOverrideParentOnlyDistance(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         "square",
+		PlayerX:                             700,
+		PlayerY:                             500,
+		PlayerEnergy:                        100,
+		PlayerChildrenCount:                 0,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "",
+		AutonomousX:                         369,
+		AutonomousY:                         300,
+		AutonomousEnergy:                    39,
+		AutonomousChildrenCount:             1,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	before := session.Snapshot()
+	snapshot := session.Advance()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction while low-energy autonomous seeks child-aware food target, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].X >= before.AutonomousCircles[0].X {
+		t.Fatalf("expected low-energy autonomous circle to move left toward child-aware food target, before=%v after=%v", before.AutonomousCircles[0].X, snapshot.AutonomousCircles[0].X)
+	}
+}
+
 func TestAutonomousInteractionSeekingCanCreatePreferredDifferentShapeInteractionWithoutPlayerMovement(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:               "square",

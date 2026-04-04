@@ -391,7 +391,7 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int, tick int64)
 		return w.autonomousDirections[index]
 	}
 
-	foodTarget, foodFound := nearestFoodTarget(circle, w.foods)
+	foodTarget, foodDistance, foodFound := nearestFoodTarget(circle, w.foods, tick)
 	if foodFound && circle.Energy < DefaultLowEnergyFoodThreshold {
 		return Vector{
 			X: foodTarget.X - circle.X,
@@ -415,7 +415,7 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int, tick int64)
 		}
 	}
 
-	if foodFound && distanceBetween(circle.X, circle.Y, foodTarget.X, foodTarget.Y) <= DefaultFoodPriorityDistance {
+	if foodFound && foodDistance <= DefaultFoodPriorityDistance {
 		return Vector{
 			X: foodTarget.X - circle.X,
 			Y: foodTarget.Y - circle.Y,
@@ -440,13 +440,13 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int, tick int64)
 	return w.autonomousDirections[index]
 }
 
-func nearestFoodTarget(circle AutonomousCircle, foods []Food) (Food, bool) {
+func nearestFoodTarget(circle AutonomousCircle, foods []Food, tick int64) (Food, float64, bool) {
 	var selected Food
 	bestDistance := 0.0
 	found := false
 
 	for _, food := range foods {
-		distance := math.Hypot(food.X-circle.X, food.Y-circle.Y)
+		distance := effectiveFoodDistance(circle, food, tick)
 		if !found || distance < bestDistance || (distance == bestDistance && food.ID < selected.ID) {
 			selected = food
 			bestDistance = distance
@@ -454,7 +454,19 @@ func nearestFoodTarget(circle AutonomousCircle, foods []Food) (Food, bool) {
 		}
 	}
 
-	return selected, found
+	return selected, bestDistance, found
+}
+
+func effectiveFoodDistance(circle AutonomousCircle, food Food, tick int64) float64 {
+	bestDistance := distanceBetween(circle.X, circle.Y, food.X, food.Y)
+	for _, child := range layoutAttachedChildren(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick) {
+		distance := distanceBetween(child.X, child.Y, food.X, food.Y)
+		if distance < bestDistance {
+			bestDistance = distance
+		}
+	}
+
+	return bestDistance
 }
 
 func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle, tick int64) (Vector, string, bool) {
