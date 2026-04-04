@@ -109,6 +109,65 @@ This is not a cosmetic tweak. It changes:
 
 The next implementation-facing slice should explicitly choose:
 
+- whether positive interaction targeting should measure nearness from parent cores only or from current parent-or-child geometry
+- how deterministic tie-breaking behaves when multiple eligible targets are equally near through different embodied points
+- whether current avoidance rules should stay unchanged while only positive targeting becomes more embodied
+
+## Risks If Ignored
+
+- attached children will remain more meaningful in authoritative contact than in pursuit steering
+- the simulation will keep mixing embodied collision geometry with more abstract target selection
+- later autonomy slices will keep carrying a gap between visible child placement and positive pursuit behavior
+
+---
+
+## Change
+
+Remove grown derived radius from parent movement boundary clamping.
+
+## Why This Matters
+
+Recent slices already made food collection, circle contact, and same-shape fight resolution less dependent on hidden radius growth. But world-edge movement still clamps parent cores using grown derived radius, which means circles with more children are still kept farther away from walls even though those same children no longer silently extend feeding or contact reach through parent-body size.
+
+The next model pressure is to make movement boundaries follow the same visible parent-body geometry already used in the more embodied feeding and contact slices.
+
+## Impacted Areas
+
+### Simulation model
+
+- parent movement clamping should use the visible parent body rather than grown derived radius
+- player and autonomous movement should continue sharing one deterministic boundary rule
+- attached-child orbit layout can remain unchanged in this slice
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because parent positions and radius are already visible
+- build may need no contract change if the new clamp is observable from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because boundary position is visible on the canvas
+- no visual-size change should be required in this slice
+
+### Existing semantics
+
+- food, contact, fight, reproduction, continuity, and steering should remain unchanged
+- derived radius may remain for rendering and other transitional semantics outside boundary clamping
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether boundary clamping should use the fixed visible parent-body size already implied by embodied food and contact
+- whether attached children stay free to visually extend beyond the parent-body clamp for now
+- how tests should prove that child-derived radius no longer changes wall proximity
+
+## Risks If Ignored
+
+- movement will keep using a hidden growth shortcut after feeding, contact, and fight have already moved away from it
+- circles with more children will still feel larger in world navigation even when other embodied slices say parent-body geometry should dominate
+- later efforts to remove or narrow radius semantics will have to keep working around inconsistent wall behavior
+
 - whether visible orbiting children are a one-to-one embodiment of `children_count`
 - how post-reproduction child ownership is assigned while remaining deterministic
 - whether current radius growth stays temporarily active alongside orbiting children
