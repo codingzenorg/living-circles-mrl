@@ -3,29 +3,29 @@ package simulation
 import "math"
 
 const (
-	DefaultWorldWidth            = 800.0
-	DefaultWorldHeight           = 600.0
-	DefaultPlayerRadius          = 12.0
-	DefaultChildRadiusGain       = 4.0
-	DefaultAttachedChildRadius   = 4.0
-	DefaultAttachedChildOrbitGap = 8.0
-	DefaultChildOrbitSpeed       = 0.12
-	DefaultAutonomousID          = "circle-2"
-	DefaultSecondaryID           = "circle-3"
-	DefaultPlayerEnergy          = 100.0
-	DefaultReplacementEnergy     = 100.0
-	DefaultMaxEnergy             = 100.0
-	DefaultMoveSpeed             = 8.0
-	DefaultMoveCost              = 1.0
-	DefaultFoodRadius            = 6.0
-	DefaultFoodEnergy            = 10.0
-	DefaultFoodRegenDelay        = int64(12)
-	DefaultFoodPriorityDistance  = 140.0
+	DefaultWorldWidth             = 800.0
+	DefaultWorldHeight            = 600.0
+	DefaultPlayerRadius           = 12.0
+	DefaultChildRadiusGain        = 4.0
+	DefaultAttachedChildRadius    = 4.0
+	DefaultAttachedChildOrbitGap  = 8.0
+	DefaultChildOrbitSpeed        = 0.12
+	DefaultAutonomousID           = "circle-2"
+	DefaultSecondaryID            = "circle-3"
+	DefaultPlayerEnergy           = 100.0
+	DefaultReplacementEnergy      = 100.0
+	DefaultMaxEnergy              = 100.0
+	DefaultMoveSpeed              = 8.0
+	DefaultMoveCost               = 1.0
+	DefaultFoodRadius             = 6.0
+	DefaultFoodEnergy             = 10.0
+	DefaultFoodRegenDelay         = int64(12)
+	DefaultFoodPriorityDistance   = 140.0
 	DefaultLowEnergyFoodThreshold = 40.0
-	DefaultReproductionMinEnergy = 15.0
-	DefaultReproductionCost      = 10.0
-	DefaultPlayerShape           = "triangle"
-	DefaultAutoShape             = "square"
+	DefaultReproductionMinEnergy  = 15.0
+	DefaultReproductionCost       = 10.0
+	DefaultPlayerShape            = "triangle"
+	DefaultAutoShape              = "square"
 )
 
 type Bounds struct {
@@ -74,14 +74,14 @@ type AutonomousCircle struct {
 }
 
 type InteractionClassification struct {
-	Active   bool   `json:"active"`
-	Resolved bool   `json:"resolved"`
-	Kind     string `json:"kind"`
+	Active        bool   `json:"active"`
+	Resolved      bool   `json:"resolved"`
+	Kind          string `json:"kind"`
 	ContactOrigin string `json:"contact_origin,omitempty"`
-	SourceID string `json:"source_id"`
-	TargetID string `json:"target_id"`
-	WinnerID string `json:"winner_id"`
-	LoserID  string `json:"loser_id"`
+	SourceID      string `json:"source_id"`
+	TargetID      string `json:"target_id"`
+	WinnerID      string `json:"winner_id"`
+	LoserID       string `json:"loser_id"`
 }
 
 type Food struct {
@@ -431,16 +431,18 @@ func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, can
 	selectedID := ""
 	bestDistance := 0.0
 	found := false
-	preferredFound := false
+	selectedPriority := 0
 
 	if player != nil && player.Energy > 0 {
-		playerPreferred := circle.Shape != player.Shape && reproductionFeasibleWithPlayer(circle, *player)
-		distance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
-		selected = Vector{X: player.X, Y: player.Y}
-		selectedID = player.ID
-		bestDistance = distance
-		found = true
-		preferredFound = playerPreferred
+		playerPriority := interactionTargetPriorityAgainstPlayer(circle, *player)
+		if playerPriority > 0 {
+			distance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
+			selected = Vector{X: player.X, Y: player.Y}
+			selectedID = player.ID
+			bestDistance = distance
+			found = true
+			selectedPriority = playerPriority
+		}
 	}
 
 	for _, candidate := range candidates {
@@ -448,20 +450,54 @@ func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, can
 			continue
 		}
 
+		candidatePriority := interactionTargetPriorityAgainstAutonomous(circle, candidate)
+		if candidatePriority == 0 {
+			continue
+		}
+
 		distance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
-		candidatePreferred := circle.Shape != candidate.Shape && reproductionFeasibleWithAutonomous(circle, candidate)
 		if !found ||
-			(candidatePreferred && !preferredFound) ||
-			(candidatePreferred == preferredFound && (distance < bestDistance || (distance == bestDistance && candidate.ID < selectedID))) {
+			candidatePriority > selectedPriority ||
+			(candidatePriority == selectedPriority && (distance < bestDistance || (distance == bestDistance && candidate.ID < selectedID))) {
 			selected = Vector{X: candidate.X, Y: candidate.Y}
 			selectedID = candidate.ID
 			bestDistance = distance
 			found = true
-			preferredFound = candidatePreferred
+			selectedPriority = candidatePriority
 		}
 	}
 
 	return selected, selectedID, found
+}
+
+func interactionTargetPriorityAgainstPlayer(circle AutonomousCircle, player PlayerCircle) int {
+	if circle.Shape != player.Shape {
+		if reproductionFeasibleWithPlayer(circle, player) {
+			return 2
+		}
+		return 0
+	}
+
+	if fightFeasibleWithPlayer(circle, player) {
+		return 1
+	}
+
+	return 0
+}
+
+func interactionTargetPriorityAgainstAutonomous(circle AutonomousCircle, candidate AutonomousCircle) int {
+	if circle.Shape != candidate.Shape {
+		if reproductionFeasibleWithAutonomous(circle, candidate) {
+			return 2
+		}
+		return 0
+	}
+
+	if fightFeasibleWithAutonomous(circle, candidate) {
+		return 1
+	}
+
+	return 0
 }
 
 func reproductionFeasibleWithPlayer(circle AutonomousCircle, player PlayerCircle) bool {
@@ -472,6 +508,16 @@ func reproductionFeasibleWithPlayer(circle AutonomousCircle, player PlayerCircle
 func reproductionFeasibleWithAutonomous(left AutonomousCircle, right AutonomousCircle) bool {
 	return reproductionCapacity(left.Energy, left.ChildrenCount) >= DefaultReproductionMinEnergy &&
 		reproductionCapacity(right.Energy, right.ChildrenCount) >= DefaultReproductionMinEnergy
+}
+
+func fightFeasibleWithPlayer(circle AutonomousCircle, player PlayerCircle) bool {
+	winnerID, _ := determineFightOutcome(player, circle)
+	return winnerID == circle.ID
+}
+
+func fightFeasibleWithAutonomous(left AutonomousCircle, right AutonomousCircle) bool {
+	winnerID, _ := determineAutonomousFightOutcome(left, right)
+	return winnerID == left.ID
 }
 
 func distanceBetween(ax, ay, bx, by float64) float64 {

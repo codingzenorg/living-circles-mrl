@@ -797,19 +797,19 @@ func TestInteractionSeekingFallsBackWhenNoDifferentShapeTargetExists(t *testing.
 
 func TestInteractionSeekingSkipsInfeasibleDifferentShapeTarget(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
-		PlayerShape:               "triangle",
+		PlayerShape:               "square",
 		PlayerX:                   220,
 		PlayerY:                   500,
-		PlayerEnergy:              100,
+		PlayerEnergy:              14,
 		PlayerChildrenCount:       0,
 		AutonomousShape:           "triangle",
-		SecondaryAutonomousShape:  "square",
+		SecondaryAutonomousShape:  "triangle",
 		AutonomousX:               100,
 		AutonomousY:               500,
-		SecondaryAutonomousX:      260,
+		SecondaryAutonomousX:      124,
 		SecondaryAutonomousY:      500,
 		AutonomousEnergy:          100,
-		SecondaryAutonomousEnergy: 14,
+		SecondaryAutonomousEnergy: 80,
 		AutonomousChildrenCount:   0,
 		SecondaryChildrenCount:    0,
 	})
@@ -828,8 +828,67 @@ func TestInteractionSeekingSkipsInfeasibleDifferentShapeTarget(t *testing.T) {
 	if snapshot.Interaction.Kind != "fight_resolved" {
 		t.Fatalf("expected infeasible different-shape target to be skipped in favor of same-shape fight, got %q", snapshot.Interaction.Kind)
 	}
+	if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+		t.Fatalf("expected fallback to nearest feasible target %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+}
+
+func TestInteractionSeekingSkipsLosingSameShapeTarget(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		PlayerX:                  220,
+		PlayerY:                  500,
+		PlayerEnergy:             100,
+		PlayerChildrenCount:      2,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         40,
+		AutonomousChildrenCount:  0,
+	})
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction while losing same-shape and blocked reproduction targets are skipped, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].Y >= 500 {
+		t.Fatalf("expected losing autonomous circle to fall back toward food, got y=%v", snapshot.AutonomousCircles[0].Y)
+	}
+}
+
+func TestInteractionSeekingPrefersWinningSameShapeFallback(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		PlayerX:                  220,
+		PlayerY:                  500,
+		PlayerEnergy:             60,
+		PlayerChildrenCount:      0,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         100,
+		AutonomousChildrenCount:  1,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected winning same-shape fallback interaction")
+	}
+	if snapshot.Interaction.Kind != "fight_resolved" && snapshot.Interaction.Kind != "fight_absorbed_child" {
+		t.Fatalf("expected winning same-shape fallback to produce fight outcome, got %q", snapshot.Interaction.Kind)
+	}
 	if snapshot.Interaction.SourceID != "player-1" || snapshot.Interaction.TargetID != simulation.DefaultAutonomousID {
-		t.Fatalf("expected fallback to nearest feasible target %q -> %q, got %q -> %q", "player-1", simulation.DefaultAutonomousID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+		t.Fatalf("expected winning fallback against %q, got %q -> %q", simulation.DefaultAutonomousID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
 	}
 }
 

@@ -604,19 +604,19 @@ func TestClientReceivesShapeAwareAutonomousTargetChoice(t *testing.T) {
 
 func TestClientReceivesFeasibilityAwareAutonomousFallback(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
-		PlayerShape:               "triangle",
+		PlayerShape:               "square",
 		PlayerX:                   220,
 		PlayerY:                   500,
-		PlayerEnergy:              100,
+		PlayerEnergy:              14,
 		PlayerChildrenCount:       0,
 		AutonomousShape:           "triangle",
-		SecondaryAutonomousShape:  "square",
+		SecondaryAutonomousShape:  "triangle",
 		AutonomousX:               100,
 		AutonomousY:               500,
-		SecondaryAutonomousX:      260,
+		SecondaryAutonomousX:      124,
 		SecondaryAutonomousY:      500,
 		AutonomousEnergy:          100,
-		SecondaryAutonomousEnergy: 14,
+		SecondaryAutonomousEnergy: 80,
 		AutonomousChildrenCount:   0,
 		SecondaryChildrenCount:    0,
 	}))
@@ -651,13 +651,70 @@ func TestClientReceivesFeasibilityAwareAutonomousFallback(t *testing.T) {
 		if snapshot.Interaction.Kind != "fight_resolved" {
 			t.Fatalf("expected infeasible reproduction target to be skipped in favor of fight_resolved, got %q", snapshot.Interaction.Kind)
 		}
-		if snapshot.Interaction.SourceID != "player-1" || snapshot.Interaction.TargetID != simulation.DefaultAutonomousID {
-			t.Fatalf("expected fallback to feasible target %q -> %q, got %q -> %q", "player-1", simulation.DefaultAutonomousID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+		if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+			t.Fatalf("expected fallback to feasible target %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
 		}
 		return
 	}
 
 	t.Fatal("expected feasibility-aware autonomous fallback snapshot")
+}
+
+func TestClientReceivesFightAwareAutonomousFoodFallback(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		PlayerX:                  220,
+		PlayerY:                  500,
+		PlayerEnergy:             100,
+		PlayerChildrenCount:      2,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         40,
+		AutonomousChildrenCount:  0,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 6 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+		if snapshot.Interaction != nil {
+			t.Fatalf("expected no immediate interaction while losing same-shape and blocked reproduction targets are skipped, got %+v", snapshot.Interaction)
+		}
+		if snapshot.AutonomousCircles[0].Y < initial.AutonomousCircles[0].Y {
+			return
+		}
+	}
+
+	t.Fatal("expected autonomous circle to fall back toward food after skipping losing same-shape target")
 }
 
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
