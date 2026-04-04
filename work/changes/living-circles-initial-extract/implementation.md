@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_remove_children_count_from_runtime_contract.md`
+`docs/slices/initial_attached_child_presence_only_fight_power.md`
 
 ## Implemented Shape
 
@@ -52,6 +52,7 @@
 - parent `radius` in snapshots and rendering now stays fixed at the visible parent-core body rather than growing from child count
 - attached children are now the single authoritative child state, with `children_count` derived for snapshots and readability
 - runtime snapshots now expose child state only through attached children, with client-side child quantity derived from `attached_children`
+- same-shape fights now treat child-based fight leverage as attached-child presence versus absence rather than raw child-count magnitude
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -209,6 +210,7 @@ The slice needed these implementation choices not fully specified in the refined
 - parent `radius` now stays fixed at the visible parent-core body even when child count changes
 - child-dependent rule evaluation now derives child quantity from attached children, while snapshots still expose `children_count`
 - runtime snapshots no longer expose `children_count`; contract consumers derive child quantity from attached children
+- same-shape fight ordering now uses child presence only after energy, not raw child-count magnitude
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID

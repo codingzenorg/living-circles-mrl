@@ -1046,10 +1046,10 @@ func determineAutonomousFightOutcome(left AutonomousCircle, right AutonomousCirc
 	if right.Energy > left.Energy {
 		return right.ID, left.ID
 	}
-	if childCountForAutonomous(left) > childCountForAutonomous(right) {
+	if hasAttachedChildrenAutonomous(left) && !hasAttachedChildrenAutonomous(right) {
 		return left.ID, right.ID
 	}
-	if childCountForAutonomous(right) > childCountForAutonomous(left) {
+	if hasAttachedChildrenAutonomous(right) && !hasAttachedChildrenAutonomous(left) {
 		return right.ID, left.ID
 	}
 	if left.ID < right.ID {
@@ -1149,10 +1149,10 @@ func determineFightOutcome(player PlayerCircle, opponent AutonomousCircle) (stri
 	if opponent.Energy > player.Energy {
 		return opponent.ID, player.ID
 	}
-	if childCountForPlayer(player) > childCountForAutonomous(opponent) {
+	if hasAttachedChildrenPlayer(player) && !hasAttachedChildrenAutonomous(opponent) {
 		return player.ID, opponent.ID
 	}
-	if childCountForAutonomous(opponent) > childCountForPlayer(player) {
+	if hasAttachedChildrenAutonomous(opponent) && !hasAttachedChildrenPlayer(player) {
 		return opponent.ID, player.ID
 	}
 
@@ -1489,6 +1489,14 @@ func childCountForPlayer(circle PlayerCircle) int {
 
 func childCountForAutonomous(circle AutonomousCircle) int {
 	return len(circle.AttachedChildren)
+}
+
+func hasAttachedChildrenPlayer(circle PlayerCircle) bool {
+	return childCountForPlayer(circle) > 0
+}
+
+func hasAttachedChildrenAutonomous(circle AutonomousCircle) bool {
+	return childCountForAutonomous(circle) > 0
 }
 
 func syncPlayerChildrenState(circle *PlayerCircle) {

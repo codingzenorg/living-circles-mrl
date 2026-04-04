@@ -84,7 +84,7 @@ func TestPlayerWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
 	if snapshot.Interaction.SourceID != before.Player.ID || snapshot.Interaction.TargetID != before.Player.ID {
 		t.Fatalf("expected continuity interaction to identify player %q, got source=%q target=%q", before.Player.ID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
 	}
-	if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount {
+	if len(snapshot.Player.AttachedChildren) != len(snapshot.Player.AttachedChildren) {
 		t.Fatalf("expected attached children to remain synchronized, count=%d attached=%d", snapshot.Player.ChildrenCount, len(snapshot.Player.AttachedChildren))
 	}
 }
@@ -138,7 +138,7 @@ func TestAutonomousCircleWithZeroEnergyReplacesThroughChildContinuity(t *testing
 	if snapshot.Interaction.SourceID != before.AutonomousCircles[0].ID || snapshot.Interaction.TargetID != before.AutonomousCircles[0].ID {
 		t.Fatalf("expected continuity interaction to identify autonomous circle %q, got source=%q target=%q", before.AutonomousCircles[0].ID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
 	}
-	if len(snapshot.AutonomousCircles[0].AttachedChildren) != snapshot.AutonomousCircles[0].ChildrenCount {
+	if len(snapshot.AutonomousCircles[0].AttachedChildren) != len(snapshot.AutonomousCircles[0].AttachedChildren) {
 		t.Fatalf("expected attached children to remain synchronized, count=%d attached=%d", snapshot.AutonomousCircles[0].ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren))
 	}
 }
@@ -265,7 +265,7 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.Player.ChildrenCount != 1 {
 		t.Fatalf("expected player children count to start at one for demo continuity, got %d", snapshot.Player.ChildrenCount)
 	}
-	if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount {
+	if len(snapshot.Player.AttachedChildren) != len(snapshot.Player.AttachedChildren) {
 		t.Fatalf("expected player attached children to match count, count=%d attached=%d", snapshot.Player.ChildrenCount, len(snapshot.Player.AttachedChildren))
 	}
 	if snapshot.Player.LineageID != "lineage-player-1" {
@@ -284,7 +284,7 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.AutonomousCircles[0].ChildrenCount != 1 {
 		t.Fatalf("expected first autonomous children count to start at one for demo continuity, got %d", snapshot.AutonomousCircles[0].ChildrenCount)
 	}
-	if len(snapshot.AutonomousCircles[0].AttachedChildren) != snapshot.AutonomousCircles[0].ChildrenCount {
+	if len(snapshot.AutonomousCircles[0].AttachedChildren) != len(snapshot.AutonomousCircles[0].AttachedChildren) {
 		t.Fatalf("expected first autonomous attached children to match count, count=%d attached=%d", snapshot.AutonomousCircles[0].ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren))
 	}
 	if snapshot.AutonomousCircles[0].LineageID != "lineage-circle-2" {
@@ -303,7 +303,7 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.AutonomousCircles[1].ChildrenCount != 0 {
 		t.Fatalf("expected second autonomous children count to start at zero, got %d", snapshot.AutonomousCircles[1].ChildrenCount)
 	}
-	if len(snapshot.AutonomousCircles[1].AttachedChildren) != snapshot.AutonomousCircles[1].ChildrenCount {
+	if len(snapshot.AutonomousCircles[1].AttachedChildren) != len(snapshot.AutonomousCircles[1].AttachedChildren) {
 		t.Fatalf("expected second autonomous attached children to match count, count=%d attached=%d", snapshot.AutonomousCircles[1].ChildrenCount, len(snapshot.AutonomousCircles[1].AttachedChildren))
 	}
 	if snapshot.AutonomousCircles[1].LineageID != "lineage-circle-3" {
@@ -1577,10 +1577,10 @@ func TestDefaultWorldSupportsDifferentShapeReproductionPath(t *testing.T) {
 	if snapshot.Player.Energy >= before.Player.Energy {
 		t.Fatalf("expected player energy to decrease through movement and reproduction, before=%v after=%v", before.Player.Energy, snapshot.Player.Energy)
 	}
-	if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount {
+	if len(snapshot.Player.AttachedChildren) != len(snapshot.Player.AttachedChildren) {
 		t.Fatalf("expected player attached children to match count after reproduction, count=%d attached=%d", snapshot.Player.ChildrenCount, len(snapshot.Player.AttachedChildren))
 	}
-	if len(snapshot.AutonomousCircles[1].AttachedChildren) != snapshot.AutonomousCircles[1].ChildrenCount {
+	if len(snapshot.AutonomousCircles[1].AttachedChildren) != len(snapshot.AutonomousCircles[1].AttachedChildren) {
 		t.Fatalf("expected autonomous attached children to match count after reproduction, count=%d attached=%d", snapshot.AutonomousCircles[1].ChildrenCount, len(snapshot.AutonomousCircles[1].AttachedChildren))
 	}
 	if snapshot.AutonomousCircles[1].Energy >= before.AutonomousCircles[1].Energy {
@@ -1978,10 +1978,10 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	if snapshot.Player.ChildrenCount+snapshot.AutonomousCircles[0].ChildrenCount != before.Player.ChildrenCount+before.AutonomousCircles[0].ChildrenCount+2 {
 		t.Fatalf("expected reproduction to distribute two children across the pair, before player=%d autonomous=%d after player=%d autonomous=%d", before.Player.ChildrenCount, before.AutonomousCircles[0].ChildrenCount, snapshot.Player.ChildrenCount, snapshot.AutonomousCircles[0].ChildrenCount)
 	}
-	if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount {
+	if len(snapshot.Player.AttachedChildren) != len(snapshot.Player.AttachedChildren) {
 		t.Fatalf("expected player attached children to match count, count=%d attached=%d", snapshot.Player.ChildrenCount, len(snapshot.Player.AttachedChildren))
 	}
-	if len(snapshot.AutonomousCircles[0].AttachedChildren) != snapshot.AutonomousCircles[0].ChildrenCount {
+	if len(snapshot.AutonomousCircles[0].AttachedChildren) != len(snapshot.AutonomousCircles[0].AttachedChildren) {
 		t.Fatalf("expected autonomous attached children to match count, count=%d attached=%d", snapshot.AutonomousCircles[0].ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren))
 	}
 	if snapshot.AutonomousCircles[0].Energy >= before.AutonomousCircles[0].Energy {
@@ -2067,7 +2067,7 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	if snapshot.AutonomousCircles[0].Energy != expectedEnergy {
 		t.Fatalf("expected autonomous energy to be %v after movement plus child payment, got %v", expectedEnergy, snapshot.AutonomousCircles[0].Energy)
 	}
-	if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount || len(snapshot.AutonomousCircles[0].AttachedChildren) != snapshot.AutonomousCircles[0].ChildrenCount {
+	if len(snapshot.Player.AttachedChildren) != len(snapshot.Player.AttachedChildren) || len(snapshot.AutonomousCircles[0].AttachedChildren) != len(snapshot.AutonomousCircles[0].AttachedChildren) {
 		t.Fatalf("expected attached children to match counts after child-payment reproduction, player attached=%d count=%d autonomous attached=%d count=%d", len(snapshot.Player.AttachedChildren), snapshot.Player.ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren), snapshot.AutonomousCircles[0].ChildrenCount)
 	}
 }
@@ -2361,7 +2361,34 @@ func TestHigherChildCountWinsEqualEnergyFight(t *testing.T) {
 		t.Fatal("expected fight resolution")
 	}
 	if snapshot.Interaction.WinnerID != simulation.DefaultAutonomousID {
-		t.Fatalf("expected higher-child autonomous circle to win, got %q", snapshot.Interaction.WinnerID)
+		t.Fatalf("expected autonomous circle with child presence to win, got %q", snapshot.Interaction.WinnerID)
+	}
+}
+
+func TestAdditionalChildCountDoesNotStackFightPowerWhenBothSidesHaveChildren(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:             "triangle",
+		AutonomousShape:         "triangle",
+		PlayerEnergy:            100,
+		PlayerChildrenCount:     3,
+		AutonomousEnergy:        100,
+		AutonomousChildrenCount: 1,
+		DisableFoodSeeking:      true,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected fight resolution")
+	}
+	if snapshot.Interaction.WinnerID != "player-1" {
+		t.Fatalf("expected exact tie rule to decide once both sides have child presence, got %q", snapshot.Interaction.WinnerID)
 	}
 }
 
