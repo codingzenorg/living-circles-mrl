@@ -168,6 +168,55 @@ The next implementation-facing slice should explicitly choose:
 - circles with more children will still feel larger in world navigation even when other embodied slices say parent-body geometry should dominate
 - later efforts to remove or narrow radius semantics will have to keep working around inconsistent wall behavior
 
+---
+
+## Change
+
+Remove grown derived radius from attached-child orbit distance.
+
+## Why This Matters
+
+The visible child model is now central to feeding, contact, avoidance, continuity, and demo readability. But attached-child layout still uses grown parent radius to decide how far children sit from the parent core. That means one hidden growth abstraction still shapes visible child geometry even after other embodied slices removed derived radius from feeding, contact, fights, and movement boundaries.
+
+The next model pressure is to make orbiting children visually grounded in the visible parent body rather than in a broader transitional growth radius.
+
+## Impacted Areas
+
+### Simulation model
+
+- attached-child layout should use the visible parent body rather than grown derived radius
+- player and autonomous parents should continue sharing one deterministic orbit-distance rule
+- current child ownership, slot assignment, and orbit motion should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because parent radius and attached-child positions are already visible
+- build may need no contract change if the tighter orbit distance is observable from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because attached-child positions are directly visible
+- no visual-style change should be required in this slice
+
+### Existing semantics
+
+- food, contact, fight, reproduction, continuity, movement, and steering should remain unchanged
+- derived radius may remain for parent rendering and other transitional semantics outside child orbit distance
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether orbit distance should use the same fixed visible parent-body size already implied by embodied food, contact, and movement
+- whether the current orbit gap remains unchanged once derived radius is removed from layout
+- how tests should prove that child-derived parent radius no longer changes orbit distance
+
+## Risks If Ignored
+
+- visible child geometry will keep depending on a hidden growth shortcut even after most other embodied slices have removed it
+- children will remain partly more symbolic than physical in the simulation display
+- later efforts to narrow or remove transitional radius semantics will still have to work around orbit layout depending on them
+
 - whether visible orbiting children are a one-to-one embodiment of `children_count`
 - how post-reproduction child ownership is assigned while remaining deterministic
 - whether current radius growth stays temporarily active alongside orbiting children
