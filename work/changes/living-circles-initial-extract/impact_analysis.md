@@ -123,6 +123,56 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Allow autonomous circles to include the player in deterministic interaction-seeking target selection.
+
+## Why This Matters
+
+The current implementation now lets autonomous circles actively create encounters with other autonomous circles, which strengthens emergence. But the player is still excluded from that steering layer, leaving one more structural asymmetry in a model that says the player should be one participant inside the same ecosystem.
+
+The next model pressure is to let the world engage the player under the same bounded steering logic instead of requiring the player to initiate most contact.
+
+## Impacted Areas
+
+### Simulation model
+
+- autonomous target selection should consider the player as an eligible target when active
+- deterministic ordering becomes more important when the player and autonomous circles compete as potential targets
+- current movement, energy, and downstream interaction rules should remain unchanged after target choice
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because movement and interaction outcomes are already visible
+- build may need steering provenance only if player-targeting is hard to infer from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because the player, autonomous circles, and interaction HUD are visible
+- minor HUD adjustments may still be useful if player-targeting becomes ambiguous in the demo
+
+### Existing semantics
+
+- the current food-priority rule should remain coherent
+- player-autonomous fight and reproduction semantics should remain unchanged
+- the model should still avoid slipping into explicit hostility or role systems
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- when the player becomes eligible relative to other autonomous targets
+- how deterministic tie-breaking works when the player and another circle are equally valid
+- whether the player is always eligible while active or only under a bounded condition
+
+## Risks If Ignored
+
+- the ecosystem will remain only partially shared from the player’s perspective
+- the player will stay too exempt from non-player initiative
+- later emergence-oriented slices will keep carrying this remaining asymmetry
+
+---
+
+## Change
+
 Allow autonomous circles to steer toward interaction opportunities instead of relying almost entirely on food-seeking and drift.
 
 ## Why This Matters
