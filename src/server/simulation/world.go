@@ -1298,7 +1298,8 @@ func layoutAttachedChildren(ownerID string, x, y, parentRadius float64, children
 	}
 
 	positioned := make([]AttachedChild, 0, len(children))
-	orbitRadius := parentRadius + DefaultAttachedChildOrbitGap + DefaultAttachedChildRadius
+	_ = parentRadius
+	orbitRadius := DefaultPlayerRadius + DefaultAttachedChildOrbitGap + DefaultAttachedChildRadius
 	for index, child := range children {
 		angle := childOrbitAngle(ownerID, child.ID, tick, index, len(children))
 		positioned = append(positioned, AttachedChild{

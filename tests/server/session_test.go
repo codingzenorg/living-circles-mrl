@@ -475,31 +475,27 @@ func TestFoodRecoveryRespectsEnergyCap(t *testing.T) {
 	}
 }
 
-func TestChildGrowthAloneDoesNotImproveFoodCollectionReach(t *testing.T) {
-	baseSession := simulation.NewSession()
-	baseSession.ApplyIntent(simulation.Vector{X: 1, Y: 0})
-	baseAfter := baseSession.Advance()
-
-	grownSession := simulation.NewSessionWithConfig(simulation.Config{
-		PlayerShape:             "triangle",
-		AutonomousShape:         "square",
-		PlayerEnergy:            100,
-		AutonomousEnergy:        100,
-		PlayerChildrenCount:     2,
-		AutonomousChildrenCount: 0,
+func TestDerivedParentRadiusAloneDoesNotCollectFoodWithoutVisibleOverlap(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		AutonomousShape:          "square",
+		SecondaryAutonomousShape: "",
+		PlayerX:                  380,
+		PlayerEnergy:             simulation.DefaultPlayerEnergy,
+		PlayerChildrenCount:      2,
+		AutonomousEnergy:         0,
 	})
-	grownSession.ApplyIntent(simulation.Vector{X: 1, Y: 0})
-	after := grownSession.Advance()
 
-	if len(baseAfter.Foods) != 3 {
-		t.Fatalf("expected base-radius player to miss food on first move, got %d foods", len(baseAfter.Foods))
-	}
-	if len(after.Foods) != 3 {
-		t.Fatalf("expected enlarged derived radius alone to miss food on first move, got %d foods", len(after.Foods))
+	before := session.Snapshot()
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	snapshot := session.Advance()
+
+	if len(snapshot.Foods) != len(before.Foods) {
+		t.Fatalf("expected no food consumption without visible overlap, before=%d after=%d", len(before.Foods), len(snapshot.Foods))
 	}
 	expectedEnergy := simulation.DefaultPlayerEnergy - simulation.DefaultMoveCost
-	if after.Player.Energy != expectedEnergy {
-		t.Fatalf("expected no immediate food recovery from derived radius alone, got %v", after.Player.Energy)
+	if snapshot.Player.Energy != expectedEnergy {
+		t.Fatalf("expected no immediate food recovery from derived radius alone, got %v", snapshot.Player.Energy)
 	}
 }
 
@@ -507,7 +503,7 @@ func TestAttachedChildCanCollectFoodForPlayer(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:              "triangle",
 		AutonomousShape:          "square",
-		PlayerX:                  389,
+		PlayerX:                  403,
 		PlayerEnergy:             80,
 		PlayerChildrenCount:      2,
 		AutonomousEnergy:         0,
@@ -1766,7 +1762,7 @@ func TestAttachedChildrenCanTriggerFightThroughChildToChildContact(t *testing.T)
 		SecondaryAutonomousShape:  "",
 		PlayerX:                   200,
 		PlayerY:                   300,
-		AutonomousX:               254.511,
+		AutonomousX:               238.511,
 		AutonomousY:               294.944,
 		PlayerEnergy:              100,
 		PlayerChildrenCount:       2,
@@ -1802,7 +1798,7 @@ func TestAttachedChildrenCanTriggerReproductionThroughChildToChildContact(t *tes
 		SecondaryAutonomousShape:  "",
 		PlayerX:                   200,
 		PlayerY:                   300,
-		AutonomousX:               254.511,
+		AutonomousX:               238.511,
 		AutonomousY:               294.944,
 		PlayerEnergy:              100,
 		PlayerChildrenCount:       2,
@@ -2036,7 +2032,7 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 		AutonomousShape:                     "square",
 		PlayerX:                             200,
 		PlayerY:                             300,
-		AutonomousX:                         232,
+		AutonomousX:                         228,
 		AutonomousY:                         300,
 		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
 		AutonomousEnergy:                    simulation.DefaultReproductionCost - 1,
@@ -2235,6 +2231,45 @@ func TestAttachedChildrenOrbitTheirParentAcrossTicks(t *testing.T) {
 	}
 	if laterChild.X == firstChild.X && laterChild.Y == firstChild.Y {
 		t.Fatalf("expected attached child orbit position to change across ticks, before=(%v,%v) after=(%v,%v)", firstChild.X, firstChild.Y, laterChild.X, laterChild.Y)
+	}
+}
+
+func TestDerivedParentRadiusDoesNotExpandAttachedChildOrbitDistance(t *testing.T) {
+	base := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		AutonomousShape:          "square",
+		SecondaryAutonomousShape: "",
+		PlayerEnergy:             simulation.DefaultPlayerEnergy,
+		PlayerChildrenCount:      1,
+		AutonomousEnergy:         0,
+	})
+	grown := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		AutonomousShape:          "square",
+		SecondaryAutonomousShape: "",
+		PlayerEnergy:             simulation.DefaultPlayerEnergy,
+		PlayerChildrenCount:      3,
+		AutonomousEnergy:         0,
+	})
+
+	baseSnapshot := base.Snapshot()
+	grownSnapshot := grown.Snapshot()
+
+	if len(baseSnapshot.Player.AttachedChildren) == 0 || len(grownSnapshot.Player.AttachedChildren) == 0 {
+		t.Fatal("expected attached children in both snapshots")
+	}
+
+	baseChild := baseSnapshot.Player.AttachedChildren[0]
+	grownChild := grownSnapshot.Player.AttachedChildren[0]
+	baseDistance := math.Hypot(baseChild.X-baseSnapshot.Player.X, baseChild.Y-baseSnapshot.Player.Y)
+	grownDistance := math.Hypot(grownChild.X-grownSnapshot.Player.X, grownChild.Y-grownSnapshot.Player.Y)
+	expectedDistance := simulation.DefaultPlayerRadius + simulation.DefaultAttachedChildOrbitGap + simulation.DefaultAttachedChildRadius
+
+	if math.Abs(baseDistance-expectedDistance) > 1e-9 {
+		t.Fatalf("expected base orbit distance %v, got %v", expectedDistance, baseDistance)
+	}
+	if math.Abs(grownDistance-expectedDistance) > 1e-9 {
+		t.Fatalf("expected grown orbit distance to stay at visible-body distance %v, got %v", expectedDistance, grownDistance)
 	}
 }
 
