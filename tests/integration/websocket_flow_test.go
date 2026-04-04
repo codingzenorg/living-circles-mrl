@@ -17,10 +17,11 @@ import (
 
 func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
-		PlayerShape:      "triangle",
-		AutonomousShape:  "triangle",
-		PlayerEnergy:     100,
-		AutonomousEnergy: 80,
+		PlayerShape:            "triangle",
+		AutonomousShape:        "triangle",
+		PlayerEnergy:           100,
+		AutonomousEnergy:       80,
+		DisableThreatAvoidance: true,
 	}))
 	httpServer := httptest.NewServer(server.Handler())
 	defer httpServer.Close()
@@ -104,6 +105,7 @@ func TestClientReceivesFightAbsorptionThroughChildLoss(t *testing.T) {
 		PlayerEnergy:            100,
 		AutonomousEnergy:        80,
 		AutonomousChildrenCount: 1,
+		DisableThreatAvoidance:  true,
 	}))
 	httpServer := httptest.NewServer(server.Handler())
 	defer httpServer.Close()
@@ -663,7 +665,7 @@ func TestClientReceivesFeasibilityAwareAutonomousFallback(t *testing.T) {
 func TestClientReceivesFightAwareAutonomousFoodFallback(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:              "triangle",
-		PlayerX:                  220,
+		PlayerX:                  180,
 		PlayerY:                  500,
 		PlayerEnergy:             100,
 		PlayerChildrenCount:      2,
@@ -707,14 +709,71 @@ func TestClientReceivesFightAwareAutonomousFoodFallback(t *testing.T) {
 			continue
 		}
 		if snapshot.Interaction != nil {
-			t.Fatalf("expected no immediate interaction while losing same-shape and blocked reproduction targets are skipped, got %+v", snapshot.Interaction)
+			t.Fatalf("expected no immediate interaction while nearby stronger same-shape threat triggers retreat, got %+v", snapshot.Interaction)
 		}
-		if snapshot.AutonomousCircles[0].Y < initial.AutonomousCircles[0].Y {
+		if snapshot.AutonomousCircles[0].X < initial.AutonomousCircles[0].X {
 			return
 		}
 	}
 
-	t.Fatal("expected autonomous circle to fall back toward food after skipping losing same-shape target")
+	t.Fatal("expected autonomous circle to retreat from nearby stronger same-shape threat")
+}
+
+func TestClientReceivesThreatAvoidanceAgainstPlayer(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		PlayerX:                  180,
+		PlayerY:                  500,
+		PlayerEnergy:             100,
+		PlayerChildrenCount:      2,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         40,
+		AutonomousChildrenCount:  0,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 6 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+		if snapshot.Interaction != nil {
+			t.Fatalf("expected no immediate interaction during threat avoidance, got %+v", snapshot.Interaction)
+		}
+		if snapshot.AutonomousCircles[0].X < initial.AutonomousCircles[0].X {
+			return
+		}
+	}
+
+	t.Fatal("expected autonomous circle to retreat from nearby stronger same-shape player threat")
 }
 
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {

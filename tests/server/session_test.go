@@ -774,6 +774,7 @@ func TestInteractionSeekingFallsBackWhenNoDifferentShapeTargetExists(t *testing.
 		SecondaryAutonomousEnergy: 80,
 		AutonomousChildrenCount:   0,
 		SecondaryChildrenCount:    0,
+		DisableThreatAvoidance:    true,
 	})
 
 	var snapshot simulation.Snapshot
@@ -836,7 +837,7 @@ func TestInteractionSeekingSkipsInfeasibleDifferentShapeTarget(t *testing.T) {
 func TestInteractionSeekingSkipsLosingSameShapeTarget(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:              "triangle",
-		PlayerX:                  220,
+		PlayerX:                  180,
 		PlayerY:                  500,
 		PlayerEnergy:             100,
 		PlayerChildrenCount:      2,
@@ -853,8 +854,8 @@ func TestInteractionSeekingSkipsLosingSameShapeTarget(t *testing.T) {
 	if snapshot.Interaction != nil {
 		t.Fatalf("expected no immediate interaction while losing same-shape and blocked reproduction targets are skipped, got %+v", snapshot.Interaction)
 	}
-	if snapshot.AutonomousCircles[0].Y >= 500 {
-		t.Fatalf("expected losing autonomous circle to fall back toward food, got y=%v", snapshot.AutonomousCircles[0].Y)
+	if snapshot.AutonomousCircles[0].X >= 100 {
+		t.Fatalf("expected losing autonomous circle to retreat from nearby stronger same-shape threat, got x=%v", snapshot.AutonomousCircles[0].X)
 	}
 }
 
@@ -892,8 +893,131 @@ func TestInteractionSeekingPrefersWinningSameShapeFallback(t *testing.T) {
 	}
 }
 
+func TestNearbyStrongerSameShapePlayerTriggersThreatAvoidance(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		PlayerX:                  180,
+		PlayerY:                  500,
+		PlayerEnergy:             100,
+		PlayerChildrenCount:      2,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         40,
+		AutonomousChildrenCount:  0,
+	})
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction during threat avoidance, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].X >= 100 {
+		t.Fatalf("expected autonomous circle to move away from stronger nearby player threat, got x=%v", snapshot.AutonomousCircles[0].X)
+	}
+}
+
+func TestNearbyStrongerSameShapeAutonomousTriggersThreatAvoidance(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "square",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "triangle",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      180,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          40,
+		SecondaryAutonomousEnergy: 100,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    2,
+	})
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction during autonomous threat avoidance, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].X >= 100 {
+		t.Fatalf("expected autonomous circle to move away from stronger nearby autonomous threat, got x=%v", snapshot.AutonomousCircles[0].X)
+	}
+}
+
+func TestDistantThreatDoesNotOverrideOrdinarySteering(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		PlayerX:                  260,
+		PlayerY:                  500,
+		PlayerEnergy:             100,
+		PlayerChildrenCount:      2,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         40,
+		AutonomousChildrenCount:  0,
+	})
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction while distant threat stays outside avoidance radius, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].Y >= 500 {
+		t.Fatalf("expected distant threat to leave ordinary food fallback in control, got y=%v", snapshot.AutonomousCircles[0].Y)
+	}
+}
+
+func TestWeakerSameShapeTargetDoesNotTriggerThreatAvoidance(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "triangle",
+		PlayerX:                  180,
+		PlayerY:                  500,
+		PlayerEnergy:             20,
+		PlayerChildrenCount:      0,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         100,
+		AutonomousChildrenCount:  1,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected ordinary same-shape pursuit when target is not threatening")
+	}
+	if snapshot.Interaction.Kind != "fight_resolved" && snapshot.Interaction.Kind != "fight_absorbed_child" {
+		t.Fatalf("expected ordinary fight outcome, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.TargetID != simulation.DefaultAutonomousID {
+		t.Fatalf("expected pursuit of non-threatening same-shape target %q, got %q", simulation.DefaultAutonomousID, snapshot.Interaction.TargetID)
+	}
+}
+
 func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
-	session := simulation.NewSession()
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               simulation.DefaultPlayerShape,
+		AutonomousShape:           simulation.DefaultPlayerShape,
+		SecondaryAutonomousShape:  simulation.DefaultAutoShape,
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		PlayerChildrenCount:       1,
+		AutonomousEnergy:          80,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+		AutonomousChildrenCount:   1,
+		DisableThreatAvoidance:    true,
+	})
 	before := session.Snapshot()
 
 	var snapshot simulation.Snapshot
@@ -997,7 +1121,13 @@ func TestDefaultWorldSupportsDifferentShapeReproductionPath(t *testing.T) {
 }
 
 func TestSameShapeOverlapProducesFightCandidate(t *testing.T) {
-	session := simulation.NewSessionWithShapes("triangle", "triangle")
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:            "triangle",
+		AutonomousShape:        "triangle",
+		PlayerEnergy:           100,
+		AutonomousEnergy:       100,
+		DisableThreatAvoidance: true,
+	})
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -1028,6 +1158,7 @@ func TestAutonomousLoserWithChildAbsorbsFightLossAndRemainsActive(t *testing.T) 
 		PlayerEnergy:            100,
 		AutonomousEnergy:        80,
 		AutonomousChildrenCount: 1,
+		DisableThreatAvoidance:  true,
 	})
 	before := session.Snapshot()
 
@@ -1587,10 +1718,11 @@ func TestNonOverlappingCirclesHaveNoInteractionClassification(t *testing.T) {
 
 func TestHigherEnergyCircleWinsFight(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
-		PlayerShape:      "triangle",
-		AutonomousShape:  "triangle",
-		PlayerEnergy:     100,
-		AutonomousEnergy: 80,
+		PlayerShape:            "triangle",
+		AutonomousShape:        "triangle",
+		PlayerEnergy:           100,
+		AutonomousEnergy:       80,
+		DisableThreatAvoidance: true,
 	})
 
 	var snapshot simulation.Snapshot
@@ -1617,6 +1749,7 @@ func TestLargerRadiusBreaksEqualEnergyFightTie(t *testing.T) {
 		AutonomousEnergy:        100,
 		PlayerChildrenCount:     1,
 		AutonomousChildrenCount: 0,
+		DisableThreatAvoidance:  true,
 	})
 
 	var snapshot simulation.Snapshot
@@ -1643,6 +1776,7 @@ func TestHigherChildCountWinsEqualEnergyFight(t *testing.T) {
 		AutonomousEnergy:        100,
 		PlayerChildrenCount:     0,
 		AutonomousChildrenCount: 1,
+		DisableThreatAvoidance:  true,
 	})
 
 	var snapshot simulation.Snapshot
