@@ -268,6 +268,57 @@ The next implementation-facing slice should explicitly choose:
 - pursuit will remain less embodied than contact and avoidance
 - visible orbiting children will keep mattering more for reactive behavior than for proactive behavior
 - later autonomy slices may accumulate more asymmetry between approach and retreat semantics
+
+---
+
+## Change
+
+Allow food-targeting autonomy to treat attached-child positions as part of effective food nearness.
+
+## Why This Matters
+
+The current implementation already lets attached children matter for actual food collection, for social contact, and for both negative and positive social steering. But food targeting still mostly depends on parent-core distance. That leaves the core energy loop uneven: the simulation already says a child can collect a food slot, while the targeting logic still behaves as if only the parent center can effectively reach it.
+
+The next model pressure is to align food approach with the same visible child geometry that already shapes food collection and social behavior.
+
+## Impacted Areas
+
+### Simulation model
+
+- food-target distance checks should consider the parent body and its attached children
+- current low-energy and nearby-food priority rules should stay unchanged
+- current movement, collection, regeneration, and social interaction rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because attached-child positions and food positions are already visible
+- build may need steering provenance only if child-aware food pursuit is too subtle to infer from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because attached-child positions, food positions, and energy changes are visible
+- minor HUD adjustments may still help if child-aware food choice is hard to observe
+
+### Existing semantics
+
+- low-energy food recovery should remain the first steering priority
+- current same-shape threat and blocked-reproduction avoidance should remain unchanged
+- current social target rules should remain unchanged
+- food collection, energy gain, and regeneration should remain the existing authoritative path
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether food nearness is measured from the parent center only or from the nearest current parent-or-child reach point
+- how deterministic tie-breaking behaves when multiple child-based food paths are equally near
+- whether steering should point toward the chosen food slot exactly as before or expose additional provenance
+
+## Risks If Ignored
+
+- the energy loop will remain less embodied than the social interaction loop
+- visible orbiting children will continue to matter for actual collection more than for food-seeking intent
+- later autonomy slices may accumulate avoidable asymmetry between feeding and social steering
 - later autonomy slices will keep carrying a gap between steering and the current fight model
 
 ---
