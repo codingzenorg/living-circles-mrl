@@ -217,7 +217,55 @@ The next implementation-facing slice should explicitly choose:
 - children will remain partly more symbolic than physical in the simulation display
 - later efforts to narrow or remove transitional radius semantics will still have to work around orbit layout depending on them
 
-- whether visible orbiting children are a one-to-one embodiment of `children_count`
+---
+
+## Change
+
+Remove child-derived growth from the visible parent body.
+
+## Why This Matters
+
+The current simulation now uses attached children as the main visible embodiment of accumulated children, and most embodied mechanics no longer depend on derived parent radius. But snapshots and rendering still enlarge the parent body itself with child count. That makes accumulated children visible twice: once as orbiting children and again as a larger parent core.
+
+The next model pressure is to make the visible parent body match the fixed core implied by the embodied feeding, contact, movement, and orbit slices, while leaving non-visual child leverage explicit for now.
+
+## Impacted Areas
+
+### Simulation model
+
+- parent `radius` should become a fixed visible-body value rather than a child-derived growth value
+- player and autonomous parent circles should continue sharing one deterministic visible-body rule
+- attached children should remain the visible embodiment of accumulated children
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because `radius`, `children_count`, and attached-child positions are already visible
+- build may need no contract change if the fixed visible body is observable from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because parent radius and attached children are already drawn
+- no visual-style change should be required beyond the fixed body size itself
+
+### Existing semantics
+
+- child-based fight power, reproduction payment, and continuity can remain unchanged in this slice
+- food, contact, movement, orbit distance, reproduction, and steering should remain unchanged
+- later slices may still choose to remove additional child-count shortcuts from non-visual semantics
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether parent `radius` should now simply equal the fixed visible parent-core size in all snapshots
+- whether existing child-based fight power, payment, and continuity stay unchanged while visible growth is removed
+- how tests should prove that attached children remain visible while parent-body growth disappears
+
+## Risks If Ignored
+
+- the simulation will keep showing accumulated children twice in the visible geometry
+- the embodied child model will remain partially contradicted by a larger parent core
+- later efforts to narrow or remove remaining child-count shortcuts will still have to work around a visually doubled growth model
 - how post-reproduction child ownership is assigned while remaining deterministic
 - whether current radius growth stays temporarily active alongside orbiting children
 
