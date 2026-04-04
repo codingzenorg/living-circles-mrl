@@ -467,6 +467,57 @@ The next implementation-facing slice should explicitly choose:
 - fights and reproduction will remain partly governed by hidden geometric reach
 - the visible orbiting-child model will still be weaker in encounter initiation than it appears
 - later removal of broader count-based shortcuts will remain harder to stage cleanly
+
+---
+
+## Change
+
+Remove derived radius as a same-shape fight tie-break once energy and child power are already considered.
+
+## Why This Matters
+
+The current implementation has now tightened feeding reach and contact reach to visible embodied geometry, and child count already exists as an explicit fight-power input. But same-shape fights still fall back to derived radius after energy and child count, which leaves one remaining hidden growth shortcut deciding combat even after child power became explicit.
+
+The next model pressure is to remove that radius-based combat shortcut before taking on broader questions about visual size or movement boundaries.
+
+## Impacted Areas
+
+### Simulation model
+
+- same-shape fight winner selection should no longer use derived radius after energy and child count
+- exact ties still need one deterministic final rule
+- contact initiation, child absorption, and continuity should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because energy, child count, winner, loser, and interaction kind are already visible
+- build should add provenance only if the removed radius tie-break is too subtle to infer
+
+### Browser rendering
+
+- current rendering may already be enough because radius can remain visible even if it no longer decides same-shape fights
+- minor HUD changes may still help if users confuse visual size with current combat tie-breaks
+
+### Existing semantics
+
+- energy should remain the primary fight input
+- child count should remain the next explicit fight-power input
+- reproduction, food, contact, and continuity should remain unchanged
+- radius may remain a visual and other-domain property for now even if it stops deciding same-shape ties
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- what deterministic rule replaces radius once energy and child count tie
+- whether player and autonomous exact-tie handling stay the same
+- whether the current snapshot contract is sufficient to explain the removed radius tie-break
+
+## Risks If Ignored
+
+- fight resolution will remain more abstract than the now-embodied feeding and contact loops
+- visible orbiting children will still be weaker in combat than the model suggests
+- later removal of remaining count-based shortcuts will stay harder to stage cleanly
 - later autonomy slices will keep carrying a gap between steering and the current fight model
 
 ---
