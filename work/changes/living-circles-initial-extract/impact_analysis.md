@@ -123,6 +123,56 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Allow autonomous steering priority to depend on energy condition so low-energy circles prefer food recovery over social interaction.
+
+## Why This Matters
+
+The current implementation lets autonomous circles seek other circles, including the player, which makes the ecosystem more active. But the steering rule still treats a nearly starving circle much like a healthy one whenever food is not inside the current priority distance. That leaves energy underused as a behavioral variable even though it is already the central survival variable in the model.
+
+The next model pressure is to make energy shape autonomous target choice before contact, not only after collisions and movement costs have already been applied.
+
+## Impacted Areas
+
+### Simulation model
+
+- autonomous steering should consider energy level when choosing between food and interaction targets
+- deterministic threshold selection becomes part of the steering contract
+- current movement, energy recovery, and downstream interaction rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because energy values, positions, and outcomes are already visible
+- build may need steering provenance only if the energy-driven choice is hard to infer from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because energy and motion are visible
+- minor HUD adjustments may still help if the change is too subtle in the demo
+
+### Existing semantics
+
+- the current food-priority distance rule should remain coherent with the new threshold
+- player-targetable and autonomous-targetable interaction seeking should still apply once a circle is sufficiently energized
+- the model should remain simple and avoid sliding into personality systems
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- one deterministic energy threshold for preferring food over interaction
+- whether the threshold applies before or after the current food-priority-distance check
+- how equal-distance and equal-condition tie-breaking remains deterministic
+
+## Risks If Ignored
+
+- energy will remain too weak as a pre-contact behavioral variable
+- autonomous steering will feel more arbitrary than survival-driven
+- later ecosystem slices will have a weaker behavioral basis for collapse and recovery dynamics
+
+---
+
+## Change
+
 Allow autonomous circles to include the player in deterministic interaction-seeking target selection.
 
 ## Why This Matters
