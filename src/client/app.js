@@ -43,14 +43,14 @@ function draw(snapshot) {
 
   context.clearRect(0, 0, canvas.width, canvas.height);
 
-  context.fillStyle = "rgba(23, 49, 58, 0.06)";
+  context.fillStyle = "rgba(6, 22, 30, 0.9)";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  context.strokeStyle = "rgba(23, 49, 58, 0.15)";
+  context.strokeStyle = "rgba(127, 174, 188, 0.28)";
   context.lineWidth = 2;
   context.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
 
-  context.fillStyle = "#d85f3d";
+  context.fillStyle = "#ff8a5b";
   for (const food of snapshot.foods) {
     context.beginPath();
     context.arc(food.x, food.y, food.radius, 0, Math.PI * 2);
@@ -74,7 +74,7 @@ function draw(snapshot) {
 
 function drawCircle(circle, isPlayer, player) {
   const matchesPlayerShape = !isPlayer && player && circle.shape === player.shape;
-  const color = isPlayer ? "#d85f3d" : circle.shape === "triangle" ? "#3b8ea5" : "#8c6bb1";
+  const color = isPlayer ? "#ff8a5b" : circle.shape === "triangle" ? "#6fd5ff" : "#c08cff";
   context.fillStyle = color;
 
   if (circle.shape === "triangle") {
@@ -93,7 +93,7 @@ function drawCircle(circle, isPlayer, player) {
   }
 
   if (matchesPlayerShape) {
-    context.strokeStyle = "#b63b29";
+    context.strokeStyle = "#ffad8c";
     context.lineWidth = 3;
     context.beginPath();
     context.arc(circle.x, circle.y, circle.radius + 5, 0, Math.PI * 2);
@@ -101,13 +101,13 @@ function drawCircle(circle, isPlayer, player) {
   }
 
   if (isPlayer) {
-    context.strokeStyle = "#f4d35e";
+    context.strokeStyle = "#ffe082";
     context.lineWidth = 4;
     context.beginPath();
     context.arc(circle.x, circle.y, circle.radius + 8, 0, Math.PI * 2);
     context.stroke();
 
-    context.fillStyle = "#f7f3e8";
+    context.fillStyle = "#fff3d4";
     context.beginPath();
     context.arc(circle.x, circle.y, 3, 0, Math.PI * 2);
     context.fill();
@@ -115,7 +115,7 @@ function drawCircle(circle, isPlayer, player) {
 
   drawAttachedChildren(circle, color);
 
-  context.fillStyle = "#17313a";
+  context.fillStyle = "#e4f3f8";
   context.font = "16px Georgia";
   const label = isPlayer
     ? `YOU ${circle.id} (${circle.shape}) c:${circle.children_count} o:${circle.attached_children.length} g:${circle.generation}`
@@ -123,6 +123,7 @@ function drawCircle(circle, isPlayer, player) {
   context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
 
   context.font = "12px Georgia";
+  context.fillStyle = "#9cb8c0";
   context.fillText(circle.lineage_id, circle.x - 40, circle.y + circle.radius + 18);
 }
 
@@ -135,7 +136,7 @@ function drawAttachedChildren(circle, color) {
     context.fill();
 
     context.globalAlpha = 1;
-    context.strokeStyle = "#17313a";
+    context.strokeStyle = "#d7eef6";
     context.lineWidth = 1;
     context.beginPath();
     context.arc(child.x, child.y, child.radius, 0, Math.PI * 2);
@@ -259,7 +260,7 @@ setStatus("Connecting");
 connect();
 
 if (!latestSnapshot) {
-  context.fillStyle = "#17313a";
+  context.fillStyle = "#e4f3f8";
   context.font = "24px Georgia";
   context.fillText("Waiting for server snapshot...", 24, 48);
 }
