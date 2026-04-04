@@ -18,6 +18,10 @@ function normalizeKey(key) {
   return key.toLowerCase();
 }
 
+function childCount(circle) {
+  return circle.attached_children.length;
+}
+
 function currentDirection() {
   const vector = { x: 0, y: 0 };
 
@@ -63,7 +67,7 @@ function draw(snapshot) {
 
   if (snapshot.player) {
     drawCircle(snapshot.player, true, snapshot.player);
-    energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)} · Children: ${snapshot.player.children_count} · Generation: ${snapshot.player.generation}`;
+    energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)} · Children: ${childCount(snapshot.player)} · Generation: ${snapshot.player.generation}`;
   } else {
     energyNode.textContent = "Energy: defeated";
   }
@@ -117,9 +121,10 @@ function drawCircle(circle, isPlayer, player) {
 
   context.fillStyle = "#e4f3f8";
   context.font = "16px Georgia";
+  const children = childCount(circle);
   const label = isPlayer
-    ? `YOU ${circle.id} (${circle.shape}) c:${circle.children_count} o:${circle.attached_children.length} g:${circle.generation}`
-    : `${circle.id} ${matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${circle.children_count} o:${circle.attached_children.length} g:${circle.generation}`;
+    ? `YOU ${circle.id} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}`
+    : `${circle.id} ${matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}`;
   context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
 
   context.font = "12px Georgia";

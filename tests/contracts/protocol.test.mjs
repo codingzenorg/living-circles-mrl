@@ -23,8 +23,8 @@ test("world snapshot schema remains explicit and parseable", async () => {
 
   assert.equal(schema.properties.type.const, MESSAGE_TYPES.worldSnapshot);
   assert.deepEqual(schema.required, ["type", "tick", "world", "player", "autonomous_circles", "interaction", "foods"]);
-  assert.deepEqual(schema.properties.player.anyOf[1].required, ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "children_count", "attached_children"]);
-  assert.deepEqual(schema.properties.autonomous_circles.items.required, ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "children_count", "attached_children"]);
+  assert.deepEqual(schema.properties.player.anyOf[1].required, ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "attached_children"]);
+  assert.deepEqual(schema.properties.autonomous_circles.items.required, ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "attached_children"]);
   assert.deepEqual(schema.properties.player.anyOf[1].properties.attached_children.items.required, ["id", "owner_id", "orbit_slot", "x", "y", "radius"]);
   assert.deepEqual(schema.properties.autonomous_circles.items.properties.attached_children.items.required, ["id", "owner_id", "orbit_slot", "x", "y", "radius"]);
   assert.deepEqual(schema.properties.interaction.anyOf[1].required, ["active", "resolved", "kind", "source_id", "target_id"]);

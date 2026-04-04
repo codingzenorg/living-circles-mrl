@@ -1,6 +1,9 @@
 package simulation
 
-import "math"
+import (
+	"encoding/json"
+	"math"
+)
 
 const (
 	DefaultWorldWidth                           = 800.0
@@ -58,7 +61,7 @@ type PlayerCircle struct {
 	Y                float64         `json:"y"`
 	Radius           float64         `json:"radius"`
 	Energy           float64         `json:"energy"`
-	ChildrenCount    int             `json:"children_count"`
+	ChildrenCount    int             `json:"-"`
 	AttachedChildren []AttachedChild `json:"attached_children"`
 }
 
@@ -71,8 +74,70 @@ type AutonomousCircle struct {
 	Y                float64         `json:"y"`
 	Radius           float64         `json:"radius"`
 	Energy           float64         `json:"energy"`
-	ChildrenCount    int             `json:"children_count"`
+	ChildrenCount    int             `json:"-"`
 	AttachedChildren []AttachedChild `json:"attached_children"`
+}
+
+func (circle *PlayerCircle) UnmarshalJSON(data []byte) error {
+	type playerCircleJSON struct {
+		ID               string          `json:"id"`
+		LineageID        string          `json:"lineage_id"`
+		Generation       int             `json:"generation"`
+		Shape            string          `json:"shape"`
+		X                float64         `json:"x"`
+		Y                float64         `json:"y"`
+		Radius           float64         `json:"radius"`
+		Energy           float64         `json:"energy"`
+		AttachedChildren []AttachedChild `json:"attached_children"`
+	}
+
+	var decoded playerCircleJSON
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+
+	circle.ID = decoded.ID
+	circle.LineageID = decoded.LineageID
+	circle.Generation = decoded.Generation
+	circle.Shape = decoded.Shape
+	circle.X = decoded.X
+	circle.Y = decoded.Y
+	circle.Radius = decoded.Radius
+	circle.Energy = decoded.Energy
+	circle.AttachedChildren = decoded.AttachedChildren
+	circle.ChildrenCount = len(decoded.AttachedChildren)
+	return nil
+}
+
+func (circle *AutonomousCircle) UnmarshalJSON(data []byte) error {
+	type autonomousCircleJSON struct {
+		ID               string          `json:"id"`
+		LineageID        string          `json:"lineage_id"`
+		Generation       int             `json:"generation"`
+		Shape            string          `json:"shape"`
+		X                float64         `json:"x"`
+		Y                float64         `json:"y"`
+		Radius           float64         `json:"radius"`
+		Energy           float64         `json:"energy"`
+		AttachedChildren []AttachedChild `json:"attached_children"`
+	}
+
+	var decoded autonomousCircleJSON
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+
+	circle.ID = decoded.ID
+	circle.LineageID = decoded.LineageID
+	circle.Generation = decoded.Generation
+	circle.Shape = decoded.Shape
+	circle.X = decoded.X
+	circle.Y = decoded.Y
+	circle.Radius = decoded.Radius
+	circle.Energy = decoded.Energy
+	circle.AttachedChildren = decoded.AttachedChildren
+	circle.ChildrenCount = len(decoded.AttachedChildren)
+	return nil
 }
 
 type InteractionClassification struct {
