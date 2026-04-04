@@ -275,6 +275,58 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Allow autonomous circles to steer away from nearby different-shape targets when reproduction is currently blocked under the existing feasibility rule.
+
+## Why This Matters
+
+The current implementation now expresses explicit negative steering for one kind of social asymmetry: nearby stronger same-shape threats. But different-shape behavior is still incomplete. A nearby different-shape circle that cannot currently reproduce is only non-preferred, not explicitly avoided. That leaves blocked reproduction less visible in motion than losing fight threat.
+
+The next model pressure is to make the current reproduction model shape motion negatively as well as positively before contact occurs.
+
+## Impacted Areas
+
+### Simulation model
+
+- steering needs one explicit blocked-reproduction avoidance step based on the current reproduction feasibility rule
+- proximity becomes part of whether blocked reproduction affects motion before contact
+- current movement, energy, fight, reproduction, and food rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because positions, shapes, children, energy, and outcomes are already visible
+- build may need steering provenance only if blocked-reproduction avoidance is too subtle to infer from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because the demo shows shapes, labels, and live motion
+- minor HUD cues may still help if blocked different-shape retreat is hard to distinguish from same-shape threat retreat in some layouts
+
+### Existing semantics
+
+- the current low-energy food-recovery rule should remain unchanged
+- the current same-shape threat-avoidance rule should remain in place
+- the current reproduction-feasibility-aware preference should remain in place for viable different-shape targets
+- player-targetable and autonomous-targetable steering should continue sharing one candidate set for blocked-target evaluation
+- the existing reproduction feasibility rule should remain the sole basis for deciding whether a nearby different-shape target is blocked
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- the proximity threshold for blocked-reproduction avoidance
+- whether blocked-reproduction avoidance runs before or after same-shape threat avoidance
+- how deterministic tie-breaking behaves across multiple blocked different-shape targets
+
+## Risks If Ignored
+
+- blocked reproduction will remain less legible in motion than losing fight threat
+- energy and child reserve will stay more visible in different-shape outcomes than in different-shape steering
+- later autonomy slices will keep carrying a gap between blocked reproduction presence and steering response
+
+---
+
+## Change
+
 Allow interaction-seeking autonomous circles to prioritize targets by shape meaning instead of using only nearest-target selection.
 
 ## Why This Matters
