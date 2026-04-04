@@ -123,6 +123,56 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Allow shape-aware interaction-seeking autonomy to consider whether preferred different-shape targets are currently feasible for reproduction.
+
+## Why This Matters
+
+The current implementation now makes shape matter in target choice, which better aligns steering with collision meaning. But it still treats every different-shape target as attractive even when the current reproduction rule would be blocked by insufficient energy or missing child reserve. That keeps steering partially disconnected from the executable rules already in the model.
+
+The next model pressure is to make preferred social pursuit more semantically honest by considering whether the currently preferred reproduction path could actually succeed.
+
+## Impacted Areas
+
+### Simulation model
+
+- interaction-target ordering should consider current reproduction feasibility, not just shape
+- deterministic feasibility checks become part of the steering contract
+- current movement, energy, and downstream interaction rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because energy, children, positions, and outcomes are already visible
+- build may need steering provenance only if feasibility-driven choice is too hard to infer from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because circle shapes, energy, and the interaction HUD are visible
+- minor HUD adjustments may still help if the new target choice is subtle
+
+### Existing semantics
+
+- the current low-energy food-recovery rule should remain unchanged
+- the current shape-aware preference should become more precise rather than being removed
+- player-targetable and autonomous-targetable steering should continue sharing one candidate set
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- the exact feasibility basis for preferring different-shape targets
+- the fallback rule when no feasible preferred target exists
+- how deterministic tie-breaking behaves across equally feasible candidates
+
+## Risks If Ignored
+
+- steering will keep preferring blocked reproduction opportunities
+- autonomous behavior will remain more arbitrary than the rest of the reproduction model
+- later ecosystem slices will keep carrying a gap between target pursuit and target feasibility
+
+---
+
+## Change
+
 Allow interaction-seeking autonomous circles to prioritize targets by shape meaning instead of using only nearest-target selection.
 
 ## Why This Matters
