@@ -218,6 +218,56 @@ The next implementation-facing slice should explicitly choose:
 
 - steering will keep walking into deterministic losing fights as a default fallback
 - children and energy will remain more meaningful in post-contact fight resolution than in pre-contact behavior
+
+---
+
+## Change
+
+Allow positive interaction-seeking autonomy to treat attached-child positions as part of effective social nearness.
+
+## Why This Matters
+
+The current implementation already lets attached children matter for contact triggering and for negative steering through avoidance. But once an autonomous circle enters ordinary interaction-seeking mode, target choice still mostly depends on parent-core distance. That leaves the embodied model uneven: the simulation already says children are part of encounter geometry, but positive pursuit only partially reflects that fact.
+
+The next model pressure is to align positive steering with the same visible child geometry that already shapes contact and retreat.
+
+## Impacted Areas
+
+### Simulation model
+
+- interaction-target distance checks should consider the parent body and its attached children
+- current reproduction-feasibility-aware and fight-feasibility-aware eligibility rules should stay unchanged
+- current movement, energy, and downstream interaction rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because attached-child positions are already visible
+- build may need steering provenance only if child-aware pursuit is too subtle to infer from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because attached-child positions and contact outcomes are visible
+- minor HUD adjustments may still help if child-aware target choice is hard to observe
+
+### Existing semantics
+
+- low-energy food recovery should remain the first steering priority
+- current same-shape threat and blocked-reproduction avoidance should remain unchanged
+- current social target eligibility should remain governed by reproduction feasibility and fight feasibility rather than by a new scoring system
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether social nearness is measured from the parent center only or from the nearest current parent-or-child contact point
+- how deterministic tie-breaking behaves when multiple attached-child paths are equally near
+- whether steering should point at the effective contact point or only use it for ranking
+
+## Risks If Ignored
+
+- pursuit will remain less embodied than contact and avoidance
+- visible orbiting children will keep mattering more for reactive behavior than for proactive behavior
+- later autonomy slices may accumulate more asymmetry between approach and retreat semantics
 - later autonomy slices will keep carrying a gap between steering and the current fight model
 
 ---
