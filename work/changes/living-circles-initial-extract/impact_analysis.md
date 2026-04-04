@@ -1429,3 +1429,53 @@ The next implementation-facing slice should explicitly choose:
 - the contract will keep carrying a mirrored child representation after internal authority has already been simplified
 - client and server work will continue to maintain two ways to say the same thing
 - later child-model refinements will still have to work around unnecessary contract surface
+
+---
+
+## Change
+
+Reduce same-shape fight power from raw child-count magnitude to child presence only.
+
+## Why This Matters
+
+Attached children are now the authoritative and visible child state across geometry, contract, feeding, and continuity. But same-shape fight resolution still uses raw child-count magnitude as a direct strength ladder. That leaves combat as one of the clearest remaining places where children still act like an abstract numeric stockpile instead of primarily as visible dependents.
+
+The next model pressure is to keep children relevant in fights while reducing that abstract stacking. A smaller embodied step is to let child presence matter, but stop letting larger raw child counts directly scale fight strength.
+
+## Impacted Areas
+
+### Simulation model
+
+- same-shape fight winner selection should still prioritize energy first
+- child-based fight leverage should become presence-based rather than magnitude-based
+- current absorption, continuity, and payment rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because attached children and fight outcomes are already visible
+- no extra contract field should be necessary if the changed winner rule remains inspectable from snapshots
+
+### Browser rendering
+
+- current rendering should remain sufficient because attached children are already visible
+- no visual changes should be required in this slice
+
+### Existing semantics
+
+- fight absorption can still consume one attached child before full parent defeat
+- reproduction payment and continuity can remain unchanged
+- feeding, contact, movement, orbit, and steering should remain unchanged
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether child-based fight advantage should now mean only “has attached child” versus “does not”
+- how exact ties behave once both sides share the same child-presence state
+- how tests should prove that larger child counts no longer stack direct fight power
+
+## Risks If Ignored
+
+- combat will remain one of the most abstract child-driven systems after most other child mechanics have been embodied
+- larger raw child counts will keep acting like a hidden strength ladder even though visible child bodies already absorb loss and trigger contact
+- later combat refinement will still have to unwind direct child-count stacking from the winner rule
