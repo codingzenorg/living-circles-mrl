@@ -391,7 +391,7 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int) Vector {
 		}
 	}
 
-	interactionTarget, interactionFound := nearestInteractionTarget(circle, w.player, w.autonomousCircles)
+	interactionTarget, _, interactionFound := nearestInteractionTarget(circle, w.player, w.autonomousCircles)
 	if interactionFound {
 		return Vector{
 			X: interactionTarget.X - circle.X,
@@ -426,11 +426,12 @@ func nearestFoodTarget(circle AutonomousCircle, foods []Food) (Food, bool) {
 	return selected, found
 }
 
-func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle) (Vector, bool) {
+func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle) (Vector, string, bool) {
 	var selected Vector
 	selectedID := ""
 	bestDistance := 0.0
 	found := false
+	preferredFound := false
 
 	if player != nil && player.Energy > 0 {
 		distance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
@@ -438,6 +439,7 @@ func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, can
 		selectedID = player.ID
 		bestDistance = distance
 		found = true
+		preferredFound = circle.Shape != player.Shape
 	}
 
 	for _, candidate := range candidates {
@@ -446,15 +448,19 @@ func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, can
 		}
 
 		distance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
-		if !found || distance < bestDistance || (distance == bestDistance && candidate.ID < selectedID) {
+		candidatePreferred := circle.Shape != candidate.Shape
+		if !found ||
+			(candidatePreferred && !preferredFound) ||
+			(candidatePreferred == preferredFound && (distance < bestDistance || (distance == bestDistance && candidate.ID < selectedID))) {
 			selected = Vector{X: candidate.X, Y: candidate.Y}
 			selectedID = candidate.ID
 			bestDistance = distance
 			found = true
+			preferredFound = candidatePreferred
 		}
 	}
 
-	return selected, found
+	return selected, selectedID, found
 }
 
 func distanceBetween(ax, ay, bx, by float64) float64 {

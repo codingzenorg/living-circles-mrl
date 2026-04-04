@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_energy_aware_autonomy_priority.md`
+`docs/slices/initial_shape_aware_interaction_target_priority.md`
 
 ## Implemented Shape
 
@@ -35,6 +35,7 @@
 - autonomous circles can now seek other autonomous circles when no nearby food has priority
 - autonomous circles can now also target the player through the same bounded interaction-seeking rule
 - low-energy autonomous circles now prefer food recovery before interaction seeking
+- interaction-seeking autonomous circles now prefer different-shape targets before same-shape targets
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -172,6 +173,7 @@ The slice needed these implementation choices not fully specified in the refined
 - autonomous-autonomous pairs now resolve after player-autonomous checks using deterministic index order
 - autonomous steering now prefers nearby food within `140` units, otherwise seeks the nearest active circle among the player and autonomous candidates before falling back to baseline drift
 - autonomous steering now also prefers food whenever energy is below `40`, even if an interaction target is otherwise eligible
+- once interaction seeking is active, target ordering now prefers different-shape candidates over same-shape candidates before applying distance and ID tie-breaks
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID
@@ -184,6 +186,7 @@ The slice needed these implementation choices not fully specified in the refined
 - autonomous-only encounters use the same fight, reproduction, child, and continuity rules as player-involved encounters
 - interaction-seeking autonomy now considers the player and other active autonomous circles together, breaking equal-distance ties by target ID
 - the low-energy food-priority threshold is checked before interaction seeking
+- shape meaning now influences interaction-target ordering before nearest-target fallback
 - same-shape fight ordering is: higher energy, then higher child count, then larger radius, then player exact tie-break
 - a same-shape loser with at least one attached child loses exactly one attached child and remains active on that tick
 - different-shape overlap without enough energy or an available child payment resolves as `reproduce_blocked_energy`
@@ -212,4 +215,4 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 - deterministic server tests for child accumulation, attached orbiting child ownership, attached-child food collection, child absorption during hostile conflict, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity on zero-energy collapse, lineage preservation, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
 - contract test for explicit snapshot shape including child counts, attached child state, lineage fields, and resolved, blocked, absorbed, or promoted interaction outcomes
-- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, child-triggered contact before parent core overlap, child-to-child-triggered contact, autonomous-only interaction outcomes, interaction-seeking autonomous outcomes, player-targeted autonomous outcomes, low-energy food-priority steering, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset
+- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, child-triggered contact before parent core overlap, child-to-child-triggered contact, autonomous-only interaction outcomes, interaction-seeking autonomous outcomes, player-targeted autonomous outcomes, low-energy food-priority steering, shape-aware target choice, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset

@@ -579,7 +579,7 @@ func TestAutonomousFoodSeekingCanCollectOffLaneFood(t *testing.T) {
 	}
 }
 
-func TestAutonomousInteractionSeekingCanCreateFightWithoutPlayerMovement(t *testing.T) {
+func TestAutonomousInteractionSeekingCanCreatePreferredDifferentShapeInteractionWithoutPlayerMovement(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:               "square",
 		PlayerX:                   700,
@@ -587,7 +587,7 @@ func TestAutonomousInteractionSeekingCanCreateFightWithoutPlayerMovement(t *test
 		PlayerEnergy:              100,
 		PlayerChildrenCount:       0,
 		AutonomousShape:           "triangle",
-		SecondaryAutonomousShape:  "triangle",
+		SecondaryAutonomousShape:  "square",
 		AutonomousX:               100,
 		AutonomousY:               500,
 		SecondaryAutonomousX:      220,
@@ -607,10 +607,10 @@ func TestAutonomousInteractionSeekingCanCreateFightWithoutPlayerMovement(t *test
 	}
 
 	if snapshot.Interaction == nil {
-		t.Fatal("expected autonomous interaction-seeking fight")
+		t.Fatal("expected autonomous interaction-seeking interaction")
 	}
-	if snapshot.Interaction.Kind != "fight_resolved" {
-		t.Fatalf("expected fight_resolved, got %q", snapshot.Interaction.Kind)
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected shape-aware different-shape preference to produce reproduce_resolved, got %q", snapshot.Interaction.Kind)
 	}
 	if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
 		t.Fatalf("expected autonomous pair ids %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
@@ -716,6 +716,82 @@ func TestStableEnergyAutonomousCircleStillSeeksInteractionTarget(t *testing.T) {
 	}
 	if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
 		t.Fatalf("expected deterministic autonomous target %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+}
+
+func TestInteractionSeekingPrefersDifferentShapeTargetWhenAvailable(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		PlayerX:                   220,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      260,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: 100,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected shape-aware interaction seeking to produce contact")
+	}
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected preferred different-shape target to produce reproduction, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceID != "player-1" || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+		t.Fatalf("expected different-shape target %q to be chosen ahead of the player, got %q -> %q", simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+}
+
+func TestInteractionSeekingFallsBackWhenNoDifferentShapeTargetExists(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		PlayerX:                   220,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "triangle",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      420,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: 80,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected fallback interaction target selection")
+	}
+	if snapshot.Interaction.Kind != "fight_resolved" {
+		t.Fatalf("expected same-shape fallback to produce fight_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceID != "player-1" || snapshot.Interaction.TargetID != simulation.DefaultAutonomousID {
+		t.Fatalf("expected fallback to nearest same-shape target %q -> %q, got %q -> %q", "player-1", simulation.DefaultAutonomousID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
 	}
 }
 
