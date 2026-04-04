@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_embodied_fight_tie_break_without_radius.md`
+`docs/slices/initial_embodied_movement_boundary_without_radius.md`
 
 ## Implemented Shape
 
@@ -47,6 +47,7 @@
 - food collection now depends on visible parent-core and attached-child overlap rather than enlarged derived radius alone
 - circle-to-circle contact now depends on visible parent-core and attached-child overlap rather than enlarged derived parent radius alone
 - same-shape fights no longer use derived radius as a tie-break after energy and child count
+- parent movement boundary clamping now uses the visible parent-core body rather than grown derived radius
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -199,6 +200,7 @@ The slice needed these implementation choices not fully specified in the refined
 - food collection now uses a fixed parent-core body plus attached-child bodies rather than the derived grown radius as silent collection reach
 - circle contact now uses a fixed parent-core body plus attached-child bodies rather than the derived grown radius as silent parent contact reach
 - same-shape fight ordering now resolves exact ties deterministically without consulting derived radius
+- parent movement clamping now uses the fixed visible parent-core body rather than the derived grown radius
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID

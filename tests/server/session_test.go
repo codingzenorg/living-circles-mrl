@@ -174,8 +174,57 @@ func TestAdvanceKeepsPlayerInsideBounds(t *testing.T) {
 		t.Fatal("expected player to remain active while checking bounds")
 	}
 
-	if snapshot.Player.X > snapshot.World.Width-snapshot.Player.Radius {
+	if snapshot.Player.X > snapshot.World.Width-simulation.DefaultPlayerRadius {
 		t.Fatalf("expected x to stay inside bounds, got %v", snapshot.Player.X)
+	}
+}
+
+func TestPlayerChildGrowthDoesNotChangeWallClamp(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              simulation.DefaultPlayerShape,
+		AutonomousShape:          simulation.DefaultAutoShape,
+		SecondaryAutonomousShape: "",
+		PlayerEnergy:             simulation.DefaultPlayerEnergy,
+		PlayerChildrenCount:      3,
+		AutonomousEnergy:         0,
+	})
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	var snapshot simulation.Snapshot
+	for range 60 {
+		snapshot = session.Advance()
+	}
+
+	if snapshot.Player == nil {
+		t.Fatal("expected player to remain active while checking wall clamp")
+	}
+	if snapshot.Player.X != snapshot.World.Width-simulation.DefaultPlayerRadius {
+		t.Fatalf("expected player wall clamp at visible body boundary %v, got %v", snapshot.World.Width-simulation.DefaultPlayerRadius, snapshot.Player.X)
+	}
+}
+
+func TestAutonomousChildGrowthDoesNotChangeWallClamp(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         simulation.DefaultPlayerShape,
+		AutonomousShape:                     simulation.DefaultPlayerShape,
+		SecondaryAutonomousShape:            "",
+		PlayerEnergy:                        0,
+		AutonomousEnergy:                    simulation.DefaultPlayerEnergy,
+		AutonomousX:                         simulation.DefaultWorldWidth - 20,
+		AutonomousY:                         simulation.DefaultWorldHeight / 2,
+		AutonomousChildrenCount:             3,
+		DisableFoodSeeking:                  true,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	snapshot := session.Advance()
+
+	if len(snapshot.AutonomousCircles) != 1 {
+		t.Fatalf("expected one autonomous circle, got %d", len(snapshot.AutonomousCircles))
+	}
+	if snapshot.AutonomousCircles[0].X != snapshot.World.Width-simulation.DefaultPlayerRadius {
+		t.Fatalf("expected autonomous wall clamp at visible body boundary %v, got %v", snapshot.World.Width-simulation.DefaultPlayerRadius, snapshot.AutonomousCircles[0].X)
 	}
 }
 

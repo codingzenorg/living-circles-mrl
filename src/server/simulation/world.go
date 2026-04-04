@@ -357,8 +357,8 @@ func (w *World) advanceCircle(circle *PlayerCircle, intent Vector) *PlayerCircle
 		return circle
 	}
 
-	circle.X = clamp(circle.X+normalized.X*w.speed, circle.Radius, w.bounds.Width-circle.Radius)
-	circle.Y = clamp(circle.Y+normalized.Y*w.speed, circle.Radius, w.bounds.Height-circle.Radius)
+	circle.X = clamp(circle.X+normalized.X*w.speed, DefaultPlayerRadius, w.bounds.Width-DefaultPlayerRadius)
+	circle.Y = clamp(circle.Y+normalized.Y*w.speed, DefaultPlayerRadius, w.bounds.Height-DefaultPlayerRadius)
 	circle.Energy = math.Max(0, circle.Energy-w.moveCost)
 
 	return circle
@@ -376,10 +376,10 @@ func (w *World) advanceAutonomousCircles(tick int64) {
 			continue
 		}
 
-		circle.X = clamp(circle.X+normalized.X*w.speed, circle.Radius, w.bounds.Width-circle.Radius)
-		circle.Y = clamp(circle.Y+normalized.Y*w.speed, circle.Radius, w.bounds.Height-circle.Radius)
+		circle.X = clamp(circle.X+normalized.X*w.speed, DefaultPlayerRadius, w.bounds.Width-DefaultPlayerRadius)
+		circle.Y = clamp(circle.Y+normalized.Y*w.speed, DefaultPlayerRadius, w.bounds.Height-DefaultPlayerRadius)
 		circle.Energy = math.Max(0, circle.Energy-w.moveCost)
-		if circle.X == circle.Radius || circle.X == w.bounds.Width-circle.Radius {
+		if circle.X == DefaultPlayerRadius || circle.X == w.bounds.Width-DefaultPlayerRadius {
 			w.autonomousDirections[index] = Vector{X: -intent.X, Y: intent.Y}
 		}
 		w.autonomousCircles[index] = circle
