@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_fixed_parent_body_without_child_radius_growth.md`
+`docs/slices/initial_attached_children_as_single_child_source_of_truth.md`
 
 ## Implemented Shape
 
@@ -50,6 +50,7 @@
 - parent movement boundary clamping now uses the visible parent-core body rather than grown derived radius
 - attached-child orbit distance now uses the visible parent-core body rather than grown derived radius
 - parent `radius` in snapshots and rendering now stays fixed at the visible parent-core body rather than growing from child count
+- attached children are now the single authoritative child state, with `children_count` derived for snapshots and readability
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -205,6 +206,7 @@ The slice needed these implementation choices not fully specified in the refined
 - parent movement clamping now uses the fixed visible parent-core body rather than the derived grown radius
 - attached-child orbit distance now uses the fixed visible parent-core body rather than the derived grown radius
 - parent `radius` now stays fixed at the visible parent-core body even when child count changes
+- child-dependent rule evaluation now derives child quantity from attached children, while snapshots still expose `children_count`
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID

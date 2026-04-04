@@ -648,13 +648,13 @@ func interactionTargetPriorityAgainstAutonomous(circle AutonomousCircle, candida
 }
 
 func reproductionFeasibleWithPlayer(circle AutonomousCircle, player PlayerCircle) bool {
-	return reproductionCapacity(circle.Energy, circle.ChildrenCount) >= DefaultReproductionMinEnergy &&
-		reproductionCapacity(player.Energy, player.ChildrenCount) >= DefaultReproductionMinEnergy
+	return reproductionCapacity(circle.Energy, childCountForAutonomous(circle)) >= DefaultReproductionMinEnergy &&
+		reproductionCapacity(player.Energy, childCountForPlayer(player)) >= DefaultReproductionMinEnergy
 }
 
 func reproductionFeasibleWithAutonomous(left AutonomousCircle, right AutonomousCircle) bool {
-	return reproductionCapacity(left.Energy, left.ChildrenCount) >= DefaultReproductionMinEnergy &&
-		reproductionCapacity(right.Energy, right.ChildrenCount) >= DefaultReproductionMinEnergy
+	return reproductionCapacity(left.Energy, childCountForAutonomous(left)) >= DefaultReproductionMinEnergy &&
+		reproductionCapacity(right.Energy, childCountForAutonomous(right)) >= DefaultReproductionMinEnergy
 }
 
 func blockedReproductionWithPlayer(circle AutonomousCircle, player PlayerCircle) bool {
@@ -900,7 +900,7 @@ func (w *World) resolveFight(opponentID string, contactOrigin string) {
 	}
 
 	if loserID == w.player.ID {
-		if w.player.ChildrenCount > 0 {
+		if childCountForPlayer(*w.player) > 0 {
 			consumePlayerChild(w.player)
 			w.lastInteraction.Kind = "fight_absorbed_child"
 			return
@@ -910,7 +910,7 @@ func (w *World) resolveFight(opponentID string, contactOrigin string) {
 		return
 	}
 
-	if opponent.ChildrenCount > 0 {
+	if childCountForAutonomous(opponent) > 0 {
 		consumeAutonomousChild(&opponent)
 		w.autonomousCircles[opponentIndex] = opponent
 		w.lastInteraction.Kind = "fight_absorbed_child"
@@ -981,10 +981,10 @@ func determineAutonomousFightOutcome(left AutonomousCircle, right AutonomousCirc
 	if right.Energy > left.Energy {
 		return right.ID, left.ID
 	}
-	if left.ChildrenCount > right.ChildrenCount {
+	if childCountForAutonomous(left) > childCountForAutonomous(right) {
 		return left.ID, right.ID
 	}
-	if right.ChildrenCount > left.ChildrenCount {
+	if childCountForAutonomous(right) > childCountForAutonomous(left) {
 		return right.ID, left.ID
 	}
 	if left.ID < right.ID {
@@ -1019,7 +1019,7 @@ func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactOri
 		loserIndex = rightIndex
 	}
 	loser := w.autonomousCircles[loserIndex]
-	if loser.ChildrenCount > 0 {
+	if childCountForAutonomous(loser) > 0 {
 		consumeAutonomousChild(&loser)
 		w.autonomousCircles[loserIndex] = loser
 		w.lastInteraction.Kind = "fight_absorbed_child"
@@ -1084,10 +1084,10 @@ func determineFightOutcome(player PlayerCircle, opponent AutonomousCircle) (stri
 	if opponent.Energy > player.Energy {
 		return opponent.ID, player.ID
 	}
-	if player.ChildrenCount > opponent.ChildrenCount {
+	if childCountForPlayer(player) > childCountForAutonomous(opponent) {
 		return player.ID, opponent.ID
 	}
-	if opponent.ChildrenCount > player.ChildrenCount {
+	if childCountForAutonomous(opponent) > childCountForPlayer(player) {
 		return opponent.ID, player.ID
 	}
 
@@ -1153,14 +1153,14 @@ func payPlayerReproductionCost(circle *PlayerCircle) (bool, bool) {
 	if circle == nil {
 		return false, false
 	}
-	if reproductionCapacity(circle.Energy, circle.ChildrenCount) < DefaultReproductionMinEnergy {
+	if reproductionCapacity(circle.Energy, childCountForPlayer(*circle)) < DefaultReproductionMinEnergy {
 		return false, false
 	}
 	if circle.Energy >= DefaultReproductionCost {
 		circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
 		return true, false
 	}
-	if circle.ChildrenCount == 0 {
+	if childCountForPlayer(*circle) == 0 {
 		return false, false
 	}
 
@@ -1171,14 +1171,14 @@ func payPlayerReproductionCost(circle *PlayerCircle) (bool, bool) {
 }
 
 func payAutonomousReproductionCost(circle AutonomousCircle) (bool, bool, AutonomousCircle) {
-	if reproductionCapacity(circle.Energy, circle.ChildrenCount) < DefaultReproductionMinEnergy {
+	if reproductionCapacity(circle.Energy, childCountForAutonomous(circle)) < DefaultReproductionMinEnergy {
 		return false, false, circle
 	}
 	if circle.Energy >= DefaultReproductionCost {
 		circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
 		return true, false, circle
 	}
-	if circle.ChildrenCount == 0 {
+	if childCountForAutonomous(circle) == 0 {
 		return false, false, circle
 	}
 
@@ -1198,7 +1198,7 @@ func reproductionCapacity(energy float64, childrenCount int) float64 {
 
 func (w *World) resolveEnergyCollapse() {
 	if w.player != nil && w.player.Energy == 0 {
-		promoted := w.player.ChildrenCount > 0
+		promoted := childCountForPlayer(*w.player) > 0
 		w.player = replaceOrRemovePlayer(w.player)
 		if promoted && w.player != nil && w.lastInteraction == nil {
 			w.lastInteraction = &InteractionClassification{
@@ -1216,7 +1216,7 @@ func (w *World) resolveEnergyCollapse() {
 			continue
 		}
 
-		promoted := circle.ChildrenCount > 0
+		promoted := childCountForAutonomous(circle) > 0
 		replaced, active := replaceOrRemoveAutonomous(circle)
 		if !active {
 			w.autonomousCircles = append(w.autonomousCircles[:index], w.autonomousCircles[index+1:]...)
@@ -1242,7 +1242,7 @@ func replaceOrRemovePlayer(circle *PlayerCircle) *PlayerCircle {
 	if circle == nil {
 		return nil
 	}
-	if circle.ChildrenCount == 0 {
+	if childCountForPlayer(*circle) == 0 {
 		return nil
 	}
 
@@ -1254,7 +1254,7 @@ func replaceOrRemovePlayer(circle *PlayerCircle) *PlayerCircle {
 }
 
 func replaceOrRemoveAutonomous(circle AutonomousCircle) (AutonomousCircle, bool) {
-	if circle.ChildrenCount == 0 {
+	if childCountForAutonomous(circle) == 0 {
 		return AutonomousCircle{}, false
 	}
 
@@ -1283,12 +1283,14 @@ func totalInitialChildren(config Config) int {
 
 func snapshotPlayerCircle(circle PlayerCircle, tick int64) PlayerCircle {
 	copy := circle
+	copy.ChildrenCount = childCountForPlayer(circle)
 	copy.AttachedChildren = layoutAttachedChildren(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
 	return copy
 }
 
 func snapshotAutonomousCircle(circle AutonomousCircle, tick int64) AutonomousCircle {
 	copy := circle
+	copy.ChildrenCount = childCountForAutonomous(circle)
 	copy.AttachedChildren = layoutAttachedChildren(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
 	return copy
 }
@@ -1353,12 +1355,12 @@ func (w *World) assignReproductionChildren(opponent *AutonomousCircle, tick int6
 }
 
 func reproductionDistributionCase(tick int64, player PlayerCircle, opponent AutonomousCircle) int {
-	seed := int(tick) + len(player.ID) + len(opponent.ID) + player.Generation + opponent.Generation + player.ChildrenCount + opponent.ChildrenCount
+	seed := int(tick) + len(player.ID) + len(opponent.ID) + player.Generation + opponent.Generation + childCountForPlayer(player) + childCountForAutonomous(opponent)
 	return seed % 3
 }
 
 func autonomousReproductionDistributionCase(tick int64, left AutonomousCircle, right AutonomousCircle) int {
-	seed := int(tick) + len(left.ID) + len(right.ID) + left.Generation + right.Generation + left.ChildrenCount + right.ChildrenCount
+	seed := int(tick) + len(left.ID) + len(right.ID) + left.Generation + right.Generation + childCountForAutonomous(left) + childCountForAutonomous(right)
 	return seed % 3
 }
 
@@ -1416,12 +1418,20 @@ func consumeAutonomousChild(circle *AutonomousCircle) {
 	syncAutonomousChildrenState(circle)
 }
 
+func childCountForPlayer(circle PlayerCircle) int {
+	return len(circle.AttachedChildren)
+}
+
+func childCountForAutonomous(circle AutonomousCircle) int {
+	return len(circle.AttachedChildren)
+}
+
 func syncPlayerChildrenState(circle *PlayerCircle) {
-	circle.ChildrenCount = len(circle.AttachedChildren)
+	circle.ChildrenCount = childCountForPlayer(*circle)
 	circle.Radius = derivedRadius(circle.ChildrenCount)
 }
 
 func syncAutonomousChildrenState(circle *AutonomousCircle) {
-	circle.ChildrenCount = len(circle.AttachedChildren)
+	circle.ChildrenCount = childCountForAutonomous(*circle)
 	circle.Radius = derivedRadius(circle.ChildrenCount)
 }
