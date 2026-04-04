@@ -579,6 +579,82 @@ func TestAutonomousFoodSeekingCanCollectOffLaneFood(t *testing.T) {
 	}
 }
 
+func TestAutonomousInteractionSeekingCanCreateFightWithoutPlayerMovement(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "square",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "triangle",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      220,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: 80,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected autonomous interaction-seeking fight")
+	}
+	if snapshot.Interaction.Kind != "fight_resolved" {
+		t.Fatalf("expected fight_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+		t.Fatalf("expected autonomous pair ids %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+}
+
+func TestAutonomousInteractionSeekingCanCreateReproductionWithoutPlayerMovement(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "square",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      220,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: 100,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected autonomous interaction-seeking reproduction")
+	}
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+		t.Fatalf("expected autonomous pair ids %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+}
+
 func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
 	session := simulation.NewSession()
 	before := session.Snapshot()

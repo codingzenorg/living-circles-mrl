@@ -20,6 +20,7 @@ const (
 	DefaultFoodRadius            = 6.0
 	DefaultFoodEnergy            = 10.0
 	DefaultFoodRegenDelay        = int64(12)
+	DefaultFoodPriorityDistance  = 140.0
 	DefaultReproductionMinEnergy = 15.0
 	DefaultReproductionCost      = 10.0
 	DefaultPlayerShape           = "triangle"
@@ -381,8 +382,23 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int) Vector {
 		return w.autonomousDirections[index]
 	}
 
-	foodTarget, found := nearestFoodTarget(circle, w.foods)
-	if found {
+	foodTarget, foodFound := nearestFoodTarget(circle, w.foods)
+	if foodFound && distanceBetween(circle.X, circle.Y, foodTarget.X, foodTarget.Y) <= DefaultFoodPriorityDistance {
+		return Vector{
+			X: foodTarget.X - circle.X,
+			Y: foodTarget.Y - circle.Y,
+		}
+	}
+
+	interactionTarget, interactionFound := nearestAutonomousInteractionTarget(circle, w.autonomousCircles)
+	if interactionFound {
+		return Vector{
+			X: interactionTarget.X - circle.X,
+			Y: interactionTarget.Y - circle.Y,
+		}
+	}
+
+	if foodFound {
 		return Vector{
 			X: foodTarget.X - circle.X,
 			Y: foodTarget.Y - circle.Y,
@@ -407,6 +423,31 @@ func nearestFoodTarget(circle AutonomousCircle, foods []Food) (Food, bool) {
 	}
 
 	return selected, found
+}
+
+func nearestAutonomousInteractionTarget(circle AutonomousCircle, candidates []AutonomousCircle) (AutonomousCircle, bool) {
+	var selected AutonomousCircle
+	bestDistance := 0.0
+	found := false
+
+	for _, candidate := range candidates {
+		if candidate.ID == circle.ID || candidate.Energy <= 0 {
+			continue
+		}
+
+		distance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
+		if !found || distance < bestDistance || (distance == bestDistance && candidate.ID < selected.ID) {
+			selected = candidate
+			bestDistance = distance
+			found = true
+		}
+	}
+
+	return selected, found
+}
+
+func distanceBetween(ax, ay, bx, by float64) float64 {
+	return math.Hypot(ax-bx, ay-by)
 }
 
 func normalize(vector Vector) Vector {

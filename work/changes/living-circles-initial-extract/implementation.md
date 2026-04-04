@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_autonomous_to_autonomous_interaction_resolution.md`
+`docs/slices/initial_interaction_seeking_autonomy.md`
 
 ## Implemented Shape
 
@@ -32,6 +32,7 @@
 - interaction snapshots now expose `contact_origin` so child-triggered contact is inspectable
 - attached orbiting children can now also trigger parent-level interaction through child-to-child overlap
 - autonomous circles can now resolve fight and reproduction outcomes against each other without player involvement
+- autonomous circles can now seek other autonomous circles when no nearby food has priority
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -167,6 +168,7 @@ The slice needed these implementation choices not fully specified in the refined
 - attached-child body contact against another parent body now counts as authoritative pair contact for interaction triggering
 - attached-child-to-attached-child overlap also counts as authoritative pair contact for interaction triggering
 - autonomous-autonomous pairs now resolve after player-autonomous checks using deterministic index order
+- autonomous steering now prefers nearby food within `140` units, otherwise seeks the nearest active autonomous circle before falling back to baseline drift
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
 - player energy clamps to a maximum of `100`
 - autonomous circles deterministically select the nearest active food by distance, breaking ties by food ID
@@ -177,6 +179,7 @@ The slice needed these implementation choices not fully specified in the refined
 - pair contact may be initiated by one attached child touching the other parent's body even when the two parent cores do not yet overlap
 - pair contact may also be initiated by one attached child touching another attached child across the pair
 - autonomous-only encounters use the same fight, reproduction, child, and continuity rules as player-involved encounters
+- interaction-seeking autonomy is currently narrowed to other autonomous circles rather than the player
 - same-shape fight ordering is: higher energy, then higher child count, then larger radius, then player exact tie-break
 - a same-shape loser with at least one attached child loses exactly one attached child and remains active on that tick
 - different-shape overlap without enough energy or an available child payment resolves as `reproduce_blocked_energy`
@@ -205,4 +208,4 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 - deterministic server tests for child accumulation, attached orbiting child ownership, attached-child food collection, child absorption during hostile conflict, derived radius growth, fight winner selection including child power, loser removal, child replacement continuity on zero-energy collapse, lineage preservation, food-slot regeneration timing, energy-gated reproduction, and food-seeking autonomy
 - contract test for explicit snapshot shape including child counts, attached child state, lineage fields, and resolved, blocked, absorbed, or promoted interaction outcomes
-- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, child-triggered contact before parent core overlap, child-to-child-triggered contact, autonomous-only interaction outcomes, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset
+- integration tests for WebSocket snapshots with visible orbiting children after reproduction, attached-child food collection, attached-child loss during hostile conflict, child-triggered contact before parent core overlap, child-to-child-triggered contact, autonomous-only interaction outcomes, interaction-seeking autonomous outcomes, blocked reproduction by low energy, food-seeking autonomous motion, child-driven fight outcomes, zero-energy collapse continuity with explicit promotion signaling, deterministic food regeneration, and authoritative reset
