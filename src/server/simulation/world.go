@@ -434,12 +434,13 @@ func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, can
 	preferredFound := false
 
 	if player != nil && player.Energy > 0 {
+		playerPreferred := circle.Shape != player.Shape && reproductionFeasibleWithPlayer(circle, *player)
 		distance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
 		selected = Vector{X: player.X, Y: player.Y}
 		selectedID = player.ID
 		bestDistance = distance
 		found = true
-		preferredFound = circle.Shape != player.Shape
+		preferredFound = playerPreferred
 	}
 
 	for _, candidate := range candidates {
@@ -448,7 +449,7 @@ func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, can
 		}
 
 		distance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
-		candidatePreferred := circle.Shape != candidate.Shape
+		candidatePreferred := circle.Shape != candidate.Shape && reproductionFeasibleWithAutonomous(circle, candidate)
 		if !found ||
 			(candidatePreferred && !preferredFound) ||
 			(candidatePreferred == preferredFound && (distance < bestDistance || (distance == bestDistance && candidate.ID < selectedID))) {
@@ -461,6 +462,16 @@ func nearestInteractionTarget(circle AutonomousCircle, player *PlayerCircle, can
 	}
 
 	return selected, selectedID, found
+}
+
+func reproductionFeasibleWithPlayer(circle AutonomousCircle, player PlayerCircle) bool {
+	return reproductionCapacity(circle.Energy, circle.ChildrenCount) >= DefaultReproductionMinEnergy &&
+		reproductionCapacity(player.Energy, player.ChildrenCount) >= DefaultReproductionMinEnergy
+}
+
+func reproductionFeasibleWithAutonomous(left AutonomousCircle, right AutonomousCircle) bool {
+	return reproductionCapacity(left.Energy, left.ChildrenCount) >= DefaultReproductionMinEnergy &&
+		reproductionCapacity(right.Energy, right.ChildrenCount) >= DefaultReproductionMinEnergy
 }
 
 func distanceBetween(ax, ay, bx, by float64) float64 {

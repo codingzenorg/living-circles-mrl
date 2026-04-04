@@ -795,6 +795,44 @@ func TestInteractionSeekingFallsBackWhenNoDifferentShapeTargetExists(t *testing.
 	}
 }
 
+func TestInteractionSeekingSkipsInfeasibleDifferentShapeTarget(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		PlayerX:                   220,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      260,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: 14,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected fallback target interaction after skipping infeasible reproduction target")
+	}
+	if snapshot.Interaction.Kind != "fight_resolved" {
+		t.Fatalf("expected infeasible different-shape target to be skipped in favor of same-shape fight, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceID != "player-1" || snapshot.Interaction.TargetID != simulation.DefaultAutonomousID {
+		t.Fatalf("expected fallback to nearest feasible target %q -> %q, got %q -> %q", "player-1", simulation.DefaultAutonomousID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+}
+
 func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
 	session := simulation.NewSession()
 	before := session.Snapshot()
