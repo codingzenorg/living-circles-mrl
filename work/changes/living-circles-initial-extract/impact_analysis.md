@@ -1381,3 +1381,51 @@ The next implementation-facing slice should explicitly choose:
 - visible child state and rule inputs will continue to rely on duplicated authority
 - future child-model refinement will keep paying synchronization complexity
 - later removal of remaining child-count shortcuts will be harder because the model will still have two competing child representations
+
+---
+
+## Change
+
+Remove `children_count` from the runtime contract.
+
+## Why This Matters
+
+Attached children are now the single authoritative child state inside the simulation, but snapshots still expose both `attached_children` and `children_count`. That means the runtime contract still carries duplicated child representation even after the internal authority was cleaned up.
+
+The next model pressure is to make the contract itself match the current embodied child model: child state is visible through child bodies, and counts are derived by consumers when needed.
+
+## Impacted Areas
+
+### Simulation model
+
+- gameplay logic should remain unchanged
+- snapshot building should stop emitting mirrored child-count fields
+
+### Runtime contract
+
+- `children_count` should be removed from player and autonomous circle snapshots
+- contract consumers should derive child quantity from `attached_children`
+
+### Browser rendering
+
+- the client should derive any displayed child count from `attached_children`
+- no visual behavior change should be required beyond that derivation
+
+### Existing semantics
+
+- fight power, reproduction payment, continuity, feeding, contact, movement, orbit, and steering should remain unchanged
+- this slice removes contract duplication, not child mechanics
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether `children_count` is removed entirely from the runtime contract now that it is no longer authoritative
+- how the client derives readable child quantity from attached children
+- how tests should prove that the reduced contract remains inspectable and behaviorally unchanged
+
+## Risks If Ignored
+
+- the contract will keep carrying a mirrored child representation after internal authority has already been simplified
+- client and server work will continue to maintain two ways to say the same thing
+- later child-model refinements will still have to work around unnecessary contract surface
