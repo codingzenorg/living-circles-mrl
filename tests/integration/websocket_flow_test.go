@@ -776,6 +776,63 @@ func TestClientReceivesThreatAvoidanceAgainstPlayer(t *testing.T) {
 	t.Fatal("expected autonomous circle to retreat from nearby stronger same-shape player threat")
 }
 
+func TestClientReceivesBlockedReproductionAvoidanceAgainstPlayer(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "square",
+		PlayerX:                  180,
+		PlayerY:                  500,
+		PlayerEnergy:             simulation.DefaultReproductionCost - 1,
+		PlayerChildrenCount:      0,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         100,
+		AutonomousChildrenCount:  0,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 6 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+		if snapshot.Interaction != nil {
+			t.Fatalf("expected no immediate interaction during blocked-reproduction avoidance, got %+v", snapshot.Interaction)
+		}
+		if snapshot.AutonomousCircles[0].X < initial.AutonomousCircles[0].X {
+			return
+		}
+	}
+
+	t.Fatal("expected autonomous circle to retreat from nearby blocked different-shape player")
+}
+
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())
@@ -971,10 +1028,11 @@ func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.
 
 func TestClientReceivesBlockedReproductionWhenEnergyIsInsufficient(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
-		PlayerShape:      "triangle",
-		AutonomousShape:  "square",
-		PlayerEnergy:     simulation.DefaultPlayerEnergy,
-		AutonomousEnergy: simulation.DefaultReproductionCost - 1,
+		PlayerShape:                         "triangle",
+		AutonomousShape:                     "square",
+		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:                    simulation.DefaultReproductionCost - 1,
+		DisableBlockedReproductionAvoidance: true,
 	}))
 	httpServer := httptest.NewServer(server.Handler())
 	defer httpServer.Close()
@@ -1024,11 +1082,12 @@ func TestClientReceivesBlockedReproductionWhenEnergyIsInsufficient(t *testing.T)
 
 func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
-		PlayerShape:             "triangle",
-		AutonomousShape:         "square",
-		PlayerEnergy:            simulation.DefaultPlayerEnergy,
-		AutonomousEnergy:        simulation.DefaultReproductionCost - 1,
-		AutonomousChildrenCount: 1,
+		PlayerShape:                         "triangle",
+		AutonomousShape:                     "square",
+		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:                    simulation.DefaultReproductionCost - 1,
+		AutonomousChildrenCount:             1,
+		DisableBlockedReproductionAvoidance: true,
 	}))
 	httpServer := httptest.NewServer(server.Handler())
 	defer httpServer.Close()

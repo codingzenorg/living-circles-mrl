@@ -3,30 +3,31 @@ package simulation
 import "math"
 
 const (
-	DefaultWorldWidth              = 800.0
-	DefaultWorldHeight             = 600.0
-	DefaultPlayerRadius            = 12.0
-	DefaultChildRadiusGain         = 4.0
-	DefaultAttachedChildRadius     = 4.0
-	DefaultAttachedChildOrbitGap   = 8.0
-	DefaultChildOrbitSpeed         = 0.12
-	DefaultAutonomousID            = "circle-2"
-	DefaultSecondaryID             = "circle-3"
-	DefaultPlayerEnergy            = 100.0
-	DefaultReplacementEnergy       = 100.0
-	DefaultMaxEnergy               = 100.0
-	DefaultMoveSpeed               = 8.0
-	DefaultMoveCost                = 1.0
-	DefaultFoodRadius              = 6.0
-	DefaultFoodEnergy              = 10.0
-	DefaultFoodRegenDelay          = int64(12)
-	DefaultFoodPriorityDistance    = 140.0
-	DefaultLowEnergyFoodThreshold  = 40.0
-	DefaultThreatAvoidanceDistance = 120.0
-	DefaultReproductionMinEnergy   = 15.0
-	DefaultReproductionCost        = 10.0
-	DefaultPlayerShape             = "triangle"
-	DefaultAutoShape               = "square"
+	DefaultWorldWidth                           = 800.0
+	DefaultWorldHeight                          = 600.0
+	DefaultPlayerRadius                         = 12.0
+	DefaultChildRadiusGain                      = 4.0
+	DefaultAttachedChildRadius                  = 4.0
+	DefaultAttachedChildOrbitGap                = 8.0
+	DefaultChildOrbitSpeed                      = 0.12
+	DefaultAutonomousID                         = "circle-2"
+	DefaultSecondaryID                          = "circle-3"
+	DefaultPlayerEnergy                         = 100.0
+	DefaultReplacementEnergy                    = 100.0
+	DefaultMaxEnergy                            = 100.0
+	DefaultMoveSpeed                            = 8.0
+	DefaultMoveCost                             = 1.0
+	DefaultFoodRadius                           = 6.0
+	DefaultFoodEnergy                           = 10.0
+	DefaultFoodRegenDelay                       = int64(12)
+	DefaultFoodPriorityDistance                 = 140.0
+	DefaultLowEnergyFoodThreshold               = 40.0
+	DefaultThreatAvoidanceDistance              = 120.0
+	DefaultBlockedReproductionAvoidanceDistance = 120.0
+	DefaultReproductionMinEnergy                = 15.0
+	DefaultReproductionCost                     = 10.0
+	DefaultPlayerShape                          = "triangle"
+	DefaultAutoShape                            = "square"
 )
 
 type Bounds struct {
@@ -103,42 +104,44 @@ type Snapshot struct {
 }
 
 type World struct {
-	bounds                 Bounds
-	player                 *PlayerCircle
-	autonomousCircles      []AutonomousCircle
-	autonomousDirections   []Vector
-	nextChildID            int
-	disableFoodSeeking     bool
-	disableThreatAvoidance bool
-	foodSlots              []Food
-	foods                  []Food
-	missingFoodSince       map[string]int64
-	moveCost               float64
-	speed                  float64
-	maxEnergy              float64
-	foodGain               float64
-	lastInteraction        *InteractionClassification
-	activeOverlapPairs     map[string]struct{}
+	bounds                              Bounds
+	player                              *PlayerCircle
+	autonomousCircles                   []AutonomousCircle
+	autonomousDirections                []Vector
+	nextChildID                         int
+	disableFoodSeeking                  bool
+	disableThreatAvoidance              bool
+	disableBlockedReproductionAvoidance bool
+	foodSlots                           []Food
+	foods                               []Food
+	missingFoodSince                    map[string]int64
+	moveCost                            float64
+	speed                               float64
+	maxEnergy                           float64
+	foodGain                            float64
+	lastInteraction                     *InteractionClassification
+	activeOverlapPairs                  map[string]struct{}
 }
 
 type Config struct {
-	PlayerShape               string
-	AutonomousShape           string
-	SecondaryAutonomousShape  string
-	PlayerX                   float64
-	PlayerY                   float64
-	AutonomousX               float64
-	AutonomousY               float64
-	SecondaryAutonomousX      float64
-	SecondaryAutonomousY      float64
-	PlayerEnergy              float64
-	AutonomousEnergy          float64
-	SecondaryAutonomousEnergy float64
-	PlayerChildrenCount       int
-	AutonomousChildrenCount   int
-	SecondaryChildrenCount    int
-	DisableFoodSeeking        bool
-	DisableThreatAvoidance    bool
+	PlayerShape                         string
+	AutonomousShape                     string
+	SecondaryAutonomousShape            string
+	PlayerX                             float64
+	PlayerY                             float64
+	AutonomousX                         float64
+	AutonomousY                         float64
+	SecondaryAutonomousX                float64
+	SecondaryAutonomousY                float64
+	PlayerEnergy                        float64
+	AutonomousEnergy                    float64
+	SecondaryAutonomousEnergy           float64
+	PlayerChildrenCount                 int
+	AutonomousChildrenCount             int
+	SecondaryChildrenCount              int
+	DisableFoodSeeking                  bool
+	DisableThreatAvoidance              bool
+	DisableBlockedReproductionAvoidance bool
 }
 
 func NewWorld() *World {
@@ -223,19 +226,20 @@ func NewWorldWithConfig(config Config) *World {
 			ChildrenCount:    config.PlayerChildrenCount,
 			AttachedChildren: initialAttachedChildren(playerID, config.PlayerChildrenCount),
 		},
-		autonomousCircles:      autonomousCircles,
-		autonomousDirections:   initialAutonomousDirections(len(autonomousCircles)),
-		nextChildID:            totalInitialChildren(config) + 1,
-		disableFoodSeeking:     config.DisableFoodSeeking,
-		disableThreatAvoidance: config.DisableThreatAvoidance,
-		foodSlots:              foodSlots,
-		foods:                  append([]Food(nil), foodSlots...),
-		missingFoodSince:       make(map[string]int64),
-		moveCost:               DefaultMoveCost,
-		speed:                  DefaultMoveSpeed,
-		maxEnergy:              DefaultMaxEnergy,
-		foodGain:               DefaultFoodEnergy,
-		activeOverlapPairs:     make(map[string]struct{}),
+		autonomousCircles:                   autonomousCircles,
+		autonomousDirections:                initialAutonomousDirections(len(autonomousCircles)),
+		nextChildID:                         totalInitialChildren(config) + 1,
+		disableFoodSeeking:                  config.DisableFoodSeeking,
+		disableThreatAvoidance:              config.DisableThreatAvoidance,
+		disableBlockedReproductionAvoidance: config.DisableBlockedReproductionAvoidance,
+		foodSlots:                           foodSlots,
+		foods:                               append([]Food(nil), foodSlots...),
+		missingFoodSince:                    make(map[string]int64),
+		moveCost:                            DefaultMoveCost,
+		speed:                               DefaultMoveSpeed,
+		maxEnergy:                           DefaultMaxEnergy,
+		foodGain:                            DefaultFoodEnergy,
+		activeOverlapPairs:                  make(map[string]struct{}),
 	}
 }
 
@@ -403,6 +407,14 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int) Vector {
 		}
 	}
 
+	blockedTarget, blockedFound := nearestBlockedReproductionTarget(circle, w.player, w.autonomousCircles)
+	if !w.disableBlockedReproductionAvoidance && blockedFound {
+		return Vector{
+			X: circle.X - blockedTarget.X,
+			Y: circle.Y - blockedTarget.Y,
+		}
+	}
+
 	if foodFound && distanceBetween(circle.X, circle.Y, foodTarget.X, foodTarget.Y) <= DefaultFoodPriorityDistance {
 		return Vector{
 			X: foodTarget.X - circle.X,
@@ -526,6 +538,43 @@ func nearestThreatTarget(circle AutonomousCircle, player *PlayerCircle, candidat
 	return selected, found
 }
 
+func nearestBlockedReproductionTarget(circle AutonomousCircle, player *PlayerCircle, candidates []AutonomousCircle) (Vector, bool) {
+	var selected Vector
+	selectedID := ""
+	bestDistance := 0.0
+	found := false
+
+	if player != nil && player.Energy > 0 && blockedReproductionWithPlayer(circle, *player) {
+		distance := distanceBetween(circle.X, circle.Y, player.X, player.Y)
+		if distance < DefaultBlockedReproductionAvoidanceDistance {
+			selected = Vector{X: player.X, Y: player.Y}
+			selectedID = player.ID
+			bestDistance = distance
+			found = true
+		}
+	}
+
+	for _, candidate := range candidates {
+		if candidate.ID == circle.ID || candidate.Energy <= 0 || !blockedReproductionWithAutonomous(circle, candidate) {
+			continue
+		}
+
+		distance := distanceBetween(circle.X, circle.Y, candidate.X, candidate.Y)
+		if distance >= DefaultBlockedReproductionAvoidanceDistance {
+			continue
+		}
+
+		if !found || distance < bestDistance || (distance == bestDistance && candidate.ID < selectedID) {
+			selected = Vector{X: candidate.X, Y: candidate.Y}
+			selectedID = candidate.ID
+			bestDistance = distance
+			found = true
+		}
+	}
+
+	return selected, found
+}
+
 func interactionTargetPriorityAgainstPlayer(circle AutonomousCircle, player PlayerCircle) int {
 	if circle.Shape != player.Shape {
 		if reproductionFeasibleWithPlayer(circle, player) {
@@ -564,6 +613,14 @@ func reproductionFeasibleWithPlayer(circle AutonomousCircle, player PlayerCircle
 func reproductionFeasibleWithAutonomous(left AutonomousCircle, right AutonomousCircle) bool {
 	return reproductionCapacity(left.Energy, left.ChildrenCount) >= DefaultReproductionMinEnergy &&
 		reproductionCapacity(right.Energy, right.ChildrenCount) >= DefaultReproductionMinEnergy
+}
+
+func blockedReproductionWithPlayer(circle AutonomousCircle, player PlayerCircle) bool {
+	return circle.Shape != player.Shape && !reproductionFeasibleWithPlayer(circle, player)
+}
+
+func blockedReproductionWithAutonomous(left AutonomousCircle, right AutonomousCircle) bool {
+	return left.Shape != right.Shape && !reproductionFeasibleWithAutonomous(left, right)
 }
 
 func fightFeasibleWithPlayer(circle AutonomousCircle, player PlayerCircle) bool {

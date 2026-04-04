@@ -859,6 +859,123 @@ func TestInteractionSeekingSkipsLosingSameShapeTarget(t *testing.T) {
 	}
 }
 
+func TestNearbyBlockedDifferentShapePlayerTriggersAvoidance(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "square",
+		PlayerX:                  180,
+		PlayerY:                  500,
+		PlayerEnergy:             simulation.DefaultReproductionCost - 1,
+		PlayerChildrenCount:      0,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         100,
+		AutonomousChildrenCount:  0,
+	})
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction during blocked-reproduction avoidance, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].X >= 100 {
+		t.Fatalf("expected autonomous circle to retreat from nearby blocked different-shape player, got x=%v", snapshot.AutonomousCircles[0].X)
+	}
+}
+
+func TestNearbyBlockedDifferentShapeAutonomousTriggersAvoidance(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      180,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: simulation.DefaultReproductionCost - 1,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+	})
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction during blocked-reproduction avoidance, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].X >= 100 {
+		t.Fatalf("expected autonomous circle to retreat from nearby blocked different-shape autonomous target, got x=%v", snapshot.AutonomousCircles[0].X)
+	}
+}
+
+func TestFeasibleDifferentShapeTargetDoesNotTriggerBlockedReproductionAvoidance(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      180,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          100,
+		SecondaryAutonomousEnergy: 100,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected feasible different-shape pursuit to remain active")
+	}
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected feasible different-shape target to remain reproducible, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+		t.Fatalf("expected pursuit of feasible different-shape target %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+}
+
+func TestDistantBlockedDifferentShapeTargetDoesNotOverrideOrdinarySteering(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              "square",
+		PlayerX:                  260,
+		PlayerY:                  500,
+		PlayerEnergy:             simulation.DefaultReproductionCost - 1,
+		PlayerChildrenCount:      0,
+		AutonomousShape:          "triangle",
+		SecondaryAutonomousShape: "",
+		AutonomousX:              100,
+		AutonomousY:              500,
+		AutonomousEnergy:         100,
+		AutonomousChildrenCount:  0,
+	})
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction while blocked target stays outside avoidance radius, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].Y >= 500 {
+		t.Fatalf("expected distant blocked target to leave ordinary food steering in control, got y=%v", snapshot.AutonomousCircles[0].Y)
+	}
+}
+
 func TestInteractionSeekingPrefersWinningSameShapeFallback(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:              "triangle",
@@ -1499,10 +1616,11 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 
 func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
-		PlayerShape:      "triangle",
-		AutonomousShape:  "square",
-		PlayerEnergy:     simulation.DefaultPlayerEnergy,
-		AutonomousEnergy: simulation.DefaultReproductionCost - 1,
+		PlayerShape:                         "triangle",
+		AutonomousShape:                     "square",
+		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:                    simulation.DefaultReproductionCost - 1,
+		DisableBlockedReproductionAvoidance: true,
 	})
 
 	var snapshot simulation.Snapshot
@@ -1532,11 +1650,12 @@ func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *test
 
 func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
-		PlayerShape:             "triangle",
-		AutonomousShape:         "square",
-		PlayerEnergy:            simulation.DefaultPlayerEnergy,
-		AutonomousEnergy:        simulation.DefaultReproductionCost - 1,
-		AutonomousChildrenCount: 1,
+		PlayerShape:                         "triangle",
+		AutonomousShape:                     "square",
+		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:                    simulation.DefaultReproductionCost - 1,
+		AutonomousChildrenCount:             1,
+		DisableBlockedReproductionAvoidance: true,
 	})
 
 	var snapshot simulation.Snapshot
