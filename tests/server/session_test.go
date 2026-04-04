@@ -655,6 +655,70 @@ func TestAutonomousInteractionSeekingCanCreateReproductionWithoutPlayerMovement(
 	}
 }
 
+func TestLowEnergyAutonomousCirclePrefersFoodOverInteractionTarget(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "square",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      220,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          39,
+		SecondaryAutonomousEnergy: 100,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+	})
+
+	snapshot := session.Advance()
+
+	if snapshot.Interaction != nil {
+		t.Fatalf("expected no immediate interaction while low-energy circle seeks food, got %+v", snapshot.Interaction)
+	}
+	if snapshot.AutonomousCircles[0].Y >= 500 {
+		t.Fatalf("expected low-energy autonomous circle to steer toward food lane, got y=%v", snapshot.AutonomousCircles[0].Y)
+	}
+}
+
+func TestStableEnergyAutonomousCircleStillSeeksInteractionTarget(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "square",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      220,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          40,
+		SecondaryAutonomousEnergy: 100,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected stable-energy autonomous circle to still seek interaction")
+	}
+	if snapshot.Interaction.SourceID != simulation.DefaultAutonomousID || snapshot.Interaction.TargetID != simulation.DefaultSecondaryID {
+		t.Fatalf("expected deterministic autonomous target %q -> %q, got %q -> %q", simulation.DefaultAutonomousID, simulation.DefaultSecondaryID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+}
+
 func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
 	session := simulation.NewSession()
 	before := session.Snapshot()

@@ -21,6 +21,7 @@ const (
 	DefaultFoodEnergy            = 10.0
 	DefaultFoodRegenDelay        = int64(12)
 	DefaultFoodPriorityDistance  = 140.0
+	DefaultLowEnergyFoodThreshold = 40.0
 	DefaultReproductionMinEnergy = 15.0
 	DefaultReproductionCost      = 10.0
 	DefaultPlayerShape           = "triangle"
@@ -383,7 +384,7 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int) Vector {
 	}
 
 	foodTarget, foodFound := nearestFoodTarget(circle, w.foods)
-	if foodFound && distanceBetween(circle.X, circle.Y, foodTarget.X, foodTarget.Y) <= DefaultFoodPriorityDistance {
+	if foodFound && (circle.Energy < DefaultLowEnergyFoodThreshold || distanceBetween(circle.X, circle.Y, foodTarget.X, foodTarget.Y) <= DefaultFoodPriorityDistance) {
 		return Vector{
 			X: foodTarget.X - circle.X,
 			Y: foodTarget.Y - circle.Y,

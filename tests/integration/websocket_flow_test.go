@@ -483,6 +483,67 @@ func TestClientReceivesAutonomousSeekingReproductionWithoutPlayerInput(t *testin
 	t.Fatal("expected autonomous seeking reproduction snapshot")
 }
 
+func TestClientReceivesLowEnergyAutonomousFoodPriority(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "square",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              100,
+		PlayerChildrenCount:       0,
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		AutonomousX:               100,
+		AutonomousY:               500,
+		SecondaryAutonomousX:      220,
+		SecondaryAutonomousY:      500,
+		AutonomousEnergy:          39,
+		SecondaryAutonomousEnergy: 100,
+		AutonomousChildrenCount:   0,
+		SecondaryChildrenCount:    0,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 6 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+		if snapshot.Interaction != nil {
+			t.Fatalf("expected no immediate interaction while low-energy autonomous seeks food, got %+v", snapshot.Interaction)
+		}
+		if snapshot.AutonomousCircles[0].Y < initial.AutonomousCircles[0].Y {
+			return
+		}
+	}
+
+	t.Fatal("expected low-energy autonomous circle to steer toward food")
+}
+
 func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())
