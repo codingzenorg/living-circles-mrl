@@ -173,6 +173,57 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Allow interaction-seeking autonomous circles to consider whether fallback same-shape targets are currently survivable under the existing fight ordering.
+
+## Why This Matters
+
+The current implementation now treats feasible reproduction as a meaningful steering preference, which makes different-shape pursuit more honest. But when no feasible reproduction target exists, same-shape fallback pursuit is still blind to the existing deterministic fight rule. That means circles can still steer directly into clearly losing conflicts even though the model already knows how those conflicts resolve.
+
+The next model pressure is to make pre-contact steering better match the current same-shape conflict semantics without escalating into a full tactical AI system.
+
+## Impacted Areas
+
+### Simulation model
+
+- fallback target ordering should consider whether a same-shape encounter is currently survivable
+- the current deterministic fight ordering becomes part of steering eligibility, not only post-contact resolution
+- current movement, energy, fight, and reproduction rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because energy, children, shapes, and outcomes are already visible
+- build may need steering provenance only if fight-feasibility-driven fallback is too subtle to infer from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because the HUD shows shapes, children, energy, and interaction outcomes
+- minor HUD adjustments may still help if skipping a losing same-shape target is hard to observe
+
+### Existing semantics
+
+- the current low-energy food-recovery rule should remain unchanged
+- the current reproduction-feasibility-aware preference should remain in place
+- player-targetable and autonomous-targetable steering should continue sharing one candidate set
+- the current fight ordering should remain the single authoritative basis for deciding whether a same-shape fallback is currently acceptable
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- the exact fight-feasibility basis for allowing same-shape fallback pursuit
+- the fallback rule when no same-shape target is currently survivable
+- how deterministic tie-breaking behaves across equally survivable candidates
+
+## Risks If Ignored
+
+- steering will keep walking into deterministic losing fights as a default fallback
+- children and energy will remain more meaningful in post-contact fight resolution than in pre-contact behavior
+- later autonomy slices will keep carrying a gap between steering and the current fight model
+
+---
+
+## Change
+
 Allow interaction-seeking autonomous circles to prioritize targets by shape meaning instead of using only nearest-target selection.
 
 ## Why This Matters
