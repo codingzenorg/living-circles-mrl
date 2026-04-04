@@ -123,6 +123,56 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Allow interaction-seeking autonomous circles to prioritize targets by shape meaning instead of using only nearest-target selection.
+
+## Why This Matters
+
+The current implementation now lets autonomous circles decide between food recovery and social interaction based on energy. But once they enter interaction-seeking mode, target choice is still shape-blind even though shape is the variable that changes interaction semantics.
+
+The next model pressure is to make shape influence target ordering before contact so steering and outcome meaning are less disconnected.
+
+## Impacted Areas
+
+### Simulation model
+
+- interaction-target ordering should consider whether a candidate implies fight or reproduction
+- deterministic priority and tie-breaking become part of the steering contract
+- current movement, energy, and downstream interaction rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because positions, shapes, and outcomes are already visible
+- build may need steering provenance only if shape-driven choice is too hard to infer from ordinary snapshots
+
+### Browser rendering
+
+- current rendering may already be enough because circle shapes and the interaction HUD are visible
+- minor HUD adjustments may still help if the new target preference is subtle
+
+### Existing semantics
+
+- the current low-energy food-recovery rule should remain unchanged
+- the current food-priority distance rule should remain coherent
+- player-targetable and autonomous-targetable steering should continue sharing one candidate set
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- which shape outcome is preferred when interaction seeking is active
+- how fallback behaves when no preferred-outcome target exists
+- how equal-distance and equal-priority cases remain deterministic
+
+## Risks If Ignored
+
+- shape will remain too absent from pre-contact behavior
+- interaction-seeking autonomy will feel more arbitrary than the rest of the model
+- later ecosystem slices will keep carrying a gap between steering meaning and collision meaning
+
+---
+
+## Change
+
 Allow autonomous steering priority to depend on energy condition so low-energy circles prefer food recovery over social interaction.
 
 ## Why This Matters
