@@ -327,6 +327,65 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Allow attached children to contribute to same-shape threat and blocked-reproduction avoidance detection.
+
+## Why This Matters
+
+The current implementation now lets orbiting children matter in several places:
+
+- they are visible in the world
+- they collect food
+- they can absorb conflict loss
+- they can be consumed for continuity and reproduction payment
+- they can already trigger authoritative parent-level contact before parent cores overlap
+
+But the newer avoidance rules still mostly reason from parent-core proximity. That creates a clean remaining mismatch: child-triggered contact is already real, while child-triggered avoidance is not.
+
+The next model pressure is to align pre-contact avoidance with the embodied orbiting-child geometry already used by the interaction engine.
+
+## Impacted Areas
+
+### Simulation model
+
+- avoidance detection should be able to treat attached-child positions as part of current proximity
+- the current same-shape threat and blocked-reproduction categories should remain unchanged
+- current movement, energy, fight, reproduction, and food rules should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because attached-child positions are already exposed
+- build may need steering provenance only if child-triggered avoidance is too subtle to infer from ordinary snapshots
+
+### Browser rendering
+
+- current rendering is likely sufficient because attached children are already visible
+- minor HUD cues may still help if distinguishing parent-triggered from child-triggered retreat is too subtle
+
+### Existing semantics
+
+- the current low-energy food-recovery rule should remain unchanged
+- the current same-shape threat-avoidance and blocked-reproduction avoidance rules should remain in place
+- the current child-triggered contact model should become more consistent with pre-contact motion
+- the existing deterministic child layout should remain the sole geometry source for this slice
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether parent-body and attached-child proximity use the same avoidance thresholds
+- how deterministic tie-breaking behaves across parent-triggered and child-triggered avoidance paths
+- whether both same-shape threat and blocked-reproduction avoidance gain child-awareness in the same slice
+
+## Risks If Ignored
+
+- visible orbiting children will keep mattering more for contact than for avoidance
+- avoidance will remain semantically behind the current interaction geometry
+- later autonomy slices will keep carrying a gap between child-triggered contact and child-triggered retreat
+
+---
+
+## Change
+
 Allow interaction-seeking autonomous circles to prioritize targets by shape meaning instead of using only nearest-target selection.
 
 ## Why This Matters
