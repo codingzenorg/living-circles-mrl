@@ -155,6 +155,8 @@ type InteractionClassification struct {
 	SourcePaidChildID     string   `json:"source_paid_child_id,omitempty"`
 	TargetPaidChildID     string   `json:"target_paid_child_id,omitempty"`
 	CreatedChildIDs       []string `json:"created_child_ids,omitempty"`
+	SourceCreatedChildIDs []string `json:"source_created_child_ids,omitempty"`
+	TargetCreatedChildIDs []string `json:"target_created_child_ids,omitempty"`
 }
 
 type Food struct {
@@ -1040,7 +1042,7 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 		return
 	}
 
-	createdChildIDs := w.assignReproductionChildren(&opponent, tick)
+	createdChildIDs, sourceCreatedChildIDs, targetCreatedChildIDs := w.assignReproductionChildren(&opponent, tick)
 	w.autonomousCircles[opponentIndex] = opponent
 
 	kind := "reproduce_resolved"
@@ -1049,19 +1051,21 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 	}
 
 	w.lastInteraction = &InteractionClassification{
-		Active:            false,
-		Resolved:          true,
-		Kind:              kind,
-		ContactOrigin:     contactDetails.Origin,
-		SourceID:          w.player.ID,
-		TargetID:          opponent.ID,
-		SourceChildID:     contactDetails.SourceChildID,
-		TargetChildID:     contactDetails.TargetChildID,
-		SourcePaidChild:   playerUsedChild,
-		TargetPaidChild:   opponentUsedChild,
-		SourcePaidChildID: playerPaidChildID,
-		TargetPaidChildID: opponentPaidChildID,
-		CreatedChildIDs:   createdChildIDs,
+		Active:                false,
+		Resolved:              true,
+		Kind:                  kind,
+		ContactOrigin:         contactDetails.Origin,
+		SourceID:              w.player.ID,
+		TargetID:              opponent.ID,
+		SourceChildID:         contactDetails.SourceChildID,
+		TargetChildID:         contactDetails.TargetChildID,
+		SourcePaidChild:       playerUsedChild,
+		TargetPaidChild:       opponentUsedChild,
+		SourcePaidChildID:     playerPaidChildID,
+		TargetPaidChildID:     opponentPaidChildID,
+		CreatedChildIDs:       createdChildIDs,
+		SourceCreatedChildIDs: sourceCreatedChildIDs,
+		TargetCreatedChildIDs: targetCreatedChildIDs,
 	}
 }
 
@@ -1157,7 +1161,7 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 		return
 	}
 
-	createdChildIDs := w.assignAutonomousPairReproductionChildren(&leftCircle, &rightCircle, tick)
+	createdChildIDs, sourceCreatedChildIDs, targetCreatedChildIDs := w.assignAutonomousPairReproductionChildren(&leftCircle, &rightCircle, tick)
 	w.autonomousCircles[leftIndex] = leftCircle
 	w.autonomousCircles[rightIndex] = rightCircle
 
@@ -1167,19 +1171,21 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 	}
 
 	w.lastInteraction = &InteractionClassification{
-		Active:            false,
-		Resolved:          true,
-		Kind:              kind,
-		ContactOrigin:     contactDetails.Origin,
-		SourceID:          leftCircle.ID,
-		TargetID:          rightCircle.ID,
-		SourceChildID:     contactDetails.SourceChildID,
-		TargetChildID:     contactDetails.TargetChildID,
-		SourcePaidChild:   leftUsedChild,
-		TargetPaidChild:   rightUsedChild,
-		SourcePaidChildID: leftPaidChildID,
-		TargetPaidChildID: rightPaidChildID,
-		CreatedChildIDs:   createdChildIDs,
+		Active:                false,
+		Resolved:              true,
+		Kind:                  kind,
+		ContactOrigin:         contactDetails.Origin,
+		SourceID:              leftCircle.ID,
+		TargetID:              rightCircle.ID,
+		SourceChildID:         contactDetails.SourceChildID,
+		TargetChildID:         contactDetails.TargetChildID,
+		SourcePaidChild:       leftUsedChild,
+		TargetPaidChild:       rightUsedChild,
+		SourcePaidChildID:     leftPaidChildID,
+		TargetPaidChildID:     rightPaidChildID,
+		CreatedChildIDs:       createdChildIDs,
+		SourceCreatedChildIDs: sourceCreatedChildIDs,
+		TargetCreatedChildIDs: targetCreatedChildIDs,
 	}
 }
 
@@ -1501,27 +1507,36 @@ func hashString(value string) int {
 	return hash
 }
 
-func (w *World) assignReproductionChildren(opponent *AutonomousCircle, tick int64) []string {
+func (w *World) assignReproductionChildren(opponent *AutonomousCircle, tick int64) ([]string, []string, []string) {
 	createdChildIDs := make([]string, 0, 2)
+	sourceCreatedChildIDs := make([]string, 0, 2)
+	targetCreatedChildIDs := make([]string, 0, 2)
 	distribution := reproductionDistributionCase(tick, *w.player, *opponent)
 	switch distribution {
 	case 0:
-		createdChildIDs = append(createdChildIDs, w.addPlayerChild())
-		createdChildIDs = append(createdChildIDs, w.addPlayerChild())
+		firstChildID := w.addPlayerChild()
+		secondChildID := w.addPlayerChild()
+		createdChildIDs = append(createdChildIDs, firstChildID, secondChildID)
+		sourceCreatedChildIDs = append(sourceCreatedChildIDs, firstChildID, secondChildID)
 	case 1:
-		createdChildIDs = append(createdChildIDs, w.addPlayerChild())
+		playerChildID := w.addPlayerChild()
+		createdChildIDs = append(createdChildIDs, playerChildID)
+		sourceCreatedChildIDs = append(sourceCreatedChildIDs, playerChildID)
 		childID := w.allocateChildID()
 		addAutonomousChild(opponent, childID)
 		createdChildIDs = append(createdChildIDs, childID)
+		targetCreatedChildIDs = append(targetCreatedChildIDs, childID)
 	case 2:
 		firstChildID := w.allocateChildID()
 		addAutonomousChild(opponent, firstChildID)
 		createdChildIDs = append(createdChildIDs, firstChildID)
+		targetCreatedChildIDs = append(targetCreatedChildIDs, firstChildID)
 		secondChildID := w.allocateChildID()
 		addAutonomousChild(opponent, secondChildID)
 		createdChildIDs = append(createdChildIDs, secondChildID)
+		targetCreatedChildIDs = append(targetCreatedChildIDs, secondChildID)
 	}
-	return createdChildIDs
+	return createdChildIDs, sourceCreatedChildIDs, targetCreatedChildIDs
 }
 
 func reproductionDistributionCase(tick int64, player PlayerCircle, opponent AutonomousCircle) int {
@@ -1561,33 +1576,41 @@ func addAutonomousChild(circle *AutonomousCircle, childID string) {
 	syncAutonomousChildrenState(circle)
 }
 
-func (w *World) assignAutonomousPairReproductionChildren(left *AutonomousCircle, right *AutonomousCircle, tick int64) []string {
+func (w *World) assignAutonomousPairReproductionChildren(left *AutonomousCircle, right *AutonomousCircle, tick int64) ([]string, []string, []string) {
 	createdChildIDs := make([]string, 0, 2)
+	sourceCreatedChildIDs := make([]string, 0, 2)
+	targetCreatedChildIDs := make([]string, 0, 2)
 	distribution := autonomousReproductionDistributionCase(tick, *left, *right)
 	switch distribution {
 	case 0:
 		firstChildID := w.allocateChildID()
 		addAutonomousChild(left, firstChildID)
 		createdChildIDs = append(createdChildIDs, firstChildID)
+		sourceCreatedChildIDs = append(sourceCreatedChildIDs, firstChildID)
 		secondChildID := w.allocateChildID()
 		addAutonomousChild(left, secondChildID)
 		createdChildIDs = append(createdChildIDs, secondChildID)
+		sourceCreatedChildIDs = append(sourceCreatedChildIDs, secondChildID)
 	case 1:
 		leftChildID := w.allocateChildID()
 		addAutonomousChild(left, leftChildID)
 		createdChildIDs = append(createdChildIDs, leftChildID)
+		sourceCreatedChildIDs = append(sourceCreatedChildIDs, leftChildID)
 		rightChildID := w.allocateChildID()
 		addAutonomousChild(right, rightChildID)
 		createdChildIDs = append(createdChildIDs, rightChildID)
+		targetCreatedChildIDs = append(targetCreatedChildIDs, rightChildID)
 	case 2:
 		firstChildID := w.allocateChildID()
 		addAutonomousChild(right, firstChildID)
 		createdChildIDs = append(createdChildIDs, firstChildID)
+		targetCreatedChildIDs = append(targetCreatedChildIDs, firstChildID)
 		secondChildID := w.allocateChildID()
 		addAutonomousChild(right, secondChildID)
 		createdChildIDs = append(createdChildIDs, secondChildID)
+		targetCreatedChildIDs = append(targetCreatedChildIDs, secondChildID)
 	}
-	return createdChildIDs
+	return createdChildIDs, sourceCreatedChildIDs, targetCreatedChildIDs
 }
 
 func consumePlayerChild(circle *PlayerCircle) {

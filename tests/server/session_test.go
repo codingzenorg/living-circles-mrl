@@ -2077,6 +2077,14 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	if len(snapshot.Interaction.CreatedChildIDs) != 2 {
 		t.Fatalf("expected two created child ids, got %d", len(snapshot.Interaction.CreatedChildIDs))
 	}
+	sourceCreated := newlyOwnedChildIDs(before.Player.AttachedChildren, snapshot.Player.AttachedChildren)
+	targetCreated := newlyOwnedChildIDs(before.AutonomousCircles[0].AttachedChildren, snapshot.AutonomousCircles[0].AttachedChildren)
+	if len(snapshot.Interaction.SourceCreatedChildIDs) != len(sourceCreated) {
+		t.Fatalf("expected %d source created child ids, got %d", len(sourceCreated), len(snapshot.Interaction.SourceCreatedChildIDs))
+	}
+	if len(snapshot.Interaction.TargetCreatedChildIDs) != len(targetCreated) {
+		t.Fatalf("expected %d target created child ids, got %d", len(targetCreated), len(snapshot.Interaction.TargetCreatedChildIDs))
+	}
 	createdChildIDs := map[string]struct{}{}
 	for _, childID := range snapshot.Interaction.CreatedChildIDs {
 		createdChildIDs[childID] = struct{}{}
@@ -2086,6 +2094,8 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 			t.Fatalf("expected created child id %q in interaction payload, got %+v", childID, snapshot.Interaction.CreatedChildIDs)
 		}
 	}
+	assertChildIDSetEqual(t, snapshot.Interaction.SourceCreatedChildIDs, sourceCreated, "source created child ids")
+	assertChildIDSetEqual(t, snapshot.Interaction.TargetCreatedChildIDs, targetCreated, "target created child ids")
 	if len(snapshot.AutonomousCircles) != len(before.AutonomousCircles) {
 		t.Fatalf("expected no new autonomous circles, before=%d after=%d", len(before.AutonomousCircles), len(snapshot.AutonomousCircles))
 	}
@@ -2137,6 +2147,9 @@ func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *test
 	}
 	if len(snapshot.Interaction.CreatedChildIDs) != 0 {
 		t.Fatalf("expected no created child ids on blocked reproduction, got %+v", snapshot.Interaction.CreatedChildIDs)
+	}
+	if len(snapshot.Interaction.SourceCreatedChildIDs) != 0 || len(snapshot.Interaction.TargetCreatedChildIDs) != 0 {
+		t.Fatalf("expected no created child ownership on blocked reproduction, source=%+v target=%+v", snapshot.Interaction.SourceCreatedChildIDs, snapshot.Interaction.TargetCreatedChildIDs)
 	}
 	if snapshot.Interaction.SourceBlockedCapacity {
 		t.Fatal("expected source side to have enough reproduction capacity")
@@ -2248,6 +2261,8 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	if len(snapshot.Interaction.CreatedChildIDs) != 2 {
 		t.Fatalf("expected two created child ids, got %d", len(snapshot.Interaction.CreatedChildIDs))
 	}
+	sourceCreated := newlyOwnedChildIDs(before.Player.AttachedChildren, snapshot.Player.AttachedChildren)
+	targetCreated := newlyOwnedChildIDs(before.AutonomousCircles[0].AttachedChildren, snapshot.AutonomousCircles[0].AttachedChildren)
 	if snapshot.Interaction.SourceBlockedCapacity || snapshot.Interaction.TargetBlockedCapacity {
 		t.Fatalf("expected no blocked-capacity flags on successful reproduction, source=%v target=%v", snapshot.Interaction.SourceBlockedCapacity, snapshot.Interaction.TargetBlockedCapacity)
 	}
@@ -2272,6 +2287,8 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 			t.Fatalf("expected created child id %q in interaction payload, got %+v", childID, snapshot.Interaction.CreatedChildIDs)
 		}
 	}
+	assertChildIDSetEqual(t, snapshot.Interaction.SourceCreatedChildIDs, sourceCreated, "source created child ids")
+	assertChildIDSetEqual(t, snapshot.Interaction.TargetCreatedChildIDs, targetCreated, "target created child ids")
 	if len(snapshot.Player.AttachedChildren)+len(snapshot.AutonomousCircles[0].AttachedChildren) != len(before.Player.AttachedChildren)+len(before.AutonomousCircles[0].AttachedChildren)+1 {
 		t.Fatalf("expected one child to be spent and two children to be redistributed, before player=%d autonomous=%d after player=%d autonomous=%d", len(before.Player.AttachedChildren), len(before.AutonomousCircles[0].AttachedChildren), len(snapshot.Player.AttachedChildren), len(snapshot.AutonomousCircles[0].AttachedChildren))
 	}
@@ -2292,6 +2309,7 @@ func TestDifferentShapeOverlapPaidByEnergyRemainsOrdinaryResolvedReproduction(t 
 		AutonomousEnergy:                    simulation.DefaultPlayerEnergy,
 		DisableBlockedReproductionAvoidance: true,
 	})
+	before := session.Snapshot()
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -2310,12 +2328,16 @@ func TestDifferentShapeOverlapPaidByEnergyRemainsOrdinaryResolvedReproduction(t 
 	if len(snapshot.Interaction.CreatedChildIDs) != 2 {
 		t.Fatalf("expected two created child ids for energy-paid reproduction, got %d", len(snapshot.Interaction.CreatedChildIDs))
 	}
+	sourceCreated := newlyOwnedChildIDs(before.Player.AttachedChildren, snapshot.Player.AttachedChildren)
+	targetCreated := newlyOwnedChildIDs(before.AutonomousCircles[0].AttachedChildren, snapshot.AutonomousCircles[0].AttachedChildren)
 	if snapshot.Interaction.SourcePaidChild || snapshot.Interaction.TargetPaidChild {
 		t.Fatalf("expected ordinary resolved reproduction to omit child-payment identity, got source=%v target=%v", snapshot.Interaction.SourcePaidChild, snapshot.Interaction.TargetPaidChild)
 	}
 	if snapshot.Interaction.SourcePaidChildID != "" || snapshot.Interaction.TargetPaidChildID != "" {
 		t.Fatalf("expected ordinary resolved reproduction to omit paid child ids, got source=%q target=%q", snapshot.Interaction.SourcePaidChildID, snapshot.Interaction.TargetPaidChildID)
 	}
+	assertChildIDSetEqual(t, snapshot.Interaction.SourceCreatedChildIDs, sourceCreated, "source created child ids")
+	assertChildIDSetEqual(t, snapshot.Interaction.TargetCreatedChildIDs, targetCreated, "target created child ids")
 }
 
 func newlyCreatedChildIDs(beforeSource []simulation.AttachedChild, afterSource []simulation.AttachedChild, beforeTarget []simulation.AttachedChild, afterTarget []simulation.AttachedChild) []string {
@@ -2340,6 +2362,41 @@ func newlyCreatedChildIDs(beforeSource []simulation.AttachedChild, afterSource [
 	}
 
 	return created
+}
+
+func newlyOwnedChildIDs(before []simulation.AttachedChild, after []simulation.AttachedChild) []string {
+	beforeIDs := make(map[string]struct{}, len(before))
+	for _, child := range before {
+		beforeIDs[child.ID] = struct{}{}
+	}
+
+	created := make([]string, 0, 2)
+	for _, child := range after {
+		if _, exists := beforeIDs[child.ID]; !exists {
+			created = append(created, child.ID)
+		}
+	}
+
+	return created
+}
+
+func assertChildIDSetEqual(t *testing.T, got []string, expected []string, label string) {
+	t.Helper()
+
+	if len(got) != len(expected) {
+		t.Fatalf("expected %d %s, got %d", len(expected), label, len(got))
+	}
+
+	gotSet := make(map[string]struct{}, len(got))
+	for _, childID := range got {
+		gotSet[childID] = struct{}{}
+	}
+
+	for _, childID := range expected {
+		if _, exists := gotSet[childID]; !exists {
+			t.Fatalf("expected %s to include %q, got %+v", label, childID, got)
+		}
+	}
 }
 
 func TestContinuousOverlapDoesNotRepeatChildAccumulation(t *testing.T) {

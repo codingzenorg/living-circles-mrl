@@ -62,6 +62,41 @@ func newlyCreatedChildIDs(beforeSource []simulation.AttachedChild, afterSource [
 	return created
 }
 
+func newlyOwnedChildIDs(before []simulation.AttachedChild, after []simulation.AttachedChild) []string {
+	beforeIDs := make(map[string]struct{}, len(before))
+	for _, child := range before {
+		beforeIDs[child.ID] = struct{}{}
+	}
+
+	created := make([]string, 0, 2)
+	for _, child := range after {
+		if _, exists := beforeIDs[child.ID]; !exists {
+			created = append(created, child.ID)
+		}
+	}
+
+	return created
+}
+
+func assertChildIDSetEqual(t *testing.T, got []string, expected []string, label string) {
+	t.Helper()
+
+	if len(got) != len(expected) {
+		t.Fatalf("expected %d %s, got %d", len(expected), label, len(got))
+	}
+
+	gotSet := make(map[string]struct{}, len(got))
+	for _, childID := range got {
+		gotSet[childID] = struct{}{}
+	}
+
+	for _, childID := range expected {
+		if _, exists := gotSet[childID]; !exists {
+			t.Fatalf("expected %s to include %q, got %+v", label, childID, got)
+		}
+	}
+}
+
 func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:            "triangle",
@@ -1554,6 +1589,8 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 		if len(snapshot.Interaction.CreatedChildIDs) != 2 {
 			t.Fatalf("expected two created child ids, got %d", len(snapshot.Interaction.CreatedChildIDs))
 		}
+		sourceCreated := newlyOwnedChildIDs(previous.Player.AttachedChildren, snapshot.Player.AttachedChildren)
+		targetCreated := newlyOwnedChildIDs(previous.AutonomousCircles[0].AttachedChildren, snapshot.AutonomousCircles[0].AttachedChildren)
 		if snapshot.Interaction.SourcePaidChild {
 			t.Fatal("expected player not to pay with child in this reproduction path")
 		}
@@ -1575,6 +1612,8 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 				t.Fatalf("expected created child id %q in interaction payload, got %+v", childID, snapshot.Interaction.CreatedChildIDs)
 			}
 		}
+		assertChildIDSetEqual(t, snapshot.Interaction.SourceCreatedChildIDs, sourceCreated, "source created child ids")
+		assertChildIDSetEqual(t, snapshot.Interaction.TargetCreatedChildIDs, targetCreated, "target created child ids")
 		if len(snapshot.Player.AttachedChildren)+len(snapshot.AutonomousCircles[0].AttachedChildren) != len(previous.Player.AttachedChildren)+len(previous.AutonomousCircles[0].AttachedChildren)+1 {
 			t.Fatalf("expected one child payment plus two redistributed children, before player=%d autonomous=%d after player=%d autonomous=%d", len(previous.Player.AttachedChildren), len(previous.AutonomousCircles[0].AttachedChildren), len(snapshot.Player.AttachedChildren), len(snapshot.AutonomousCircles[0].AttachedChildren))
 		}

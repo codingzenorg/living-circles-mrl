@@ -83,12 +83,18 @@ function draw(snapshot) {
   const createdChildren = snapshot.interaction?.created_child_ids?.length
     ? ` · Created: ${snapshot.interaction.created_child_ids.join(",")}`
     : "";
+  const sourceCreatedChildren = snapshot.interaction?.source_created_child_ids?.length
+    ? ` · Source created: ${snapshot.interaction.source_created_child_ids.join(",")}`
+    : "";
+  const targetCreatedChildren = snapshot.interaction?.target_created_child_ids?.length
+    ? ` · Target created: ${snapshot.interaction.target_created_child_ids.join(",")}`
+    : "";
   const blockedCapacity = snapshot.interaction?.source_blocked_capacity || snapshot.interaction?.target_blocked_capacity
     ? ` · Blocked: ${snapshot.interaction?.source_blocked_capacity ? "source" : ""}${snapshot.interaction?.source_blocked_capacity && snapshot.interaction?.target_blocked_capacity ? "+" : ""}${snapshot.interaction?.target_blocked_capacity ? "target" : ""}`
     : "";
   const sourceChild = snapshot.interaction?.source_child_id ? ` · Source child: ${snapshot.interaction.source_child_id}` : "";
   const targetChild = snapshot.interaction?.target_child_id ? ` · Target child: ${snapshot.interaction.target_child_id}` : "";
-  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}${promotedChild}${absorbedChild}${childPayment}${paidSourceChild}${paidTargetChild}${createdChildren}${blockedCapacity}${sourceChild}${targetChild}`;
+  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}${promotedChild}${absorbedChild}${childPayment}${paidSourceChild}${paidTargetChild}${createdChildren}${sourceCreatedChildren}${targetCreatedChildren}${blockedCapacity}${sourceChild}${targetChild}`;
 }
 
 function drawCircle(circle, isPlayer, player) {

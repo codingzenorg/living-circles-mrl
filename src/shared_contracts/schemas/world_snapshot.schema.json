@@ -230,6 +230,18 @@
                 "type": "string"
               }
             },
+            "source_created_child_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "target_created_child_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "source_blocked_capacity": {
               "type": "boolean"
             },
