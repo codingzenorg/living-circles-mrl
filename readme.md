@@ -109,6 +109,16 @@ nvm use
 go run ./src/server/cmd/livingcircles
 ```
 
+If you want a faster manual edit loop for the Go server, this repo also includes an `air` config:
+
+```bash
+source "$HOME/.nvm/nvm.sh"
+nvm use
+air
+```
+
+That is intended for quick demo validation only. Keep using `go test ./...` and `npm run test:contracts` for deterministic slice validation.
+
 Then open:
 
 ```text
