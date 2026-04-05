@@ -2104,3 +2104,58 @@ The next implementation-facing slice should explicitly choose:
 - continuity will remain less embodied than feeding, contact, and child loss
 - the visible child model will still stop short of actual positional promotion
 - later continuity refinement will still have to unwind the old parent-centered replacement placement
+
+---
+
+## Change
+
+Expose current reproduction capacity values in interaction outcomes.
+
+## Why This Matters
+
+The reproduction path is now highly inspectable in terms of identity:
+
+- blocked reproduction exposes which side or sides were blocked
+- child-paid reproduction exposes which side paid through a child and which concrete child was consumed
+- successful reproduction exposes created-child identity, ownership identity, and redistribution kind
+
+But the runtime still hides the actual current capacity values that make those decisions succeed or fail. That keeps an avoidable gap between what the server already knows and what the client and tests can explicitly read.
+
+The next model pressure is to make the current reproduction capacity of each participant explicit without changing the existing feasibility or payment rules.
+
+## Impacted Areas
+
+### Simulation model
+
+- the current reproduction capacity formula should remain unchanged
+- the authoritative decision point should expose the evaluated current capacity values for both source and target participants
+- blocked-capacity booleans and successful outcomes should remain behaviorally unchanged
+
+### Runtime contract
+
+- the current snapshot shape is close but still insufficient because it exposes blockage identity without exposing the evaluated capacity values
+- one minimal extension should expose source-side and target-side reproduction capacity values
+
+### Browser rendering
+
+- current rendering should remain sufficient if the HUD can display the new numeric values
+- no visual behavior change should be required beyond that output
+
+### Existing semantics
+
+- reproduction threshold, cost, child reserve contribution, payment identity, creation, ownership, and redistribution should remain unchanged
+- contact, fight, continuity, feeding, movement, orbit, and steering should remain unchanged
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether reproduction capacity values are exposed on both blocked and successful reproduction outcomes
+- whether the values should reflect the authoritative decision-time state before payment or after payment
+- how tests should prove that the exposed values match the existing feasibility rule without redefining it
+
+## Risks If Ignored
+
+- blocked reproduction will remain partially inspectable through booleans only
+- successful reproduction will still hide the numeric basis for why it was allowed
+- future reproduction refinement will continue to rely on implicit server-side arithmetic instead of explicit outcome data
