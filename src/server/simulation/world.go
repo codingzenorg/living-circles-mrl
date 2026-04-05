@@ -61,7 +61,6 @@ type PlayerCircle struct {
 	Y                float64         `json:"y"`
 	Radius           float64         `json:"radius"`
 	Energy           float64         `json:"energy"`
-	ChildrenCount    int             `json:"-"`
 	AttachedChildren []AttachedChild `json:"attached_children"`
 }
 
@@ -74,7 +73,6 @@ type AutonomousCircle struct {
 	Y                float64         `json:"y"`
 	Radius           float64         `json:"radius"`
 	Energy           float64         `json:"energy"`
-	ChildrenCount    int             `json:"-"`
 	AttachedChildren []AttachedChild `json:"attached_children"`
 }
 
@@ -105,7 +103,6 @@ func (circle *PlayerCircle) UnmarshalJSON(data []byte) error {
 	circle.Radius = decoded.Radius
 	circle.Energy = decoded.Energy
 	circle.AttachedChildren = decoded.AttachedChildren
-	circle.ChildrenCount = len(decoded.AttachedChildren)
 	return nil
 }
 
@@ -136,7 +133,6 @@ func (circle *AutonomousCircle) UnmarshalJSON(data []byte) error {
 	circle.Radius = decoded.Radius
 	circle.Energy = decoded.Energy
 	circle.AttachedChildren = decoded.AttachedChildren
-	circle.ChildrenCount = len(decoded.AttachedChildren)
 	return nil
 }
 
@@ -248,7 +244,6 @@ func NewWorldWithConfig(config Config) *World {
 			Y:                autonomousY,
 			Radius:           derivedRadius(0),
 			Energy:           config.AutonomousEnergy,
-			ChildrenCount:    config.AutonomousChildrenCount,
 			AttachedChildren: initialAttachedChildren(DefaultAutonomousID, config.AutonomousChildrenCount),
 		},
 	}
@@ -264,7 +259,6 @@ func NewWorldWithConfig(config Config) *World {
 			Y:                secondaryY,
 			Radius:           derivedRadius(0),
 			Energy:           config.SecondaryAutonomousEnergy,
-			ChildrenCount:    config.SecondaryChildrenCount,
 			AttachedChildren: initialAttachedChildren(DefaultSecondaryID, config.SecondaryChildrenCount),
 		})
 	}
@@ -289,7 +283,6 @@ func NewWorldWithConfig(config Config) *World {
 			Y:                playerY,
 			Radius:           derivedRadius(0),
 			Energy:           config.PlayerEnergy,
-			ChildrenCount:    config.PlayerChildrenCount,
 			AttachedChildren: initialAttachedChildren(playerID, config.PlayerChildrenCount),
 		},
 		autonomousCircles:                   autonomousCircles,
@@ -1392,14 +1385,12 @@ func totalInitialChildren(config Config) int {
 
 func snapshotPlayerCircle(circle PlayerCircle, tick int64) PlayerCircle {
 	copy := circle
-	copy.ChildrenCount = childCountForPlayer(circle)
 	copy.AttachedChildren = layoutAttachedChildren(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
 	return copy
 }
 
 func snapshotAutonomousCircle(circle AutonomousCircle, tick int64) AutonomousCircle {
 	copy := circle
-	copy.ChildrenCount = childCountForAutonomous(circle)
 	copy.AttachedChildren = layoutAttachedChildren(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
 	return copy
 }
@@ -1544,11 +1535,9 @@ func hasAttachedChildrenAutonomous(circle AutonomousCircle) bool {
 }
 
 func syncPlayerChildrenState(circle *PlayerCircle) {
-	circle.ChildrenCount = childCountForPlayer(*circle)
-	circle.Radius = derivedRadius(circle.ChildrenCount)
+	circle.Radius = derivedRadius(childCountForPlayer(*circle))
 }
 
 func syncAutonomousChildrenState(circle *AutonomousCircle) {
-	circle.ChildrenCount = childCountForAutonomous(*circle)
-	circle.Radius = derivedRadius(circle.ChildrenCount)
+	circle.Radius = derivedRadius(childCountForAutonomous(*circle))
 }
