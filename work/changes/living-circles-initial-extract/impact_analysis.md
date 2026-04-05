@@ -221,6 +221,54 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Expose which side failed the capacity check when reproduction is blocked.
+
+## Why This Matters
+
+The reproduction path is now much more inspectable than before. The runtime can already say which child paid for reproduction, which child was promoted in continuity, which child was absorbed in a fight, and which child triggered attached-child contact. But blocked reproduction still stops at the pair level: `reproduce_blocked_energy` says the interaction failed, while hiding whether the source side, the target side, or both sides lacked enough current capacity.
+
+That leaves a mismatch between authoritative knowledge and inspectable output. The server already knows exactly how the current feasibility rule evaluated each participant, yet the client and tests still need to infer failure identity indirectly from energy and attached-child state.
+
+## Impacted Areas
+
+### Runtime contract
+
+- blocked reproduction outcomes should expose whether the source side, target side, or both sides failed the current capacity rule
+- successful reproduction outcomes should remain unchanged and should not emit blocked-capacity identity
+
+### Simulation model
+
+- the current feasibility rule should remain unchanged
+- build should surface the result of the existing capacity check rather than inventing a second evaluation path
+
+### Browser inspectability
+
+- the HUD should remain sufficient to read which side failed blocked reproduction
+- no larger visualization system is needed if the identity is readable through existing debug output
+
+### Deterministic testing
+
+- tests should prove source-only, target-only, and both-sides blocked-capacity paths
+- tests should also prove that successful reproduction emits no blocked-capacity identity
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether blocked-capacity identity is exposed as one field per side rather than a more complex failure object
+- whether the same fields remain absent on successful reproduction
+- how deterministic tests pin source-only, target-only, and both-sides blocked cases without changing current reproduction semantics
+
+## Risks If Ignored
+
+- blocked reproduction will remain less inspectable than the rest of the current child and reproduction model
+- debugging current reproduction feasibility will continue to rely on indirect inference instead of explicit authoritative output
+- later reproduction refinements will still have to work around avoidable ambiguity in the blocked path
+
+---
+
+## Change
+
 Expose the concrete attached-child identity used during child-triggered interaction contact.
 
 ## Why This Matters
