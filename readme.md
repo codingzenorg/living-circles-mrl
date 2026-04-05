@@ -92,6 +92,7 @@ Useful files to read first:
 
 - `docs/semantics/model_hypothesis.md`
 - `docs/semantics/domain_background_knowledge.md`
+- `docs/building/local_testing.md`
 - `architecture.md`
 - `decisions.md`
 - `docs/operating/mrl_reference.md`
