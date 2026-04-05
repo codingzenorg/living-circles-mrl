@@ -2276,3 +2276,63 @@ The next implementation-facing slice should explicitly choose:
 - total capacity values will remain only partially interpretable in the runtime payload
 - the client and tests will still need implicit knowledge to know when child reserve actually mattered
 - future reproduction refinement will keep relying on inferred capacity composition instead of explicit outcome metadata
+
+---
+
+## Change
+
+Expose decision-time child counts in reproduction outcomes.
+
+## Why This Matters
+
+The reproduction path is now inspectable through:
+
+- blocked-capacity identity
+- child-payment identity
+- created-child identity
+- ownership identity
+- redistribution kind
+- total capacity values
+- threshold and cost constants
+- energy and reserve components of those totals
+
+But the runtime still hides one important part of the decision context: how many attached children each side had when the reproduction decision was actually made. After successful reproduction, the post-outcome attached-child arrays already include payment and creation effects, so they no longer cleanly preserve the decision-time counts.
+
+The next model pressure is to expose those decision-time child counts explicitly without changing the reproduction rule itself.
+
+## Impacted Areas
+
+### Simulation model
+
+- the current reproduction decision path should remain unchanged
+- the authoritative decision point should expose the source-side and target-side attached-child counts before payment and creation are applied
+- feasibility, payment, creation, and redistribution behavior should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is close but still insufficient because post-outcome attached-child arrays do not preserve the pre-decision counts directly
+- one minimal extension should expose source-side and target-side decision-time child counts
+
+### Browser rendering
+
+- current rendering should remain sufficient if the HUD can display the new counts
+- no visual behavior change should be required beyond that output
+
+### Existing semantics
+
+- reproduction threshold, cost, capacity totals, capacity components, blocked-capacity identity, payment identity, creation, ownership, and redistribution should remain unchanged
+- contact, fight, continuity, feeding, movement, orbit, and steering should remain unchanged
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether decision-time child counts are exposed on both blocked and successful reproduction outcomes
+- how those counts should be represented when a side has no attached children
+- how tests should prove that the exposed counts remain stable even when payment and creation alter the post-outcome attached-child arrays
+
+## Risks If Ignored
+
+- the decision context for reproduction will remain partially hidden even after the recent inspectability slices
+- the client and tests will still need inference to recover pre-payment child availability
+- future reproduction refinement will keep relying on implicit pre-decision child state instead of explicit outcome metadata
