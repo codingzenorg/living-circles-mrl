@@ -2239,6 +2239,12 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	if !snapshot.Interaction.TargetPaidChild {
 		t.Fatal("expected autonomous target to pay with child in this reproduction path")
 	}
+	if snapshot.Interaction.SourcePaidChildID != "" {
+		t.Fatalf("expected no source paid child id, got %q", snapshot.Interaction.SourcePaidChildID)
+	}
+	if snapshot.Interaction.TargetPaidChildID != "circle-2-child-1" {
+		t.Fatalf("expected target paid child id circle-2-child-1, got %q", snapshot.Interaction.TargetPaidChildID)
+	}
 	if len(snapshot.Player.AttachedChildren)+len(snapshot.AutonomousCircles[0].AttachedChildren) != len(before.Player.AttachedChildren)+len(before.AutonomousCircles[0].AttachedChildren)+1 {
 		t.Fatalf("expected one child to be spent and two children to be redistributed, before player=%d autonomous=%d after player=%d autonomous=%d", len(before.Player.AttachedChildren), len(before.AutonomousCircles[0].AttachedChildren), len(snapshot.Player.AttachedChildren), len(snapshot.AutonomousCircles[0].AttachedChildren))
 	}
@@ -2276,6 +2282,9 @@ func TestDifferentShapeOverlapPaidByEnergyRemainsOrdinaryResolvedReproduction(t 
 	}
 	if snapshot.Interaction.SourcePaidChild || snapshot.Interaction.TargetPaidChild {
 		t.Fatalf("expected ordinary resolved reproduction to omit child-payment identity, got source=%v target=%v", snapshot.Interaction.SourcePaidChild, snapshot.Interaction.TargetPaidChild)
+	}
+	if snapshot.Interaction.SourcePaidChildID != "" || snapshot.Interaction.TargetPaidChildID != "" {
+		t.Fatalf("expected ordinary resolved reproduction to omit paid child ids, got source=%q target=%q", snapshot.Interaction.SourcePaidChildID, snapshot.Interaction.TargetPaidChildID)
 	}
 }
 

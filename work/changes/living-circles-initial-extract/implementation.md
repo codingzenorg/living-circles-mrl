@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_blocked_reproduction_capacity_identity.md`
+`docs/slices/initial_child_payment_child_identity_in_reproduction.md`
 
 ## Implemented Shape
 
@@ -58,6 +58,7 @@
 - `reproduce_paid_child` outcomes now explicitly expose which side paid through a child
 - child-triggered interactions now explicitly expose which source-side and/or target-side attached child participated in contact
 - `reproduce_blocked_energy` outcomes now explicitly expose which side or sides lacked enough current capacity
+- `reproduce_paid_child` outcomes now explicitly expose which concrete child was consumed on each paying side
 - Go-side snapshot structs now derive child quantity only from attached children instead of mirroring a separate `ChildrenCount` field
 - dead derived-radius scaffolding has been removed and parent radius is now expressed directly as the fixed visible body size
 - browser demo reset through an authoritative server restart endpoint
@@ -228,6 +229,7 @@ The slice needed these implementation choices not fully specified in the refined
 - `death_promoted_child` outcomes now expose the promoted child ID explicitly
 - `fight_absorbed_child` outcomes now expose the absorbed child ID explicitly
 - `reproduce_paid_child` outcomes now expose whether the source side, target side, or both paid through a child
+- `reproduce_paid_child` outcomes now also expose the concrete consumed source-side and/or target-side payment child IDs
 - `attached_child` contact origin now also exposes the participating source-side and/or target-side child IDs explicitly
 - `reproduce_blocked_energy` outcomes now expose whether the source side, target side, or both failed the current capacity check
 - Go-side snapshot readers now derive child quantity directly from attached children with no mirrored `ChildrenCount` field

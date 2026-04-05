@@ -218,6 +218,12 @@
             "target_paid_child": {
               "type": "boolean"
             },
+            "source_paid_child_id": {
+              "type": "string"
+            },
+            "target_paid_child_id": {
+              "type": "string"
+            },
             "source_blocked_capacity": {
               "type": "boolean"
             },
