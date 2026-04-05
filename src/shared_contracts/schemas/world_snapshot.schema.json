@@ -191,6 +191,9 @@
             "contact_path_kind": {
               "enum": ["source_child_to_target_parent", "source_parent_to_target_child", "child_to_child"]
             },
+            "distribution_kind": {
+              "enum": ["source_only", "split", "target_only"]
+            },
             "source_id": {
               "type": "string"
             },

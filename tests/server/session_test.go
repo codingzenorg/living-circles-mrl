@@ -2063,9 +2063,12 @@ func TestAutonomousCirclesCanResolveReproductionWithoutPlayerInvolvement(t *test
 	}
 	beforeLeft, _ := autonomousByID(before.AutonomousCircles, simulation.DefaultAutonomousID)
 	beforeRight, _ := autonomousByID(before.AutonomousCircles, simulation.DefaultSecondaryID)
+	sourceCreated := newlyOwnedChildIDs(beforeLeft.AttachedChildren, left.AttachedChildren)
+	targetCreated := newlyOwnedChildIDs(beforeRight.AttachedChildren, right.AttachedChildren)
 	if len(left.AttachedChildren)+len(right.AttachedChildren) != len(beforeLeft.AttachedChildren)+len(beforeRight.AttachedChildren)+2 {
 		t.Fatalf("expected reproduction to add two children across the autonomous pair, before left=%d right=%d after left=%d right=%d", len(beforeLeft.AttachedChildren), len(beforeRight.AttachedChildren), len(left.AttachedChildren), len(right.AttachedChildren))
 	}
+	assertDistributionKindMatchesOwnership(t, snapshot.Interaction.DistributionKind, sourceCreated, targetCreated)
 	if snapshot.Player == nil || snapshot.Player.X != before.Player.X || snapshot.Player.Y != before.Player.Y {
 		t.Fatalf("expected player to remain uninvolved at %+v, got %+v", before.Player, snapshot.Player)
 	}
@@ -2111,6 +2114,7 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	}
 	assertChildIDSetEqual(t, snapshot.Interaction.SourceCreatedChildIDs, sourceCreated, "source created child ids")
 	assertChildIDSetEqual(t, snapshot.Interaction.TargetCreatedChildIDs, targetCreated, "target created child ids")
+	assertDistributionKindMatchesOwnership(t, snapshot.Interaction.DistributionKind, sourceCreated, targetCreated)
 	if len(snapshot.AutonomousCircles) != len(before.AutonomousCircles) {
 		t.Fatalf("expected no new autonomous circles, before=%d after=%d", len(before.AutonomousCircles), len(snapshot.AutonomousCircles))
 	}
@@ -2165,6 +2169,9 @@ func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *test
 	}
 	if len(snapshot.Interaction.SourceCreatedChildIDs) != 0 || len(snapshot.Interaction.TargetCreatedChildIDs) != 0 {
 		t.Fatalf("expected no created child ownership on blocked reproduction, source=%+v target=%+v", snapshot.Interaction.SourceCreatedChildIDs, snapshot.Interaction.TargetCreatedChildIDs)
+	}
+	if snapshot.Interaction.DistributionKind != "" {
+		t.Fatalf("expected no distribution kind on blocked reproduction, got %q", snapshot.Interaction.DistributionKind)
 	}
 	if snapshot.Interaction.SourceBlockedCapacity {
 		t.Fatal("expected source side to have enough reproduction capacity")
@@ -2304,6 +2311,7 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	}
 	assertChildIDSetEqual(t, snapshot.Interaction.SourceCreatedChildIDs, sourceCreated, "source created child ids")
 	assertChildIDSetEqual(t, snapshot.Interaction.TargetCreatedChildIDs, targetCreated, "target created child ids")
+	assertDistributionKindMatchesOwnership(t, snapshot.Interaction.DistributionKind, sourceCreated, targetCreated)
 	if len(snapshot.Player.AttachedChildren)+len(snapshot.AutonomousCircles[0].AttachedChildren) != len(before.Player.AttachedChildren)+len(before.AutonomousCircles[0].AttachedChildren)+1 {
 		t.Fatalf("expected one child to be spent and two children to be redistributed, before player=%d autonomous=%d after player=%d autonomous=%d", len(before.Player.AttachedChildren), len(before.AutonomousCircles[0].AttachedChildren), len(snapshot.Player.AttachedChildren), len(snapshot.AutonomousCircles[0].AttachedChildren))
 	}
@@ -2353,6 +2361,27 @@ func TestDifferentShapeOverlapPaidByEnergyRemainsOrdinaryResolvedReproduction(t 
 	}
 	assertChildIDSetEqual(t, snapshot.Interaction.SourceCreatedChildIDs, sourceCreated, "source created child ids")
 	assertChildIDSetEqual(t, snapshot.Interaction.TargetCreatedChildIDs, targetCreated, "target created child ids")
+	assertDistributionKindMatchesOwnership(t, snapshot.Interaction.DistributionKind, sourceCreated, targetCreated)
+}
+
+func assertDistributionKindMatchesOwnership(t *testing.T, got string, sourceCreated []string, targetCreated []string) {
+	t.Helper()
+
+	want := ""
+	switch {
+	case len(sourceCreated) == 2 && len(targetCreated) == 0:
+		want = "source_only"
+	case len(sourceCreated) == 1 && len(targetCreated) == 1:
+		want = "split"
+	case len(sourceCreated) == 0 && len(targetCreated) == 2:
+		want = "target_only"
+	default:
+		t.Fatalf("unexpected reproduction ownership split: source=%d target=%d", len(sourceCreated), len(targetCreated))
+	}
+
+	if got != want {
+		t.Fatalf("expected distribution kind %q, got %q", want, got)
+	}
 }
 
 func newlyCreatedChildIDs(beforeSource []simulation.AttachedChild, afterSource []simulation.AttachedChild, beforeTarget []simulation.AttachedChild, afterTarget []simulation.AttachedChild) []string {

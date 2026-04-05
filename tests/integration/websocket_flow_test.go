@@ -97,6 +97,26 @@ func assertChildIDSetEqual(t *testing.T, got []string, expected []string, label 
 	}
 }
 
+func assertDistributionKindMatchesOwnership(t *testing.T, got string, sourceCreated []string, targetCreated []string) {
+	t.Helper()
+
+	want := ""
+	switch {
+	case len(sourceCreated) == 2 && len(targetCreated) == 0:
+		want = "source_only"
+	case len(sourceCreated) == 1 && len(targetCreated) == 1:
+		want = "split"
+	case len(sourceCreated) == 0 && len(targetCreated) == 2:
+		want = "target_only"
+	default:
+		t.Fatalf("unexpected reproduction ownership split: source=%d target=%d", len(sourceCreated), len(targetCreated))
+	}
+
+	if got != want {
+		t.Fatalf("expected distribution kind %q, got %q", want, got)
+	}
+}
+
 func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:            "triangle",
@@ -1524,6 +1544,9 @@ func TestClientReceivesBlockedReproductionWhenEnergyIsInsufficient(t *testing.T)
 		if len(snapshot.Interaction.CreatedChildIDs) != 0 {
 			t.Fatalf("expected no created child ids on blocked reproduction, got %+v", snapshot.Interaction.CreatedChildIDs)
 		}
+		if snapshot.Interaction.DistributionKind != "" {
+			t.Fatalf("expected no distribution kind on blocked reproduction, got %q", snapshot.Interaction.DistributionKind)
+		}
 		if snapshot.Interaction.SourceBlockedCapacity {
 			t.Fatal("expected source side to have enough reproduction capacity")
 		}
@@ -1620,6 +1643,7 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 		}
 		assertChildIDSetEqual(t, snapshot.Interaction.SourceCreatedChildIDs, sourceCreated, "source created child ids")
 		assertChildIDSetEqual(t, snapshot.Interaction.TargetCreatedChildIDs, targetCreated, "target created child ids")
+		assertDistributionKindMatchesOwnership(t, snapshot.Interaction.DistributionKind, sourceCreated, targetCreated)
 		if len(snapshot.Player.AttachedChildren)+len(snapshot.AutonomousCircles[0].AttachedChildren) != len(previous.Player.AttachedChildren)+len(previous.AutonomousCircles[0].AttachedChildren)+1 {
 			t.Fatalf("expected one child payment plus two redistributed children, before player=%d autonomous=%d after player=%d autonomous=%d", len(previous.Player.AttachedChildren), len(previous.AutonomousCircles[0].AttachedChildren), len(snapshot.Player.AttachedChildren), len(snapshot.AutonomousCircles[0].AttachedChildren))
 		}
@@ -1662,6 +1686,7 @@ func TestClientReceivesOrdinaryResolvedReproductionWhenNoChildPaymentIsUsed(t *t
 
 	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
 
+	var previous simulation.Snapshot
 	for range 40 {
 		var snapshot simulation.Snapshot
 		if err := connection.ReadJSON(&snapshot); err != nil {
@@ -1669,12 +1694,21 @@ func TestClientReceivesOrdinaryResolvedReproductionWhenNoChildPaymentIsUsed(t *t
 		}
 
 		if snapshot.Tick == 0 || snapshot.Interaction == nil {
+			previous = snapshot
 			continue
 		}
 
 		if snapshot.Interaction.Kind != "reproduce_resolved" {
 			t.Fatalf("expected reproduce_resolved for energy-paid reproduction, got %q", snapshot.Interaction.Kind)
 		}
+		sourceCreated := newlyOwnedChildIDs(previous.Player.AttachedChildren, snapshot.Player.AttachedChildren)
+		targetCreated := newlyOwnedChildIDs(previous.AutonomousCircles[0].AttachedChildren, snapshot.AutonomousCircles[0].AttachedChildren)
+		if len(snapshot.Interaction.CreatedChildIDs) != 2 {
+			t.Fatalf("expected two created child ids for energy-paid reproduction, got %d", len(snapshot.Interaction.CreatedChildIDs))
+		}
+		assertChildIDSetEqual(t, snapshot.Interaction.SourceCreatedChildIDs, sourceCreated, "source created child ids")
+		assertChildIDSetEqual(t, snapshot.Interaction.TargetCreatedChildIDs, targetCreated, "target created child ids")
+		assertDistributionKindMatchesOwnership(t, snapshot.Interaction.DistributionKind, sourceCreated, targetCreated)
 		return
 	}
 

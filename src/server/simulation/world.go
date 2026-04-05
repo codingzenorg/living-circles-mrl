@@ -141,6 +141,7 @@ type InteractionClassification struct {
 	Kind                  string   `json:"kind"`
 	ContactOrigin         string   `json:"contact_origin,omitempty"`
 	ContactPathKind       string   `json:"contact_path_kind,omitempty"`
+	DistributionKind      string   `json:"distribution_kind,omitempty"`
 	SourceID              string   `json:"source_id"`
 	TargetID              string   `json:"target_id"`
 	SourceChildID         string   `json:"source_child_id,omitempty"`
@@ -1046,7 +1047,8 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 		return
 	}
 
-	createdChildIDs, sourceCreatedChildIDs, targetCreatedChildIDs := w.assignReproductionChildren(&opponent, tick)
+	distribution := reproductionDistributionCase(tick, *w.player, opponent)
+	createdChildIDs, sourceCreatedChildIDs, targetCreatedChildIDs := w.assignReproductionChildren(&opponent, distribution)
 	w.autonomousCircles[opponentIndex] = opponent
 
 	kind := "reproduce_resolved"
@@ -1060,6 +1062,7 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 		Kind:                  kind,
 		ContactOrigin:         contactDetails.Origin,
 		ContactPathKind:       contactDetails.PathKind,
+		DistributionKind:      reproductionDistributionKind(distribution),
 		SourceID:              w.player.ID,
 		TargetID:              opponent.ID,
 		SourceChildID:         contactDetails.SourceChildID,
@@ -1168,7 +1171,8 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 		return
 	}
 
-	createdChildIDs, sourceCreatedChildIDs, targetCreatedChildIDs := w.assignAutonomousPairReproductionChildren(&leftCircle, &rightCircle, tick)
+	distribution := autonomousReproductionDistributionCase(tick, leftCircle, rightCircle)
+	createdChildIDs, sourceCreatedChildIDs, targetCreatedChildIDs := w.assignAutonomousPairReproductionChildren(&leftCircle, &rightCircle, distribution)
 	w.autonomousCircles[leftIndex] = leftCircle
 	w.autonomousCircles[rightIndex] = rightCircle
 
@@ -1183,6 +1187,7 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 		Kind:                  kind,
 		ContactOrigin:         contactDetails.Origin,
 		ContactPathKind:       contactDetails.PathKind,
+		DistributionKind:      reproductionDistributionKind(distribution),
 		SourceID:              leftCircle.ID,
 		TargetID:              rightCircle.ID,
 		SourceChildID:         contactDetails.SourceChildID,
@@ -1515,11 +1520,10 @@ func hashString(value string) int {
 	return hash
 }
 
-func (w *World) assignReproductionChildren(opponent *AutonomousCircle, tick int64) ([]string, []string, []string) {
+func (w *World) assignReproductionChildren(opponent *AutonomousCircle, distribution int) ([]string, []string, []string) {
 	createdChildIDs := make([]string, 0, 2)
 	sourceCreatedChildIDs := make([]string, 0, 2)
 	targetCreatedChildIDs := make([]string, 0, 2)
-	distribution := reproductionDistributionCase(tick, *w.player, *opponent)
 	switch distribution {
 	case 0:
 		firstChildID := w.addPlayerChild()
@@ -1550,6 +1554,19 @@ func (w *World) assignReproductionChildren(opponent *AutonomousCircle, tick int6
 func reproductionDistributionCase(tick int64, player PlayerCircle, opponent AutonomousCircle) int {
 	seed := int(tick) + len(player.ID) + len(opponent.ID) + player.Generation + opponent.Generation + childCountForPlayer(player) + childCountForAutonomous(opponent)
 	return seed % 3
+}
+
+func reproductionDistributionKind(distribution int) string {
+	switch distribution {
+	case 0:
+		return "source_only"
+	case 1:
+		return "split"
+	case 2:
+		return "target_only"
+	default:
+		return ""
+	}
 }
 
 func autonomousReproductionDistributionCase(tick int64, left AutonomousCircle, right AutonomousCircle) int {
@@ -1584,11 +1601,10 @@ func addAutonomousChild(circle *AutonomousCircle, childID string) {
 	syncAutonomousChildrenState(circle)
 }
 
-func (w *World) assignAutonomousPairReproductionChildren(left *AutonomousCircle, right *AutonomousCircle, tick int64) ([]string, []string, []string) {
+func (w *World) assignAutonomousPairReproductionChildren(left *AutonomousCircle, right *AutonomousCircle, distribution int) ([]string, []string, []string) {
 	createdChildIDs := make([]string, 0, 2)
 	sourceCreatedChildIDs := make([]string, 0, 2)
 	targetCreatedChildIDs := make([]string, 0, 2)
-	distribution := autonomousReproductionDistributionCase(tick, *left, *right)
 	switch distribution {
 	case 0:
 		firstChildID := w.allocateChildID()

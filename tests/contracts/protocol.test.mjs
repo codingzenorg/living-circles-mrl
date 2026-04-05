@@ -31,6 +31,7 @@ test("world snapshot schema remains explicit and parseable", async () => {
   assert.deepEqual(schema.properties.interaction.anyOf[1].properties.kind.enum, ["reproduce_resolved", "reproduce_paid_child", "reproduce_blocked_energy", "fight_resolved", "fight_absorbed_child", "death_promoted_child"]);
   assert.deepEqual(schema.properties.interaction.anyOf[1].properties.contact_origin.enum, ["parent_body", "attached_child"]);
   assert.deepEqual(schema.properties.interaction.anyOf[1].properties.contact_path_kind.enum, ["source_child_to_target_parent", "source_parent_to_target_child", "child_to_child"]);
+  assert.deepEqual(schema.properties.interaction.anyOf[1].properties.distribution_kind.enum, ["source_only", "split", "target_only"]);
   assert.equal(schema.properties.interaction.anyOf[1].properties.source_child_id.type, "string");
   assert.equal(schema.properties.interaction.anyOf[1].properties.target_child_id.type, "string");
   assert.equal(schema.properties.interaction.anyOf[1].properties.promoted_child_id.type, "string");
