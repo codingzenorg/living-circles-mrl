@@ -1577,6 +1577,8 @@ func TestClientReceivesBlockedReproductionWhenEnergyIsInsufficient(t *testing.T)
 			t.Fatalf("expected source capacity to meet reproduction threshold, got %v", snapshot.Interaction.SourceCapacityValue)
 		}
 		assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
+		assertFloatEqual(t, snapshot.Interaction.ReproductionThreshold, simulation.DefaultReproductionMinEnergy)
+		assertFloatEqual(t, snapshot.Interaction.ReproductionCost, simulation.DefaultReproductionCost)
 		if snapshot.Player == nil {
 			t.Fatal("expected player to remain active after blocked reproduction")
 		}
@@ -1652,6 +1654,8 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 		}
 		assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.Player.Energy, len(snapshot.Player.AttachedChildren)))
 		assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
+		assertFloatEqual(t, snapshot.Interaction.ReproductionThreshold, simulation.DefaultReproductionMinEnergy)
+		assertFloatEqual(t, snapshot.Interaction.ReproductionCost, simulation.DefaultReproductionCost)
 		if snapshot.Interaction.SourcePaidChildID != "" {
 			t.Fatalf("expected no source paid child id, got %q", snapshot.Interaction.SourcePaidChildID)
 		}
@@ -1729,6 +1733,8 @@ func TestClientReceivesOrdinaryResolvedReproductionWhenNoChildPaymentIsUsed(t *t
 		}
 		assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.Player.Energy, len(snapshot.Player.AttachedChildren)))
 		assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
+		assertFloatEqual(t, snapshot.Interaction.ReproductionThreshold, simulation.DefaultReproductionMinEnergy)
+		assertFloatEqual(t, snapshot.Interaction.ReproductionCost, simulation.DefaultReproductionCost)
 		sourceCreated := newlyOwnedChildIDs(previous.Player.AttachedChildren, snapshot.Player.AttachedChildren)
 		targetCreated := newlyOwnedChildIDs(previous.AutonomousCircles[0].AttachedChildren, snapshot.AutonomousCircles[0].AttachedChildren)
 		if len(snapshot.Interaction.CreatedChildIDs) != 2 {

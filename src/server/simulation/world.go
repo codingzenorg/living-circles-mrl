@@ -156,6 +156,8 @@ type InteractionClassification struct {
 	TargetBlockedCapacity bool     `json:"target_blocked_capacity,omitempty"`
 	SourceCapacityValue   float64  `json:"source_capacity_value,omitempty"`
 	TargetCapacityValue   float64  `json:"target_capacity_value,omitempty"`
+	ReproductionThreshold float64  `json:"reproduction_threshold,omitempty"`
+	ReproductionCost      float64  `json:"reproduction_cost,omitempty"`
 	SourcePaidChildID     string   `json:"source_paid_child_id,omitempty"`
 	TargetPaidChildID     string   `json:"target_paid_child_id,omitempty"`
 	CreatedChildIDs       []string `json:"created_child_ids,omitempty"`
@@ -1049,6 +1051,8 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 			TargetBlockedCapacity: !opponentPaid,
 			SourceCapacityValue:   playerCapacity,
 			TargetCapacityValue:   opponentCapacity,
+			ReproductionThreshold: DefaultReproductionMinEnergy,
+			ReproductionCost:      DefaultReproductionCost,
 		}
 		return
 	}
@@ -1075,6 +1079,8 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 		TargetChildID:         contactDetails.TargetChildID,
 		SourceCapacityValue:   playerCapacity,
 		TargetCapacityValue:   opponentCapacity,
+		ReproductionThreshold: DefaultReproductionMinEnergy,
+		ReproductionCost:      DefaultReproductionCost,
 		SourcePaidChild:       playerUsedChild,
 		TargetPaidChild:       opponentUsedChild,
 		SourcePaidChildID:     playerPaidChildID,
@@ -1179,6 +1185,8 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 			TargetBlockedCapacity: !rightPaid,
 			SourceCapacityValue:   leftCapacity,
 			TargetCapacityValue:   rightCapacity,
+			ReproductionThreshold: DefaultReproductionMinEnergy,
+			ReproductionCost:      DefaultReproductionCost,
 		}
 		return
 	}
@@ -1206,6 +1214,8 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 		TargetChildID:         contactDetails.TargetChildID,
 		SourceCapacityValue:   leftCapacity,
 		TargetCapacityValue:   rightCapacity,
+		ReproductionThreshold: DefaultReproductionMinEnergy,
+		ReproductionCost:      DefaultReproductionCost,
 		SourcePaidChild:       leftUsedChild,
 		TargetPaidChild:       rightUsedChild,
 		SourcePaidChildID:     leftPaidChildID,

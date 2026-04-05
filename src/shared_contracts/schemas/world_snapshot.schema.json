@@ -261,6 +261,14 @@
             "target_capacity_value": {
               "type": "number",
               "minimum": 0
+            },
+            "reproduction_threshold": {
+              "type": "number",
+              "minimum": 0
+            },
+            "reproduction_cost": {
+              "type": "number",
+              "minimum": 0
             }
           }
         }
