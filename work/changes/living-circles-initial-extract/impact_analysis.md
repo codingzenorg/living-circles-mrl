@@ -1479,3 +1479,53 @@ The next implementation-facing slice should explicitly choose:
 - combat will remain one of the most abstract child-driven systems after most other child mechanics have been embodied
 - larger raw child counts will keep acting like a hidden strength ladder even though visible child bodies already absorb loss and trigger contact
 - later combat refinement will still have to unwind direct child-count stacking from the winner rule
+
+---
+
+## Change
+
+Use the promoted child’s visible position for continuity.
+
+## Why This Matters
+
+Continuity already consumes one attached child visibly, but the continuing active parent still remains at the old parent-body position. That means the current rule is only half embodied: a child is consumed, yet the surviving line does not actually continue from that child’s place in the world.
+
+The next model pressure is to make continuity look like child promotion rather than stationary parent persistence by reusing the promoted child’s last visible position.
+
+## Impacted Areas
+
+### Simulation model
+
+- continuity should still consume one attached child
+- the continuing active parent should move to the promoted child’s visible position
+- lineage, generation, and replacement energy should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because attached-child positions and continuity outcomes are already visible
+- no new contract field should be necessary if the promoted-position rule is readable from ordinary snapshots
+
+### Browser rendering
+
+- current rendering should remain sufficient because continuity movement will now be visible on the canvas
+- no visual-style change should be required in this slice
+
+### Existing semantics
+
+- continuity eligibility should remain unchanged
+- fight absorption, reproduction payment, feeding, contact, movement, orbit, and steering should remain unchanged
+- this slice changes continuity placement, not continuity existence
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether both fight-defeat and zero-energy continuity should use the promoted child’s last visible position
+- how the promoted child position is selected deterministically when more than one child exists
+- how tests should prove that continuity now emerges from the child’s position instead of the parent’s old center
+
+## Risks If Ignored
+
+- continuity will remain less embodied than feeding, contact, and child loss
+- the visible child model will still stop short of actual positional promotion
+- later continuity refinement will still have to unwind the old parent-centered replacement placement
