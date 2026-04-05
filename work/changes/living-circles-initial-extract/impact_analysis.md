@@ -269,6 +269,53 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Remove the mirrored derived child-count field from Go-side snapshots.
+
+## Why This Matters
+
+Attached children are already the single authoritative child state in the simulation, and the runtime JSON contract already removed `children_count`. But the Go-side snapshot/test path still carries a mirrored `ChildrenCount` convenience field. That means child state is still represented twice inside the server/test boundary even though one representation is already fully derivable from the other.
+
+The next model pressure is to complete the single-source-of-truth move consistently across the in-process boundary, not only on the wire.
+
+## Impacted Areas
+
+### Simulation model
+
+- core gameplay semantics should remain unchanged
+- only snapshot-facing representation and local derived reads should change
+
+### Go-side snapshot consumers
+
+- deterministic tests and any local server-side readers must derive child quantity from attached children
+- convenience assertions that still use `ChildrenCount` need to move to `len(AttachedChildren)`
+
+### Runtime contract
+
+- no wire-level change is expected
+- this slice should preserve the current contract shape exactly
+
+### Implementation memory
+
+- implementation notes should stop describing Go-side child quantity as intentionally duplicated once build removes the mirrored field
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether to remove the mirrored field outright instead of keeping it for test convenience
+- how to update Go-side tests without reintroducing another child-count helper abstraction
+- how to keep the change bounded to representation cleanup rather than semantic rewrite
+
+## Risks If Ignored
+
+- child state will remain duplicated inside the Go-side boundary after the runtime contract has already been simplified
+- tests will keep validating one derived convenience field instead of the actual attached-child representation
+- future child-model changes will still have to account for unnecessary in-process duplication
+
+---
+
+## Change
+
 Remove child-derived growth from the visible parent body.
 
 ## Why This Matters
