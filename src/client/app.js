@@ -92,11 +92,14 @@ function draw(snapshot) {
   const blockedCapacity = snapshot.interaction?.source_blocked_capacity || snapshot.interaction?.target_blocked_capacity
     ? ` · Blocked: ${snapshot.interaction?.source_blocked_capacity ? "source" : ""}${snapshot.interaction?.source_blocked_capacity && snapshot.interaction?.target_blocked_capacity ? "+" : ""}${snapshot.interaction?.target_blocked_capacity ? "target" : ""}`
     : "";
+  const capacityValues = snapshot.interaction && (snapshot.interaction.source_capacity_value !== undefined || snapshot.interaction.target_capacity_value !== undefined)
+    ? ` · Capacity: ${snapshot.interaction.source_capacity_value ?? "-"}->${snapshot.interaction.target_capacity_value ?? "-"}`
+    : "";
   const contactPathKind = snapshot.interaction?.contact_path_kind ? ` · Contact path: ${snapshot.interaction.contact_path_kind}` : "";
   const distributionKind = snapshot.interaction?.distribution_kind ? ` · Distribution: ${snapshot.interaction.distribution_kind}` : "";
   const sourceChild = snapshot.interaction?.source_child_id ? ` · Source child: ${snapshot.interaction.source_child_id}` : "";
   const targetChild = snapshot.interaction?.target_child_id ? ` · Target child: ${snapshot.interaction.target_child_id}` : "";
-  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}${promotedChild}${absorbedChild}${childPayment}${paidSourceChild}${paidTargetChild}${createdChildren}${sourceCreatedChildren}${targetCreatedChildren}${blockedCapacity}${contactPathKind}${distributionKind}${sourceChild}${targetChild}`;
+  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}${promotedChild}${absorbedChild}${childPayment}${paidSourceChild}${paidTargetChild}${createdChildren}${sourceCreatedChildren}${targetCreatedChildren}${blockedCapacity}${capacityValues}${contactPathKind}${distributionKind}${sourceChild}${targetChild}`;
 }
 
 function drawCircle(circle, isPlayer, player) {

@@ -117,6 +117,26 @@ func assertDistributionKindMatchesOwnership(t *testing.T, got string, sourceCrea
 	}
 }
 
+func assertFloatEqual(t *testing.T, got float64, want float64) {
+	t.Helper()
+
+	if got != want {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+}
+
+func expectedReportedCapacity(kind string, energy float64, childrenCount int) float64 {
+	if kind == "reproduce_resolved" || kind == "reproduce_paid_child" {
+		return energy + simulation.DefaultReproductionCost
+	}
+
+	if childrenCount == 0 {
+		return energy
+	}
+
+	return energy + simulation.DefaultReproductionCost
+}
+
 func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:            "triangle",
@@ -1553,6 +1573,10 @@ func TestClientReceivesBlockedReproductionWhenEnergyIsInsufficient(t *testing.T)
 		if !snapshot.Interaction.TargetBlockedCapacity {
 			t.Fatal("expected target side to be marked as blocked")
 		}
+		if snapshot.Interaction.SourceCapacityValue < simulation.DefaultReproductionMinEnergy {
+			t.Fatalf("expected source capacity to meet reproduction threshold, got %v", snapshot.Interaction.SourceCapacityValue)
+		}
+		assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
 		if snapshot.Player == nil {
 			t.Fatal("expected player to remain active after blocked reproduction")
 		}
@@ -1626,6 +1650,8 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 		if !snapshot.Interaction.TargetPaidChild {
 			t.Fatal("expected autonomous target to pay with child in this reproduction path")
 		}
+		assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.Player.Energy, len(snapshot.Player.AttachedChildren)))
+		assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
 		if snapshot.Interaction.SourcePaidChildID != "" {
 			t.Fatalf("expected no source paid child id, got %q", snapshot.Interaction.SourcePaidChildID)
 		}
@@ -1701,6 +1727,8 @@ func TestClientReceivesOrdinaryResolvedReproductionWhenNoChildPaymentIsUsed(t *t
 		if snapshot.Interaction.Kind != "reproduce_resolved" {
 			t.Fatalf("expected reproduce_resolved for energy-paid reproduction, got %q", snapshot.Interaction.Kind)
 		}
+		assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.Player.Energy, len(snapshot.Player.AttachedChildren)))
+		assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
 		sourceCreated := newlyOwnedChildIDs(previous.Player.AttachedChildren, snapshot.Player.AttachedChildren)
 		targetCreated := newlyOwnedChildIDs(previous.AutonomousCircles[0].AttachedChildren, snapshot.AutonomousCircles[0].AttachedChildren)
 		if len(snapshot.Interaction.CreatedChildIDs) != 2 {

@@ -253,6 +253,14 @@
             },
             "target_blocked_capacity": {
               "type": "boolean"
+            },
+            "source_capacity_value": {
+              "type": "number",
+              "minimum": 0
+            },
+            "target_capacity_value": {
+              "type": "number",
+              "minimum": 0
             }
           }
         }

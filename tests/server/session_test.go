@@ -2065,6 +2065,8 @@ func TestAutonomousCirclesCanResolveReproductionWithoutPlayerInvolvement(t *test
 	beforeRight, _ := autonomousByID(before.AutonomousCircles, simulation.DefaultSecondaryID)
 	sourceCreated := newlyOwnedChildIDs(beforeLeft.AttachedChildren, left.AttachedChildren)
 	targetCreated := newlyOwnedChildIDs(beforeRight.AttachedChildren, right.AttachedChildren)
+	assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, left.Energy, len(left.AttachedChildren)))
+	assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, right.Energy, len(right.AttachedChildren)))
 	if len(left.AttachedChildren)+len(right.AttachedChildren) != len(beforeLeft.AttachedChildren)+len(beforeRight.AttachedChildren)+2 {
 		t.Fatalf("expected reproduction to add two children across the autonomous pair, before left=%d right=%d after left=%d right=%d", len(beforeLeft.AttachedChildren), len(beforeRight.AttachedChildren), len(left.AttachedChildren), len(right.AttachedChildren))
 	}
@@ -2077,9 +2079,9 @@ func TestAutonomousCirclesCanResolveReproductionWithoutPlayerInvolvement(t *test
 func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	session := simulation.NewSessionWithShapes("triangle", "square")
 	before := session.Snapshot()
-
 	var snapshot simulation.Snapshot
 	for range 20 {
+		before = session.Snapshot()
 		snapshot = session.Advance()
 		if snapshot.Interaction != nil {
 			break
@@ -2179,6 +2181,10 @@ func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *test
 	if !snapshot.Interaction.TargetBlockedCapacity {
 		t.Fatal("expected target side to be marked as blocked")
 	}
+	if snapshot.Interaction.SourceCapacityValue < simulation.DefaultReproductionMinEnergy {
+		t.Fatalf("expected source capacity to meet reproduction threshold, got %v", snapshot.Interaction.SourceCapacityValue)
+	}
+	assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
 	if len(snapshot.AutonomousCircles) != 1 {
 		t.Fatalf("expected blocked reproduction to avoid spawning autonomous circles, got %d autonomous circles", len(snapshot.AutonomousCircles))
 	}
@@ -2219,6 +2225,8 @@ func TestDifferentShapeOverlapBlocksReproductionWhenPlayerCapacityIsInsufficient
 	if snapshot.Interaction.TargetBlockedCapacity {
 		t.Fatal("expected target side to have enough reproduction capacity")
 	}
+	assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.Player.Energy, len(snapshot.Player.AttachedChildren)))
+	assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
 }
 
 func TestDifferentShapeOverlapBlocksReproductionWhenBothSidesLackCapacity(t *testing.T) {
@@ -2229,7 +2237,6 @@ func TestDifferentShapeOverlapBlocksReproductionWhenBothSidesLackCapacity(t *tes
 		AutonomousEnergy:                    simulation.DefaultReproductionCost - 1,
 		DisableBlockedReproductionAvoidance: true,
 	})
-
 	var snapshot simulation.Snapshot
 	for range 20 {
 		snapshot = session.Advance()
@@ -2247,6 +2254,8 @@ func TestDifferentShapeOverlapBlocksReproductionWhenBothSidesLackCapacity(t *tes
 	if !snapshot.Interaction.SourceBlockedCapacity || !snapshot.Interaction.TargetBlockedCapacity {
 		t.Fatalf("expected both sides to be marked as blocked, source=%v target=%v", snapshot.Interaction.SourceBlockedCapacity, snapshot.Interaction.TargetBlockedCapacity)
 	}
+	assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.Player.Energy, len(snapshot.Player.AttachedChildren)))
+	assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
 }
 
 func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
@@ -2288,6 +2297,8 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	if snapshot.Interaction.SourceBlockedCapacity || snapshot.Interaction.TargetBlockedCapacity {
 		t.Fatalf("expected no blocked-capacity flags on successful reproduction, source=%v target=%v", snapshot.Interaction.SourceBlockedCapacity, snapshot.Interaction.TargetBlockedCapacity)
 	}
+	assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.Player.Energy, len(snapshot.Player.AttachedChildren)))
+	assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
 	if snapshot.Interaction.SourcePaidChild {
 		t.Fatal("expected player not to pay with child in this reproduction path")
 	}
@@ -2356,6 +2367,8 @@ func TestDifferentShapeOverlapPaidByEnergyRemainsOrdinaryResolvedReproduction(t 
 	if snapshot.Interaction.SourcePaidChild || snapshot.Interaction.TargetPaidChild {
 		t.Fatalf("expected ordinary resolved reproduction to omit child-payment identity, got source=%v target=%v", snapshot.Interaction.SourcePaidChild, snapshot.Interaction.TargetPaidChild)
 	}
+	assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.Player.Energy, len(snapshot.Player.AttachedChildren)))
+	assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
 	if snapshot.Interaction.SourcePaidChildID != "" || snapshot.Interaction.TargetPaidChildID != "" {
 		t.Fatalf("expected ordinary resolved reproduction to omit paid child ids, got source=%q target=%q", snapshot.Interaction.SourcePaidChildID, snapshot.Interaction.TargetPaidChildID)
 	}
@@ -2382,6 +2395,26 @@ func assertDistributionKindMatchesOwnership(t *testing.T, got string, sourceCrea
 	if got != want {
 		t.Fatalf("expected distribution kind %q, got %q", want, got)
 	}
+}
+
+func assertFloatEqual(t *testing.T, got float64, want float64) {
+	t.Helper()
+
+	if got != want {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+}
+
+func expectedReportedCapacity(kind string, energy float64, childrenCount int) float64 {
+	if kind == "reproduce_resolved" || kind == "reproduce_paid_child" {
+		return energy + simulation.DefaultReproductionCost
+	}
+
+	if childrenCount == 0 {
+		return energy
+	}
+
+	return energy + simulation.DefaultReproductionCost
 }
 
 func newlyCreatedChildIDs(beforeSource []simulation.AttachedChild, afterSource []simulation.AttachedChild, beforeTarget []simulation.AttachedChild, afterTarget []simulation.AttachedChild) []string {

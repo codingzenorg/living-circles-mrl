@@ -154,6 +154,8 @@ type InteractionClassification struct {
 	TargetPaidChild       bool     `json:"target_paid_child,omitempty"`
 	SourceBlockedCapacity bool     `json:"source_blocked_capacity,omitempty"`
 	TargetBlockedCapacity bool     `json:"target_blocked_capacity,omitempty"`
+	SourceCapacityValue   float64  `json:"source_capacity_value,omitempty"`
+	TargetCapacityValue   float64  `json:"target_capacity_value,omitempty"`
 	SourcePaidChildID     string   `json:"source_paid_child_id,omitempty"`
 	TargetPaidChildID     string   `json:"target_paid_child_id,omitempty"`
 	CreatedChildIDs       []string `json:"created_child_ids,omitempty"`
@@ -1028,6 +1030,8 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 	}
 
 	opponent := w.autonomousCircles[opponentIndex]
+	playerCapacity := reproductionCapacityForPlayer(*w.player)
+	opponentCapacity := reproductionCapacityForAutonomous(opponent)
 	playerPaid, playerUsedChild, playerPaidChildID := payPlayerReproductionCost(w.player)
 	opponentPaid, opponentUsedChild, opponentPaidChildID, opponent := payAutonomousReproductionCost(opponent)
 	if !playerPaid || !opponentPaid {
@@ -1043,6 +1047,8 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 			TargetChildID:         contactDetails.TargetChildID,
 			SourceBlockedCapacity: !playerPaid,
 			TargetBlockedCapacity: !opponentPaid,
+			SourceCapacityValue:   playerCapacity,
+			TargetCapacityValue:   opponentCapacity,
 		}
 		return
 	}
@@ -1067,6 +1073,8 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 		TargetID:              opponent.ID,
 		SourceChildID:         contactDetails.SourceChildID,
 		TargetChildID:         contactDetails.TargetChildID,
+		SourceCapacityValue:   playerCapacity,
+		TargetCapacityValue:   opponentCapacity,
 		SourcePaidChild:       playerUsedChild,
 		TargetPaidChild:       opponentUsedChild,
 		SourcePaidChildID:     playerPaidChildID,
@@ -1152,6 +1160,8 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 
 	leftCircle := w.autonomousCircles[leftIndex]
 	rightCircle := w.autonomousCircles[rightIndex]
+	leftCapacity := reproductionCapacityForAutonomous(leftCircle)
+	rightCapacity := reproductionCapacityForAutonomous(rightCircle)
 	leftPaid, leftUsedChild, leftPaidChildID, leftCircle := payAutonomousReproductionCost(leftCircle)
 	rightPaid, rightUsedChild, rightPaidChildID, rightCircle := payAutonomousReproductionCost(rightCircle)
 	if !leftPaid || !rightPaid {
@@ -1167,6 +1177,8 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 			TargetChildID:         contactDetails.TargetChildID,
 			SourceBlockedCapacity: !leftPaid,
 			TargetBlockedCapacity: !rightPaid,
+			SourceCapacityValue:   leftCapacity,
+			TargetCapacityValue:   rightCapacity,
 		}
 		return
 	}
@@ -1192,6 +1204,8 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 		TargetID:              rightCircle.ID,
 		SourceChildID:         contactDetails.SourceChildID,
 		TargetChildID:         contactDetails.TargetChildID,
+		SourceCapacityValue:   leftCapacity,
+		TargetCapacityValue:   rightCapacity,
 		SourcePaidChild:       leftUsedChild,
 		TargetPaidChild:       rightUsedChild,
 		SourcePaidChildID:     leftPaidChildID,
@@ -1273,7 +1287,7 @@ func payPlayerReproductionCost(circle *PlayerCircle) (bool, bool, string) {
 	if circle == nil {
 		return false, false, ""
 	}
-	if reproductionCapacity(circle.Energy, childCountForPlayer(*circle)) < DefaultReproductionMinEnergy {
+	if reproductionCapacityForPlayer(*circle) < DefaultReproductionMinEnergy {
 		return false, false, ""
 	}
 	if circle.Energy >= DefaultReproductionCost {
@@ -1292,7 +1306,7 @@ func payPlayerReproductionCost(circle *PlayerCircle) (bool, bool, string) {
 }
 
 func payAutonomousReproductionCost(circle AutonomousCircle) (bool, bool, string, AutonomousCircle) {
-	if reproductionCapacity(circle.Energy, childCountForAutonomous(circle)) < DefaultReproductionMinEnergy {
+	if reproductionCapacityForAutonomous(circle) < DefaultReproductionMinEnergy {
 		return false, false, "", circle
 	}
 	if circle.Energy >= DefaultReproductionCost {
@@ -1308,6 +1322,14 @@ func payAutonomousReproductionCost(circle AutonomousCircle) (bool, bool, string,
 	circle.Energy += DefaultReproductionCost
 	circle.Energy = math.Max(0, circle.Energy-DefaultReproductionCost)
 	return true, true, paidChildID, circle
+}
+
+func reproductionCapacityForPlayer(circle PlayerCircle) float64 {
+	return reproductionCapacity(circle.Energy, childCountForPlayer(circle))
+}
+
+func reproductionCapacityForAutonomous(circle AutonomousCircle) float64 {
+	return reproductionCapacity(circle.Energy, childCountForAutonomous(circle))
 }
 
 func reproductionCapacity(energy float64, childrenCount int) float64 {

@@ -48,5 +48,7 @@ test("world snapshot schema remains explicit and parseable", async () => {
   assert.equal(schema.properties.interaction.anyOf[1].properties.target_created_child_ids.items.type, "string");
   assert.equal(schema.properties.interaction.anyOf[1].properties.source_blocked_capacity.type, "boolean");
   assert.equal(schema.properties.interaction.anyOf[1].properties.target_blocked_capacity.type, "boolean");
+  assert.equal(schema.properties.interaction.anyOf[1].properties.source_capacity_value.type, "number");
+  assert.equal(schema.properties.interaction.anyOf[1].properties.target_capacity_value.type, "number");
   assert.deepEqual(schema.properties.foods.items.required, ["id", "x", "y", "radius"]);
 });
