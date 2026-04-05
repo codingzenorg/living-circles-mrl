@@ -2159,3 +2159,61 @@ The next implementation-facing slice should explicitly choose:
 - blocked reproduction will remain partially inspectable through booleans only
 - successful reproduction will still hide the numeric basis for why it was allowed
 - future reproduction refinement will continue to rely on implicit server-side arithmetic instead of explicit outcome data
+
+---
+
+## Change
+
+Expose reproduction threshold and cost constants in interaction outcomes.
+
+## Why This Matters
+
+The reproduction path is now inspectable through:
+
+- blocked-capacity identity
+- child-payment identity
+- created-child identity
+- ownership identity
+- redistribution kind
+- decision-time capacity values
+
+But the governing rule constants are still implicit. The client and tests can now read the evaluated capacities, yet they still need repository knowledge to know what threshold those values were compared against and what cost the successful rule applies.
+
+The next model pressure is to expose the threshold and cost constants explicitly without changing the reproduction rule itself.
+
+## Impacted Areas
+
+### Simulation model
+
+- the current reproduction threshold and payment cost should remain unchanged
+- the authoritative decision path should expose those constants as metadata
+- feasibility, payment, creation, and redistribution behavior should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is close but still insufficient because it exposes capacity values without the rule constants those values are measured against
+- one minimal extension should expose reproduction threshold and cost values
+
+### Browser rendering
+
+- current rendering should remain sufficient if the HUD can display the new constants
+- no visual behavior change should be required beyond that output
+
+### Existing semantics
+
+- reproduction capacity, blocked-capacity identity, payment identity, creation, ownership, and redistribution should remain unchanged
+- contact, fight, continuity, feeding, movement, orbit, and steering should remain unchanged
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether threshold and cost constants are exposed on both blocked and successful reproduction outcomes
+- whether those constants are surfaced only when interaction kind is reproduction-related
+- how tests should prove that the exposed constants match the existing server rule without redefining it
+
+## Risks If Ignored
+
+- capacity values will remain partially context-free in the runtime payload
+- the client and tests will still need out-of-band repository knowledge to interpret reproduction outcomes fully
+- future reproduction refinement will keep relying on implicit server constants instead of explicit outcome metadata
