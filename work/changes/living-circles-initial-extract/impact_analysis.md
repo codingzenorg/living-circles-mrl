@@ -2217,3 +2217,62 @@ The next implementation-facing slice should explicitly choose:
 - capacity values will remain partially context-free in the runtime payload
 - the client and tests will still need out-of-band repository knowledge to interpret reproduction outcomes fully
 - future reproduction refinement will keep relying on implicit server constants instead of explicit outcome metadata
+
+---
+
+## Change
+
+Expose reproduction capacity components in interaction outcomes.
+
+## Why This Matters
+
+The reproduction path is now inspectable through:
+
+- blocked-capacity identity
+- child-payment identity
+- created-child identity
+- ownership identity
+- redistribution kind
+- total capacity values
+- threshold and cost constants
+
+But the runtime still hides how those total capacity values are composed. The client and tests can now read the total current capacity and the governing constants, yet they still need to infer whether that total came only from energy or whether child reserve contributed to it.
+
+The next model pressure is to expose the energy-versus-reserve split explicitly without changing the reproduction rule itself.
+
+## Impacted Areas
+
+### Simulation model
+
+- the current reproduction capacity formula should remain unchanged
+- the authoritative decision path should expose the energy contribution and child-reserve contribution values that compose each side's total capacity
+- feasibility, payment, creation, and redistribution behavior should remain unchanged
+
+### Runtime contract
+
+- the current snapshot shape is close but still insufficient because it exposes total capacity without exposing how that total was formed
+- one minimal extension should expose energy and reserve contribution values for both sides
+
+### Browser rendering
+
+- current rendering should remain sufficient if the HUD can display the new component values
+- no visual behavior change should be required beyond that output
+
+### Existing semantics
+
+- reproduction threshold, cost, capacity totals, blocked-capacity identity, payment identity, creation, ownership, and redistribution should remain unchanged
+- contact, fight, continuity, feeding, movement, orbit, and steering should remain unchanged
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether capacity components are exposed on both blocked and successful reproduction outcomes
+- how direct energy versus child reserve contribution is represented when reserve is absent
+- how tests should prove that the exposed components add up to the existing total capacity values without redefining the rule
+
+## Risks If Ignored
+
+- total capacity values will remain only partially interpretable in the runtime payload
+- the client and tests will still need implicit knowledge to know when child reserve actually mattered
+- future reproduction refinement will keep relying on inferred capacity composition instead of explicit outcome metadata
