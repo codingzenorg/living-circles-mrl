@@ -217,6 +217,12 @@
             },
             "target_paid_child": {
               "type": "boolean"
+            },
+            "source_blocked_capacity": {
+              "type": "boolean"
+            },
+            "target_blocked_capacity": {
+              "type": "boolean"
             }
           }
         }

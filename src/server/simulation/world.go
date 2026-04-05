@@ -136,20 +136,22 @@ func (circle *AutonomousCircle) UnmarshalJSON(data []byte) error {
 }
 
 type InteractionClassification struct {
-	Active          bool   `json:"active"`
-	Resolved        bool   `json:"resolved"`
-	Kind            string `json:"kind"`
-	ContactOrigin   string `json:"contact_origin,omitempty"`
-	SourceID        string `json:"source_id"`
-	TargetID        string `json:"target_id"`
-	SourceChildID   string `json:"source_child_id,omitempty"`
-	TargetChildID   string `json:"target_child_id,omitempty"`
-	WinnerID        string `json:"winner_id"`
-	LoserID         string `json:"loser_id"`
-	PromotedChildID string `json:"promoted_child_id,omitempty"`
-	AbsorbedChildID string `json:"absorbed_child_id,omitempty"`
-	SourcePaidChild bool   `json:"source_paid_child,omitempty"`
-	TargetPaidChild bool   `json:"target_paid_child,omitempty"`
+	Active                bool   `json:"active"`
+	Resolved              bool   `json:"resolved"`
+	Kind                  string `json:"kind"`
+	ContactOrigin         string `json:"contact_origin,omitempty"`
+	SourceID              string `json:"source_id"`
+	TargetID              string `json:"target_id"`
+	SourceChildID         string `json:"source_child_id,omitempty"`
+	TargetChildID         string `json:"target_child_id,omitempty"`
+	WinnerID              string `json:"winner_id"`
+	LoserID               string `json:"loser_id"`
+	PromotedChildID       string `json:"promoted_child_id,omitempty"`
+	AbsorbedChildID       string `json:"absorbed_child_id,omitempty"`
+	SourcePaidChild       bool   `json:"source_paid_child,omitempty"`
+	TargetPaidChild       bool   `json:"target_paid_child,omitempty"`
+	SourceBlockedCapacity bool   `json:"source_blocked_capacity,omitempty"`
+	TargetBlockedCapacity bool   `json:"target_blocked_capacity,omitempty"`
 }
 
 type Food struct {
@@ -1021,14 +1023,16 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 	opponentPaid, opponentUsedChild, opponent := payAutonomousReproductionCost(opponent)
 	if !playerPaid || !opponentPaid {
 		w.lastInteraction = &InteractionClassification{
-			Active:        false,
-			Resolved:      true,
-			Kind:          "reproduce_blocked_energy",
-			ContactOrigin: contactDetails.Origin,
-			SourceID:      w.player.ID,
-			TargetID:      opponent.ID,
-			SourceChildID: contactDetails.SourceChildID,
-			TargetChildID: contactDetails.TargetChildID,
+			Active:                false,
+			Resolved:              true,
+			Kind:                  "reproduce_blocked_energy",
+			ContactOrigin:         contactDetails.Origin,
+			SourceID:              w.player.ID,
+			TargetID:              opponent.ID,
+			SourceChildID:         contactDetails.SourceChildID,
+			TargetChildID:         contactDetails.TargetChildID,
+			SourceBlockedCapacity: !playerPaid,
+			TargetBlockedCapacity: !opponentPaid,
 		}
 		return
 	}
@@ -1133,14 +1137,16 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 	rightPaid, rightUsedChild, rightCircle := payAutonomousReproductionCost(rightCircle)
 	if !leftPaid || !rightPaid {
 		w.lastInteraction = &InteractionClassification{
-			Active:        false,
-			Resolved:      true,
-			Kind:          "reproduce_blocked_energy",
-			ContactOrigin: contactDetails.Origin,
-			SourceID:      leftCircle.ID,
-			TargetID:      rightCircle.ID,
-			SourceChildID: contactDetails.SourceChildID,
-			TargetChildID: contactDetails.TargetChildID,
+			Active:                false,
+			Resolved:              true,
+			Kind:                  "reproduce_blocked_energy",
+			ContactOrigin:         contactDetails.Origin,
+			SourceID:              leftCircle.ID,
+			TargetID:              rightCircle.ID,
+			SourceChildID:         contactDetails.SourceChildID,
+			TargetChildID:         contactDetails.TargetChildID,
+			SourceBlockedCapacity: !leftPaid,
+			TargetBlockedCapacity: !rightPaid,
 		}
 		return
 	}

@@ -1456,6 +1456,12 @@ func TestClientReceivesBlockedReproductionWhenEnergyIsInsufficient(t *testing.T)
 		if snapshot.Interaction.Kind != "reproduce_blocked_energy" {
 			t.Fatalf("expected reproduce_blocked_energy, got %q", snapshot.Interaction.Kind)
 		}
+		if snapshot.Interaction.SourceBlockedCapacity {
+			t.Fatal("expected source side to have enough reproduction capacity")
+		}
+		if !snapshot.Interaction.TargetBlockedCapacity {
+			t.Fatal("expected target side to be marked as blocked")
+		}
 		if snapshot.Player == nil {
 			t.Fatal("expected player to remain active after blocked reproduction")
 		}

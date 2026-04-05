@@ -2123,6 +2123,12 @@ func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *test
 	if snapshot.Interaction.Kind != "reproduce_blocked_energy" {
 		t.Fatalf("expected reproduce_blocked_energy, got %q", snapshot.Interaction.Kind)
 	}
+	if snapshot.Interaction.SourceBlockedCapacity {
+		t.Fatal("expected source side to have enough reproduction capacity")
+	}
+	if !snapshot.Interaction.TargetBlockedCapacity {
+		t.Fatal("expected target side to be marked as blocked")
+	}
 	if len(snapshot.AutonomousCircles) != 1 {
 		t.Fatalf("expected blocked reproduction to avoid spawning autonomous circles, got %d autonomous circles", len(snapshot.AutonomousCircles))
 	}
@@ -2131,6 +2137,65 @@ func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *test
 	}
 	if len(snapshot.Player.AttachedChildren) != 0 || len(snapshot.AutonomousCircles[0].AttachedChildren) != 0 {
 		t.Fatalf("expected blocked reproduction to preserve attached children, player=%d autonomous=%d", len(snapshot.Player.AttachedChildren), len(snapshot.AutonomousCircles[0].AttachedChildren))
+	}
+}
+
+func TestDifferentShapeOverlapBlocksReproductionWhenPlayerCapacityIsInsufficient(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         "triangle",
+		AutonomousShape:                     "square",
+		PlayerEnergy:                        simulation.DefaultReproductionCost - 1,
+		AutonomousEnergy:                    simulation.DefaultPlayerEnergy,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected reproduction interaction")
+	}
+	if snapshot.Interaction.Kind != "reproduce_blocked_energy" {
+		t.Fatalf("expected reproduce_blocked_energy, got %q", snapshot.Interaction.Kind)
+	}
+	if !snapshot.Interaction.SourceBlockedCapacity {
+		t.Fatal("expected source side to be marked as blocked")
+	}
+	if snapshot.Interaction.TargetBlockedCapacity {
+		t.Fatal("expected target side to have enough reproduction capacity")
+	}
+}
+
+func TestDifferentShapeOverlapBlocksReproductionWhenBothSidesLackCapacity(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:                         "triangle",
+		AutonomousShape:                     "square",
+		PlayerEnergy:                        simulation.DefaultReproductionCost - 1,
+		AutonomousEnergy:                    simulation.DefaultReproductionCost - 1,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected reproduction interaction")
+	}
+	if snapshot.Interaction.Kind != "reproduce_blocked_energy" {
+		t.Fatalf("expected reproduce_blocked_energy, got %q", snapshot.Interaction.Kind)
+	}
+	if !snapshot.Interaction.SourceBlockedCapacity || !snapshot.Interaction.TargetBlockedCapacity {
+		t.Fatalf("expected both sides to be marked as blocked, source=%v target=%v", snapshot.Interaction.SourceBlockedCapacity, snapshot.Interaction.TargetBlockedCapacity)
 	}
 }
 
@@ -2164,6 +2229,9 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	}
 	if snapshot.Interaction.Kind != "reproduce_paid_child" {
 		t.Fatalf("expected reproduce_paid_child, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourceBlockedCapacity || snapshot.Interaction.TargetBlockedCapacity {
+		t.Fatalf("expected no blocked-capacity flags on successful reproduction, source=%v target=%v", snapshot.Interaction.SourceBlockedCapacity, snapshot.Interaction.TargetBlockedCapacity)
 	}
 	if snapshot.Interaction.SourcePaidChild {
 		t.Fatal("expected player not to pay with child in this reproduction path")
