@@ -82,7 +82,7 @@ This repository is organized to preserve project memory in artifacts:
 /docs/operating/           # MRL model and workflow docs
 /docs/semantics/           # extracted game meaning and reference knowledge
 /docs/slices/              # one slice document per increment
-/work/sources/             # curated raw evidence and original source material
+/work/sources/             # canonical folder for curated raw evidence and original source material
 /work/changes/             # request, impact, and implementation artifacts
 /src/                      # client, server, and shared runtime code
 /tests/                    # deterministic executable specification

@@ -136,10 +136,11 @@ Contains business-language material used during analysis and evaluation.
 ### `work/`
 Contains tracked working artifacts that preserve loop traceability without promoting every intermediate artifact into `docs/`.
 
-- `work/sources/`: curated raw evidence, stakeholder material, and external references worth preserving for later review
+- `work/sources/`: the canonical folder for curated raw evidence, original source material, stakeholder material, and external references worth preserving for later review
 - `work/changes/`: bounded request artifacts and phase-local handoff material tied to a specific change
 
 `work/` is project memory, not personal scratch space. Temporary personal notes should remain untracked elsewhere.
+When new evidence enters the loop, preserve the original material under `work/sources/` before extracting or refining it elsewhere.
 
 ### `src/`
 Contains production code shaped by the selected pack.

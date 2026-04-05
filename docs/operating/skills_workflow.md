@@ -71,6 +71,8 @@ Each skill should remain phase-bounded and artifact-driven.
 
 When bootstrapping MRL in a fresh repository, use `docs/operating/mrl_starter.md` as the portable baseline and then install the same repository-scoped skills under `.agents/skills/`.
 
+Starter repositories should include `work/sources/` up front as the canonical location for curated raw evidence and original source material so extract does not have to invent that convention later.
+
 ---
 
 ## Execution Model
