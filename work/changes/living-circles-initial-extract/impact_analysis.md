@@ -221,6 +221,54 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Expose the concrete attached-child identity used during child-triggered interaction contact.
+
+## Why This Matters
+
+The simulation already treats attached children as real geometry in food collection, interaction triggering, avoidance, and positive targeting. Recent inspectability slices also made child-dependent outcomes explicit for continuity, fight absorption, and child-paid reproduction. But the contact layer still stops one step short: the runtime can say that contact came from `attached_child`, yet it cannot say which concrete child actually triggered the interaction.
+
+That leaves a mismatch between what the authoritative server knows and what the client or tests can inspect. If a pair begins through child-to-parent or child-to-child contact, the current snapshot still requires indirect positional inference instead of making the embodied trigger explicit.
+
+## Impacted Areas
+
+### Runtime contract
+
+- interaction payloads should expose the participating source-side and/or target-side child ID when `contact_origin` is `attached_child`
+- parent-body-only contact should remain unchanged and should not emit child identity fields
+
+### Simulation model
+
+- existing contact detection and pair selection should remain unchanged
+- build should surface the child identity already implied by the chosen contact geometry rather than inventing a new contact selection rule
+
+### Browser inspectability
+
+- the client HUD should remain sufficient to read which attached child triggered contact
+- no larger visualization system is needed if the identity is readable through existing debug output
+
+### Deterministic testing
+
+- tests should prove source-child-only, target-child-only, and child-to-child contact identity paths
+- tests should also prove that parent-body-only contact emits no child identity fields
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether interaction payloads expose one field per side rather than a more complex contact-event structure
+- whether child identity remains absent for parent-body-only contact
+- how deterministic tests pin the participating child IDs without altering current contact semantics
+
+## Risks If Ignored
+
+- child-triggered contact will remain less inspectable than child-based promotion, absorption, and payment
+- the simulation will keep relying on positional inference for one of its most embodied child mechanics
+- later debugging of interaction-triggering behavior will stay harder than necessary
+
+---
+
+## Change
+
 Expose promoted child identity explicitly during continuity.
 
 ## Why This Matters
