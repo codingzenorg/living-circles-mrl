@@ -370,6 +370,9 @@ func TestClientReceivesChildTriggeredReproductionBeforeParentBodiesOverlap(t *te
 		if snapshot.Interaction.ContactOrigin != "attached_child" {
 			t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
 		}
+		if snapshot.Interaction.ContactPathKind != "source_child_to_target_parent" {
+			t.Fatalf("expected source_child_to_target_parent path kind, got %q", snapshot.Interaction.ContactPathKind)
+		}
 		if snapshot.Interaction.SourceChildID != "player-1-child-1" {
 			t.Fatalf("expected source child id player-1-child-1, got %q", snapshot.Interaction.SourceChildID)
 		}
@@ -431,6 +434,9 @@ func TestClientReceivesChildToChildTriggeredReproduction(t *testing.T) {
 		}
 		if snapshot.Interaction.ContactOrigin != "attached_child" {
 			t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
+		}
+		if snapshot.Interaction.ContactPathKind != "child_to_child" {
+			t.Fatalf("expected child_to_child path kind, got %q", snapshot.Interaction.ContactPathKind)
 		}
 		if snapshot.Interaction.SourceChildID != "player-1-child-2" {
 			t.Fatalf("expected source child id player-1-child-2, got %q", snapshot.Interaction.SourceChildID)

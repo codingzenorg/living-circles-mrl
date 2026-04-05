@@ -140,6 +140,7 @@ type InteractionClassification struct {
 	Resolved              bool     `json:"resolved"`
 	Kind                  string   `json:"kind"`
 	ContactOrigin         string   `json:"contact_origin,omitempty"`
+	ContactPathKind       string   `json:"contact_path_kind,omitempty"`
 	SourceID              string   `json:"source_id"`
 	TargetID              string   `json:"target_id"`
 	SourceChildID         string   `json:"source_child_id,omitempty"`
@@ -219,6 +220,7 @@ type Config struct {
 
 type ContactDetails struct {
 	Origin        string
+	PathKind      string
 	SourceChildID string
 	TargetChildID string
 }
@@ -890,20 +892,20 @@ func circlesInteract(player PlayerCircle, autonomous AutonomousCircle, tick int6
 
 	for _, child := range playerChildren {
 		if overlaps(child.X, child.Y, child.Radius, autonomous.X, autonomous.Y, DefaultPlayerRadius) {
-			return ContactDetails{Origin: "attached_child", SourceChildID: child.ID}, true
+			return ContactDetails{Origin: "attached_child", PathKind: "source_child_to_target_parent", SourceChildID: child.ID}, true
 		}
 	}
 
 	for _, child := range autonomousChildren {
 		if overlaps(player.X, player.Y, DefaultPlayerRadius, child.X, child.Y, child.Radius) {
-			return ContactDetails{Origin: "attached_child", TargetChildID: child.ID}, true
+			return ContactDetails{Origin: "attached_child", PathKind: "source_parent_to_target_child", TargetChildID: child.ID}, true
 		}
 	}
 
 	for _, playerChild := range playerChildren {
 		for _, autonomousChild := range autonomousChildren {
 			if overlaps(playerChild.X, playerChild.Y, playerChild.Radius, autonomousChild.X, autonomousChild.Y, autonomousChild.Radius) {
-				return ContactDetails{Origin: "attached_child", SourceChildID: playerChild.ID, TargetChildID: autonomousChild.ID}, true
+				return ContactDetails{Origin: "attached_child", PathKind: "child_to_child", SourceChildID: playerChild.ID, TargetChildID: autonomousChild.ID}, true
 			}
 		}
 	}
@@ -923,20 +925,20 @@ func autonomousCirclesInteract(left AutonomousCircle, right AutonomousCircle, ti
 
 	for _, child := range leftChildren {
 		if overlaps(child.X, child.Y, child.Radius, right.X, right.Y, DefaultPlayerRadius) {
-			return ContactDetails{Origin: "attached_child", SourceChildID: child.ID}, true
+			return ContactDetails{Origin: "attached_child", PathKind: "source_child_to_target_parent", SourceChildID: child.ID}, true
 		}
 	}
 
 	for _, child := range rightChildren {
 		if overlaps(left.X, left.Y, DefaultPlayerRadius, child.X, child.Y, child.Radius) {
-			return ContactDetails{Origin: "attached_child", TargetChildID: child.ID}, true
+			return ContactDetails{Origin: "attached_child", PathKind: "source_parent_to_target_child", TargetChildID: child.ID}, true
 		}
 	}
 
 	for _, leftChild := range leftChildren {
 		for _, rightChild := range rightChildren {
 			if overlaps(leftChild.X, leftChild.Y, leftChild.Radius, rightChild.X, rightChild.Y, rightChild.Radius) {
-				return ContactDetails{Origin: "attached_child", SourceChildID: leftChild.ID, TargetChildID: rightChild.ID}, true
+				return ContactDetails{Origin: "attached_child", PathKind: "child_to_child", SourceChildID: leftChild.ID, TargetChildID: rightChild.ID}, true
 			}
 		}
 	}
@@ -965,16 +967,17 @@ func (w *World) resolveFight(opponentID string, contactDetails ContactDetails, t
 	winnerID, loserID := determineFightOutcome(*w.player, opponent)
 
 	w.lastInteraction = &InteractionClassification{
-		Active:        false,
-		Resolved:      true,
-		Kind:          "",
-		ContactOrigin: contactDetails.Origin,
-		SourceID:      w.player.ID,
-		TargetID:      opponent.ID,
-		SourceChildID: contactDetails.SourceChildID,
-		TargetChildID: contactDetails.TargetChildID,
-		WinnerID:      winnerID,
-		LoserID:       loserID,
+		Active:          false,
+		Resolved:        true,
+		Kind:            "",
+		ContactOrigin:   contactDetails.Origin,
+		ContactPathKind: contactDetails.PathKind,
+		SourceID:        w.player.ID,
+		TargetID:        opponent.ID,
+		SourceChildID:   contactDetails.SourceChildID,
+		TargetChildID:   contactDetails.TargetChildID,
+		WinnerID:        winnerID,
+		LoserID:         loserID,
 	}
 
 	if loserID == w.player.ID {
@@ -1032,6 +1035,7 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 			Resolved:              true,
 			Kind:                  "reproduce_blocked_energy",
 			ContactOrigin:         contactDetails.Origin,
+			ContactPathKind:       contactDetails.PathKind,
 			SourceID:              w.player.ID,
 			TargetID:              opponent.ID,
 			SourceChildID:         contactDetails.SourceChildID,
@@ -1055,6 +1059,7 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 		Resolved:              true,
 		Kind:                  kind,
 		ContactOrigin:         contactDetails.Origin,
+		ContactPathKind:       contactDetails.PathKind,
 		SourceID:              w.player.ID,
 		TargetID:              opponent.ID,
 		SourceChildID:         contactDetails.SourceChildID,
@@ -1099,16 +1104,17 @@ func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactDet
 	winnerID, loserID := determineAutonomousFightOutcome(leftCircle, rightCircle)
 
 	w.lastInteraction = &InteractionClassification{
-		Active:        false,
-		Resolved:      true,
-		Kind:          "",
-		ContactOrigin: contactDetails.Origin,
-		SourceID:      leftCircle.ID,
-		TargetID:      rightCircle.ID,
-		SourceChildID: contactDetails.SourceChildID,
-		TargetChildID: contactDetails.TargetChildID,
-		WinnerID:      winnerID,
-		LoserID:       loserID,
+		Active:          false,
+		Resolved:        true,
+		Kind:            "",
+		ContactOrigin:   contactDetails.Origin,
+		ContactPathKind: contactDetails.PathKind,
+		SourceID:        leftCircle.ID,
+		TargetID:        rightCircle.ID,
+		SourceChildID:   contactDetails.SourceChildID,
+		TargetChildID:   contactDetails.TargetChildID,
+		WinnerID:        winnerID,
+		LoserID:         loserID,
 	}
 
 	loserIndex := leftIndex
@@ -1151,6 +1157,7 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 			Resolved:              true,
 			Kind:                  "reproduce_blocked_energy",
 			ContactOrigin:         contactDetails.Origin,
+			ContactPathKind:       contactDetails.PathKind,
 			SourceID:              leftCircle.ID,
 			TargetID:              rightCircle.ID,
 			SourceChildID:         contactDetails.SourceChildID,
@@ -1175,6 +1182,7 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 		Resolved:              true,
 		Kind:                  kind,
 		ContactOrigin:         contactDetails.Origin,
+		ContactPathKind:       contactDetails.PathKind,
 		SourceID:              leftCircle.ID,
 		TargetID:              rightCircle.ID,
 		SourceChildID:         contactDetails.SourceChildID,
