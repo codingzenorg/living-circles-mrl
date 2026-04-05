@@ -141,14 +141,15 @@ func (circle *AutonomousCircle) UnmarshalJSON(data []byte) error {
 }
 
 type InteractionClassification struct {
-	Active        bool   `json:"active"`
-	Resolved      bool   `json:"resolved"`
-	Kind          string `json:"kind"`
-	ContactOrigin string `json:"contact_origin,omitempty"`
-	SourceID      string `json:"source_id"`
-	TargetID      string `json:"target_id"`
-	WinnerID      string `json:"winner_id"`
-	LoserID       string `json:"loser_id"`
+	Active          bool   `json:"active"`
+	Resolved        bool   `json:"resolved"`
+	Kind            string `json:"kind"`
+	ContactOrigin   string `json:"contact_origin,omitempty"`
+	SourceID        string `json:"source_id"`
+	TargetID        string `json:"target_id"`
+	WinnerID        string `json:"winner_id"`
+	LoserID         string `json:"loser_id"`
+	PromotedChildID string `json:"promoted_child_id,omitempty"`
 }
 
 type Food struct {
@@ -1263,15 +1264,16 @@ func reproductionCapacity(energy float64, childrenCount int) float64 {
 
 func (w *World) resolveEnergyCollapse(tick int64) {
 	if w.player != nil && w.player.Energy == 0 {
-		promoted := childCountForPlayer(*w.player) > 0
+		promotedChildID, promoted := continuityPromotedChildIDForPlayer(w.player, tick)
 		w.player = replaceOrRemovePlayer(w.player, tick)
 		if promoted && w.player != nil && w.lastInteraction == nil {
 			w.lastInteraction = &InteractionClassification{
-				Active:   false,
-				Resolved: true,
-				Kind:     "death_promoted_child",
-				SourceID: w.player.ID,
-				TargetID: w.player.ID,
+				Active:          false,
+				Resolved:        true,
+				Kind:            "death_promoted_child",
+				SourceID:        w.player.ID,
+				TargetID:        w.player.ID,
+				PromotedChildID: promotedChildID,
 			}
 		}
 	}
@@ -1281,7 +1283,7 @@ func (w *World) resolveEnergyCollapse(tick int64) {
 			continue
 		}
 
-		promoted := childCountForAutonomous(circle) > 0
+		promotedChildID, promoted := continuityPromotedChildIDForAutonomous(circle, tick)
 		replaced, active := replaceOrRemoveAutonomous(circle, tick)
 		if !active {
 			w.autonomousCircles = append(w.autonomousCircles[:index], w.autonomousCircles[index+1:]...)
@@ -1293,11 +1295,12 @@ func (w *World) resolveEnergyCollapse(tick int64) {
 		w.autonomousCircles[index] = replaced
 		if promoted && w.lastInteraction == nil {
 			w.lastInteraction = &InteractionClassification{
-				Active:   false,
-				Resolved: true,
-				Kind:     "death_promoted_child",
-				SourceID: replaced.ID,
-				TargetID: replaced.ID,
+				Active:          false,
+				Resolved:        true,
+				Kind:            "death_promoted_child",
+				SourceID:        replaced.ID,
+				TargetID:        replaced.ID,
+				PromotedChildID: promotedChildID,
 			}
 		}
 	}
@@ -1341,13 +1344,34 @@ func replaceOrRemoveAutonomous(circle AutonomousCircle, tick int64) (AutonomousC
 }
 
 func promotedChildPosition(ownerID string, x, y, parentRadius float64, children []AttachedChild, tick int64) (float64, float64, bool) {
+	_, promotedX, promotedY, ok := promotedChildSelection(ownerID, x, y, parentRadius, children, tick)
+	return promotedX, promotedY, ok
+}
+
+func continuityPromotedChildIDForPlayer(circle *PlayerCircle, tick int64) (string, bool) {
+	if circle == nil {
+		return "", false
+	}
+	return continuityPromotedChildID(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
+}
+
+func continuityPromotedChildIDForAutonomous(circle AutonomousCircle, tick int64) (string, bool) {
+	return continuityPromotedChildID(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
+}
+
+func continuityPromotedChildID(ownerID string, x, y, parentRadius float64, children []AttachedChild, tick int64) (string, bool) {
+	promotedID, _, _, ok := promotedChildSelection(ownerID, x, y, parentRadius, children, tick)
+	return promotedID, ok
+}
+
+func promotedChildSelection(ownerID string, x, y, parentRadius float64, children []AttachedChild, tick int64) (string, float64, float64, bool) {
 	if len(children) == 0 {
-		return 0, 0, false
+		return "", 0, 0, false
 	}
 
 	layout := layoutAttachedChildren(ownerID, x, y, parentRadius, children, tick)
 	promoted := layout[len(layout)-1]
-	return promoted.X, promoted.Y, true
+	return promoted.ID, promoted.X, promoted.Y, true
 }
 
 func initialAttachedChildren(ownerID string, count int) []AttachedChild {

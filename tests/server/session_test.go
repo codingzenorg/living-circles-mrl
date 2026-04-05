@@ -82,6 +82,7 @@ func TestPlayerWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
 		PlayerChildrenCount: 1,
 	})
 	before := session.Snapshot()
+	expectedChildID := before.Player.AttachedChildren[0].ID
 	expectedX, expectedY := promotedChildPosition(before.Player.ID, before.Player.AttachedChildren[0].ID, before.Player.X, before.Player.Y, 1)
 
 	snapshot := session.Advance()
@@ -113,6 +114,9 @@ func TestPlayerWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
 	if snapshot.Interaction.SourceID != before.Player.ID || snapshot.Interaction.TargetID != before.Player.ID {
 		t.Fatalf("expected continuity interaction to identify player %q, got source=%q target=%q", before.Player.ID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
 	}
+	if snapshot.Interaction.PromotedChildID != expectedChildID {
+		t.Fatalf("expected promoted child id %q, got %q", expectedChildID, snapshot.Interaction.PromotedChildID)
+	}
 	if len(snapshot.Player.AttachedChildren) != len(snapshot.Player.AttachedChildren) {
 		t.Fatalf("expected attached children to remain synchronized, count=%d attached=%d", snapshot.Player.ChildrenCount, len(snapshot.Player.AttachedChildren))
 	}
@@ -142,6 +146,7 @@ func TestAutonomousCircleWithZeroEnergyReplacesThroughChildContinuity(t *testing
 		DisableFoodSeeking:      true,
 	})
 	before := session.Snapshot()
+	expectedChildID := before.AutonomousCircles[0].AttachedChildren[0].ID
 	expectedX, expectedY := promotedChildPosition(before.AutonomousCircles[0].ID, before.AutonomousCircles[0].AttachedChildren[0].ID, before.AutonomousCircles[0].X, before.AutonomousCircles[0].Y, 1)
 	snapshot := session.Advance()
 
@@ -171,6 +176,9 @@ func TestAutonomousCircleWithZeroEnergyReplacesThroughChildContinuity(t *testing
 	}
 	if snapshot.Interaction.SourceID != before.AutonomousCircles[0].ID || snapshot.Interaction.TargetID != before.AutonomousCircles[0].ID {
 		t.Fatalf("expected continuity interaction to identify autonomous circle %q, got source=%q target=%q", before.AutonomousCircles[0].ID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+	}
+	if snapshot.Interaction.PromotedChildID != expectedChildID {
+		t.Fatalf("expected promoted child id %q, got %q", expectedChildID, snapshot.Interaction.PromotedChildID)
 	}
 	if len(snapshot.AutonomousCircles[0].AttachedChildren) != len(snapshot.AutonomousCircles[0].AttachedChildren) {
 		t.Fatalf("expected attached children to remain synchronized, count=%d attached=%d", snapshot.AutonomousCircles[0].ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren))

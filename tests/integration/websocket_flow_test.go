@@ -1675,6 +1675,7 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
+	expectedChildID := initial.Player.AttachedChildren[0].ID
 	expectedX, expectedY := promotedChildPosition(initial.Player.ID, initial.Player.AttachedChildren[0].ID, initial.Player.X, initial.Player.Y, 1)
 
 	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
@@ -1714,6 +1715,9 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 		}
 		if snapshot.Interaction.SourceID != initial.Player.ID || snapshot.Interaction.TargetID != initial.Player.ID {
 			t.Fatalf("expected continuity interaction to identify player %q, got source=%q target=%q", initial.Player.ID, snapshot.Interaction.SourceID, snapshot.Interaction.TargetID)
+		}
+		if snapshot.Interaction.PromotedChildID != expectedChildID {
+			t.Fatalf("expected promoted child id %q, got %q", expectedChildID, snapshot.Interaction.PromotedChildID)
 		}
 		return
 	}

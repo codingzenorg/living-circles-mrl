@@ -73,7 +73,8 @@ function draw(snapshot) {
   }
 
   const interaction = snapshot.interaction ? snapshot.interaction.kind : "none";
-  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}`;
+  const promotedChild = snapshot.interaction?.promoted_child_id ? ` · Promoted: ${snapshot.interaction.promoted_child_id}` : "";
+  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}${promotedChild}`;
 }
 
 function drawCircle(circle, isPlayer, player) {
