@@ -7,6 +7,32 @@ import (
 	"github.com/codingzen/living-circles-mrl/src/server/simulation"
 )
 
+func promotedChildPosition(ownerID, childID string, x, y float64, tick int64) (float64, float64) {
+	angle := promotedChildAngle(ownerID, childID, tick)
+	orbitRadius := simulation.DefaultPlayerRadius + simulation.DefaultAttachedChildOrbitGap + simulation.DefaultAttachedChildRadius
+	return x + math.Cos(angle)*orbitRadius, y + math.Sin(angle)*orbitRadius
+}
+
+func promotedChildAngle(ownerID, childID string, tick int64) float64 {
+	baseAngle := float64(testHashString(ownerID+":"+childID)%360) * math.Pi / 180
+	return baseAngle + float64(tick)*simulation.DefaultChildOrbitSpeed
+}
+
+func testHashString(value string) int {
+	hash := 17
+	for _, char := range value {
+		hash = hash*31 + int(char)
+	}
+	if hash < 0 {
+		return -hash
+	}
+	return hash
+}
+
+func almostEqual(a, b float64) bool {
+	return math.Abs(a-b) <= 1e-9
+}
+
 func TestAdvanceMovesPlayerWhenIntentExists(t *testing.T) {
 	session := simulation.NewSession()
 	before := session.Snapshot()
@@ -51,13 +77,13 @@ func TestPlayerWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:         "triangle",
 		AutonomousShape:     "square",
-		PlayerEnergy:        1,
+		PlayerEnergy:        0,
 		AutonomousEnergy:    100,
 		PlayerChildrenCount: 1,
 	})
 	before := session.Snapshot()
+	expectedX, expectedY := promotedChildPosition(before.Player.ID, before.Player.AttachedChildren[0].ID, before.Player.X, before.Player.Y, 1)
 
-	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
 	snapshot := session.Advance()
 
 	if snapshot.Player == nil {
@@ -74,6 +100,9 @@ func TestPlayerWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
 	}
 	if snapshot.Player.Generation != before.Player.Generation+1 {
 		t.Fatalf("expected replacement generation %d, got %d", before.Player.Generation+1, snapshot.Player.Generation)
+	}
+	if !almostEqual(snapshot.Player.X, expectedX) || !almostEqual(snapshot.Player.Y, expectedY) {
+		t.Fatalf("expected replacement at promoted child position (%v, %v), got (%v, %v)", expectedX, expectedY, snapshot.Player.X, snapshot.Player.Y)
 	}
 	if snapshot.Interaction == nil {
 		t.Fatal("expected continuity interaction after zero-energy promotion")
@@ -110,8 +139,10 @@ func TestAutonomousCircleWithZeroEnergyReplacesThroughChildContinuity(t *testing
 		PlayerEnergy:            100,
 		AutonomousEnergy:        0,
 		AutonomousChildrenCount: 1,
+		DisableFoodSeeking:      true,
 	})
 	before := session.Snapshot()
+	expectedX, expectedY := promotedChildPosition(before.AutonomousCircles[0].ID, before.AutonomousCircles[0].AttachedChildren[0].ID, before.AutonomousCircles[0].X, before.AutonomousCircles[0].Y, 1)
 	snapshot := session.Advance()
 
 	if len(snapshot.AutonomousCircles) != 1 {
@@ -128,6 +159,9 @@ func TestAutonomousCircleWithZeroEnergyReplacesThroughChildContinuity(t *testing
 	}
 	if snapshot.AutonomousCircles[0].Generation != before.AutonomousCircles[0].Generation+1 {
 		t.Fatalf("expected replacement generation %d, got %d", before.AutonomousCircles[0].Generation+1, snapshot.AutonomousCircles[0].Generation)
+	}
+	if !almostEqual(snapshot.AutonomousCircles[0].X, expectedX) || !almostEqual(snapshot.AutonomousCircles[0].Y, expectedY) {
+		t.Fatalf("expected replacement at promoted child position (%v, %v), got (%v, %v)", expectedX, expectedY, snapshot.AutonomousCircles[0].X, snapshot.AutonomousCircles[0].Y)
 	}
 	if snapshot.Interaction == nil {
 		t.Fatal("expected continuity interaction after zero-energy promotion")

@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_attached_child_presence_only_fight_power.md`
+`docs/slices/initial_promoted_child_position_for_continuity.md`
 
 ## Implemented Shape
 
@@ -53,6 +53,7 @@
 - attached children are now the single authoritative child state, with `children_count` derived for snapshots and readability
 - runtime snapshots now expose child state only through attached children, with client-side child quantity derived from `attached_children`
 - same-shape fights now treat child-based fight leverage as attached-child presence versus absence rather than raw child-count magnitude
+- continuity promotion now repositions the continuing active parent to the promoted child's last visible position
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -218,6 +219,7 @@ The slice needed these implementation choices not fully specified in the refined
 - same-shape overlap resolves as `fight_resolved`; different-shape overlap resolves as `reproduce_resolved`
 - same-shape overlap may also resolve as `fight_absorbed_child` when the loser has an attached child available to absorb the loss
 - zero-energy collapse that preserves continuity now resolves as `death_promoted_child`
+- when continuity promotes one attached child, the continuing active parent now takes that child's last visible position at the current tick
 - pair contact may be initiated by one attached child touching the other parent's body even when the two parent cores do not yet overlap
 - pair contact may also be initiated by one attached child touching another attached child across the pair
 - autonomous-only encounters use the same fight, reproduction, child, and continuity rules as player-involved encounters

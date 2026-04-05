@@ -323,7 +323,7 @@ func (w *World) Advance(tick int64, intent Vector) Snapshot {
 
 	w.consumeOverlappingFood(tick)
 	w.regenerateFood(tick)
-	w.resolveEnergyCollapse()
+	w.resolveEnergyCollapse(tick)
 	w.resolveCircleInteractions(tick)
 
 	return w.Snapshot(tick)
@@ -834,7 +834,7 @@ func (w *World) resolveCircleInteractions(tick int64) {
 				return
 			}
 
-			w.resolveFight(circle.ID, contactOrigin)
+			w.resolveFight(circle.ID, contactOrigin, tick)
 			w.activeOverlapPairs = currentOverlapPairs
 			return
 		}
@@ -862,7 +862,7 @@ func (w *World) resolveCircleInteractions(tick int64) {
 				return
 			}
 
-			w.resolveAutonomousFight(left, right, contactOrigin)
+			w.resolveAutonomousFight(left, right, contactOrigin, tick)
 			w.activeOverlapPairs = currentOverlapPairs
 			return
 		}
@@ -937,7 +937,7 @@ func autonomousCirclesInteract(left AutonomousCircle, right AutonomousCircle, ti
 	return "", false
 }
 
-func (w *World) resolveFight(opponentID string, contactOrigin string) {
+func (w *World) resolveFight(opponentID string, contactOrigin string, tick int64) {
 	opponentIndex := -1
 	for index, circle := range w.autonomousCircles {
 		if circle.ID == opponentID {
@@ -971,7 +971,7 @@ func (w *World) resolveFight(opponentID string, contactOrigin string) {
 			return
 		}
 		w.lastInteraction.Kind = "fight_resolved"
-		w.player = replaceOrRemovePlayer(w.player)
+		w.player = replaceOrRemovePlayer(w.player, tick)
 		return
 	}
 
@@ -983,7 +983,7 @@ func (w *World) resolveFight(opponentID string, contactOrigin string) {
 	}
 
 	w.lastInteraction.Kind = "fight_resolved"
-	replacedOpponent, active := replaceOrRemoveAutonomous(opponent)
+	replacedOpponent, active := replaceOrRemoveAutonomous(opponent, tick)
 	if !active {
 		w.autonomousCircles = append(w.autonomousCircles[:opponentIndex], w.autonomousCircles[opponentIndex+1:]...)
 		w.autonomousDirections = append(w.autonomousDirections[:opponentIndex], w.autonomousDirections[opponentIndex+1:]...)
@@ -1059,7 +1059,7 @@ func determineAutonomousFightOutcome(left AutonomousCircle, right AutonomousCirc
 	return right.ID, left.ID
 }
 
-func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactOrigin string) {
+func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactOrigin string, tick int64) {
 	if leftIndex < 0 || rightIndex < 0 || leftIndex >= len(w.autonomousCircles) || rightIndex >= len(w.autonomousCircles) {
 		return
 	}
@@ -1092,7 +1092,7 @@ func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactOri
 	}
 
 	w.lastInteraction.Kind = "fight_resolved"
-	replacedLoser, active := replaceOrRemoveAutonomous(loser)
+	replacedLoser, active := replaceOrRemoveAutonomous(loser, tick)
 	if active {
 		w.autonomousCircles[loserIndex] = replacedLoser
 		return
@@ -1261,10 +1261,10 @@ func reproductionCapacity(energy float64, childrenCount int) float64 {
 	return energy + DefaultReproductionCost
 }
 
-func (w *World) resolveEnergyCollapse() {
+func (w *World) resolveEnergyCollapse(tick int64) {
 	if w.player != nil && w.player.Energy == 0 {
 		promoted := childCountForPlayer(*w.player) > 0
-		w.player = replaceOrRemovePlayer(w.player)
+		w.player = replaceOrRemovePlayer(w.player, tick)
 		if promoted && w.player != nil && w.lastInteraction == nil {
 			w.lastInteraction = &InteractionClassification{
 				Active:   false,
@@ -1282,7 +1282,7 @@ func (w *World) resolveEnergyCollapse() {
 		}
 
 		promoted := childCountForAutonomous(circle) > 0
-		replaced, active := replaceOrRemoveAutonomous(circle)
+		replaced, active := replaceOrRemoveAutonomous(circle, tick)
 		if !active {
 			w.autonomousCircles = append(w.autonomousCircles[:index], w.autonomousCircles[index+1:]...)
 			w.autonomousDirections = append(w.autonomousDirections[:index], w.autonomousDirections[index+1:]...)
@@ -1303,7 +1303,7 @@ func (w *World) resolveEnergyCollapse() {
 	}
 }
 
-func replaceOrRemovePlayer(circle *PlayerCircle) *PlayerCircle {
+func replaceOrRemovePlayer(circle *PlayerCircle, tick int64) *PlayerCircle {
 	if circle == nil {
 		return nil
 	}
@@ -1311,23 +1311,43 @@ func replaceOrRemovePlayer(circle *PlayerCircle) *PlayerCircle {
 		return nil
 	}
 
+	promotedX, promotedY, ok := promotedChildPosition(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
 	consumePlayerChild(circle)
+	if ok {
+		circle.X = promotedX
+		circle.Y = promotedY
+	}
 	circle.Generation++
 	circle.Energy = DefaultReplacementEnergy
 
 	return circle
 }
 
-func replaceOrRemoveAutonomous(circle AutonomousCircle) (AutonomousCircle, bool) {
+func replaceOrRemoveAutonomous(circle AutonomousCircle, tick int64) (AutonomousCircle, bool) {
 	if childCountForAutonomous(circle) == 0 {
 		return AutonomousCircle{}, false
 	}
 
+	promotedX, promotedY, ok := promotedChildPosition(circle.ID, circle.X, circle.Y, circle.Radius, circle.AttachedChildren, tick)
 	consumeAutonomousChild(&circle)
+	if ok {
+		circle.X = promotedX
+		circle.Y = promotedY
+	}
 	circle.Generation++
 	circle.Energy = DefaultReplacementEnergy
 
 	return circle, true
+}
+
+func promotedChildPosition(ownerID string, x, y, parentRadius float64, children []AttachedChild, tick int64) (float64, float64, bool) {
+	if len(children) == 0 {
+		return 0, 0, false
+	}
+
+	layout := layoutAttachedChildren(ownerID, x, y, parentRadius, children, tick)
+	promoted := layout[len(layout)-1]
+	return promoted.X, promoted.Y, true
 }
 
 func initialAttachedChildren(ownerID string, count int) []AttachedChild {

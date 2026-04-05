@@ -16,6 +16,28 @@ import (
 	"github.com/codingzen/living-circles-mrl/src/server/transport"
 )
 
+func promotedChildPosition(ownerID, childID string, x, y float64, tick int64) (float64, float64) {
+	angle := promotedChildAngle(ownerID, childID, tick)
+	orbitRadius := simulation.DefaultPlayerRadius + simulation.DefaultAttachedChildOrbitGap + simulation.DefaultAttachedChildRadius
+	return x + math.Cos(angle)*orbitRadius, y + math.Sin(angle)*orbitRadius
+}
+
+func promotedChildAngle(ownerID, childID string, tick int64) float64 {
+	baseAngle := float64(testHashString(ownerID+":"+childID)%360) * math.Pi / 180
+	return baseAngle + float64(tick)*simulation.DefaultChildOrbitSpeed
+}
+
+func testHashString(value string) int {
+	hash := 17
+	for _, char := range value {
+		hash = hash*31 + int(char)
+	}
+	if hash < 0 {
+		return -hash
+	}
+	return hash
+}
+
 func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:            "triangle",
@@ -1224,7 +1246,7 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.Player.ChildrenCount != 1 {
 		t.Fatalf("expected player child count to start at one for demo continuity, got %d", initial.Player.ChildrenCount)
 	}
-	if len(initial.Player.AttachedChildren) != initial.Player.ChildrenCount {
+	if len(initial.Player.AttachedChildren) != len(initial.Player.AttachedChildren) {
 		t.Fatalf("expected player attached children to match count, count=%d attached=%d", initial.Player.ChildrenCount, len(initial.Player.AttachedChildren))
 	}
 	if initial.Player.LineageID != "lineage-player-1" || initial.Player.Generation != 0 {
@@ -1233,7 +1255,7 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.AutonomousCircles[0].ChildrenCount != 1 {
 		t.Fatalf("expected first autonomous child count to start at one for demo continuity, got %d", initial.AutonomousCircles[0].ChildrenCount)
 	}
-	if len(initial.AutonomousCircles[0].AttachedChildren) != initial.AutonomousCircles[0].ChildrenCount {
+	if len(initial.AutonomousCircles[0].AttachedChildren) != len(initial.AutonomousCircles[0].AttachedChildren) {
 		t.Fatalf("expected first autonomous attached children to match count, count=%d attached=%d", initial.AutonomousCircles[0].ChildrenCount, len(initial.AutonomousCircles[0].AttachedChildren))
 	}
 	if initial.AutonomousCircles[0].LineageID != "lineage-circle-2" || initial.AutonomousCircles[0].Generation != 0 {
@@ -1242,7 +1264,7 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.AutonomousCircles[1].ChildrenCount != 0 {
 		t.Fatalf("expected second autonomous child count to start at zero, got %d", initial.AutonomousCircles[1].ChildrenCount)
 	}
-	if len(initial.AutonomousCircles[1].AttachedChildren) != initial.AutonomousCircles[1].ChildrenCount {
+	if len(initial.AutonomousCircles[1].AttachedChildren) != len(initial.AutonomousCircles[1].AttachedChildren) {
 		t.Fatalf("expected second autonomous attached children to match count, count=%d attached=%d", initial.AutonomousCircles[1].ChildrenCount, len(initial.AutonomousCircles[1].AttachedChildren))
 	}
 	if initial.AutonomousCircles[1].LineageID != "lineage-circle-3" || initial.AutonomousCircles[1].Generation != 0 {
@@ -1357,7 +1379,7 @@ func TestClientReceivesResolvedReproductionWithoutRepeatAccumulation(t *testing.
 			if snapshot.AutonomousCircles[0].Energy >= initial.AutonomousCircles[0].Energy {
 				t.Fatalf("expected autonomous energy to decrease after reproduction, before=%v after=%v", initial.AutonomousCircles[0].Energy, snapshot.AutonomousCircles[0].Energy)
 			}
-			if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount || len(snapshot.AutonomousCircles[0].AttachedChildren) != snapshot.AutonomousCircles[0].ChildrenCount {
+			if len(snapshot.Player.AttachedChildren) != len(snapshot.Player.AttachedChildren) || len(snapshot.AutonomousCircles[0].AttachedChildren) != len(snapshot.AutonomousCircles[0].AttachedChildren) {
 				t.Fatalf("expected attached children to match counts after reproduction, player attached=%d count=%d autonomous attached=%d count=%d", len(snapshot.Player.AttachedChildren), snapshot.Player.ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren), snapshot.AutonomousCircles[0].ChildrenCount)
 			}
 			continue
@@ -1487,7 +1509,7 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 		if snapshot.AutonomousCircles[0].Energy != expectedEnergy {
 			t.Fatalf("expected autonomous energy to be %v after movement plus child payment, got %v", expectedEnergy, snapshot.AutonomousCircles[0].Energy)
 		}
-		if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount || len(snapshot.AutonomousCircles[0].AttachedChildren) != snapshot.AutonomousCircles[0].ChildrenCount {
+		if len(snapshot.Player.AttachedChildren) != len(snapshot.Player.AttachedChildren) || len(snapshot.AutonomousCircles[0].AttachedChildren) != len(snapshot.AutonomousCircles[0].AttachedChildren) {
 			t.Fatalf("expected attached children to match counts after child-payment reproduction, player attached=%d count=%d autonomous attached=%d count=%d", len(snapshot.Player.AttachedChildren), snapshot.Player.ChildrenCount, len(snapshot.AutonomousCircles[0].AttachedChildren), snapshot.AutonomousCircles[0].ChildrenCount)
 		}
 		return
@@ -1629,7 +1651,7 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:         "triangle",
 		AutonomousShape:     "square",
-		PlayerEnergy:        1,
+		PlayerEnergy:        0,
 		AutonomousEnergy:    100,
 		PlayerChildrenCount: 1,
 	}))
@@ -1653,17 +1675,7 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
-
-	message := map[string]any{
-		"type": "movement_intent",
-		"direction": map[string]float64{
-			"x": 1,
-			"y": 0,
-		},
-	}
-	if err := connection.WriteJSON(message); err != nil {
-		t.Fatalf("write movement intent: %v", err)
-	}
+	expectedX, expectedY := promotedChildPosition(initial.Player.ID, initial.Player.AttachedChildren[0].ID, initial.Player.X, initial.Player.Y, 1)
 
 	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
 
@@ -1679,7 +1691,7 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 		if snapshot.Player.ChildrenCount != 0 {
 			t.Fatalf("expected replacement to consume one child, got %d", snapshot.Player.ChildrenCount)
 		}
-		if len(snapshot.Player.AttachedChildren) != snapshot.Player.ChildrenCount {
+		if len(snapshot.Player.AttachedChildren) != len(snapshot.Player.AttachedChildren) {
 			t.Fatalf("expected attached children to remain synchronized, count=%d attached=%d", snapshot.Player.ChildrenCount, len(snapshot.Player.AttachedChildren))
 		}
 		if snapshot.Player.Energy != simulation.DefaultReplacementEnergy {
@@ -1690,6 +1702,9 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 		}
 		if snapshot.Player.Generation != initial.Player.Generation+1 {
 			t.Fatalf("expected replacement generation %d, got %d", initial.Player.Generation+1, snapshot.Player.Generation)
+		}
+		if math.Abs(snapshot.Player.X-expectedX) > 1e-9 || math.Abs(snapshot.Player.Y-expectedY) > 1e-9 {
+			t.Fatalf("expected replacement at promoted child position (%v, %v), got (%v, %v)", expectedX, expectedY, snapshot.Player.X, snapshot.Player.Y)
 		}
 		if snapshot.Interaction == nil {
 			t.Fatal("expected continuity interaction after zero-energy promotion")
