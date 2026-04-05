@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_child_payment_identity_in_reproduction.md`
+`docs/slices/initial_contact_child_identity_in_interaction.md`
 
 ## Implemented Shape
 
@@ -56,6 +56,7 @@
 - continuity outcomes now explicitly expose the promoted child identity
 - `fight_absorbed_child` outcomes now explicitly expose the absorbed child identity
 - `reproduce_paid_child` outcomes now explicitly expose which side paid through a child
+- child-triggered interactions now explicitly expose which source-side and/or target-side attached child participated in contact
 - Go-side snapshot structs now derive child quantity only from attached children instead of mirroring a separate `ChildrenCount` field
 - dead derived-radius scaffolding has been removed and parent radius is now expressed directly as the fixed visible body size
 - browser demo reset through an authoritative server restart endpoint
@@ -226,6 +227,7 @@ The slice needed these implementation choices not fully specified in the refined
 - `death_promoted_child` outcomes now expose the promoted child ID explicitly
 - `fight_absorbed_child` outcomes now expose the absorbed child ID explicitly
 - `reproduce_paid_child` outcomes now expose whether the source side, target side, or both paid through a child
+- `attached_child` contact origin now also exposes the participating source-side and/or target-side child IDs explicitly
 - Go-side snapshot readers now derive child quantity directly from attached children with no mirrored `ChildrenCount` field
 - pair contact may be initiated by one attached child touching the other parent's body even when the two parent cores do not yet overlap
 - pair contact may also be initiated by one attached child touching another attached child across the pair

@@ -1764,6 +1764,12 @@ func TestPlayerAttachedChildCanTriggerFightBeforeParentBodiesOverlap(t *testing.
 	if snapshot.Interaction.ContactOrigin != "attached_child" {
 		t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
 	}
+	if snapshot.Interaction.SourceChildID != "player-1-child-1" {
+		t.Fatalf("expected source child id player-1-child-1, got %q", snapshot.Interaction.SourceChildID)
+	}
+	if snapshot.Interaction.TargetChildID != "" {
+		t.Fatalf("expected empty target child id, got %q", snapshot.Interaction.TargetChildID)
+	}
 }
 
 func TestAutonomousAttachedChildCanTriggerReproductionBeforeParentBodiesOverlap(t *testing.T) {
@@ -1806,6 +1812,12 @@ func TestAutonomousAttachedChildCanTriggerReproductionBeforeParentBodiesOverlap(
 	if snapshot.Interaction.ContactOrigin != "attached_child" {
 		t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
 	}
+	if snapshot.Interaction.SourceChildID != "player-1-child-1" {
+		t.Fatalf("expected source child id player-1-child-1, got %q", snapshot.Interaction.SourceChildID)
+	}
+	if snapshot.Interaction.TargetChildID != "" {
+		t.Fatalf("expected empty target child id, got %q", snapshot.Interaction.TargetChildID)
+	}
 }
 
 func TestAttachedChildrenCanTriggerFightThroughChildToChildContact(t *testing.T) {
@@ -1835,6 +1847,12 @@ func TestAttachedChildrenCanTriggerFightThroughChildToChildContact(t *testing.T)
 	}
 	if snapshot.Interaction.ContactOrigin != "attached_child" {
 		t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
+	}
+	if snapshot.Interaction.SourceChildID != "player-1-child-2" {
+		t.Fatalf("expected source child id player-1-child-2, got %q", snapshot.Interaction.SourceChildID)
+	}
+	if snapshot.Interaction.TargetChildID != "circle-2-child-1" {
+		t.Fatalf("expected target child id circle-2-child-1, got %q", snapshot.Interaction.TargetChildID)
 	}
 	if snapshot.Player == nil || len(snapshot.AutonomousCircles) != 1 {
 		t.Fatalf("expected both parents to remain after absorbed fight, player=%v autonomous=%d", snapshot.Player != nil, len(snapshot.AutonomousCircles))
@@ -1873,6 +1891,12 @@ func TestAttachedChildrenCanTriggerReproductionThroughChildToChildContact(t *tes
 	if snapshot.Interaction.ContactOrigin != "attached_child" {
 		t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
 	}
+	if snapshot.Interaction.SourceChildID != "player-1-child-2" {
+		t.Fatalf("expected source child id player-1-child-2, got %q", snapshot.Interaction.SourceChildID)
+	}
+	if snapshot.Interaction.TargetChildID != "circle-2-child-1" {
+		t.Fatalf("expected target child id circle-2-child-1, got %q", snapshot.Interaction.TargetChildID)
+	}
 	if snapshot.Player == nil || len(snapshot.AutonomousCircles) != 1 {
 		t.Fatalf("expected both parents to remain after reproduction, player=%v autonomous=%d", snapshot.Player != nil, len(snapshot.AutonomousCircles))
 	}
@@ -1902,6 +1926,37 @@ func TestDerivedRadiusAloneDoesNotStartContactWithoutVisibleOverlap(t *testing.T
 
 	if snapshot.Interaction != nil {
 		t.Fatalf("expected no interaction when only derived parent radius would have overlapped, got %+v", snapshot.Interaction)
+	}
+}
+
+func TestParentBodyContactDoesNotExposeChildIdentity(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:            "triangle",
+		AutonomousShape:        "triangle",
+		PlayerEnergy:           100,
+		AutonomousEnergy:       100,
+		DisableThreatAvoidance: true,
+	})
+
+	var snapshot simulation.Snapshot
+	for range 20 {
+		snapshot = session.Advance()
+		if snapshot.Interaction != nil {
+			break
+		}
+	}
+
+	if snapshot.Interaction == nil {
+		t.Fatal("expected parent-body fight interaction")
+	}
+	if snapshot.Interaction.ContactOrigin != "parent_body" {
+		t.Fatalf("expected parent_body contact origin, got %q", snapshot.Interaction.ContactOrigin)
+	}
+	if snapshot.Interaction.SourceChildID != "" {
+		t.Fatalf("expected empty source child id, got %q", snapshot.Interaction.SourceChildID)
+	}
+	if snapshot.Interaction.TargetChildID != "" {
+		t.Fatalf("expected empty target child id, got %q", snapshot.Interaction.TargetChildID)
 	}
 }
 

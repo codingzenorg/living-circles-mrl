@@ -78,7 +78,9 @@ function draw(snapshot) {
   const childPayment = snapshot.interaction?.source_paid_child || snapshot.interaction?.target_paid_child
     ? ` · Paid: ${snapshot.interaction?.source_paid_child ? "source" : ""}${snapshot.interaction?.source_paid_child && snapshot.interaction?.target_paid_child ? "+" : ""}${snapshot.interaction?.target_paid_child ? "target" : ""}`
     : "";
-  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}${promotedChild}${absorbedChild}${childPayment}`;
+  const sourceChild = snapshot.interaction?.source_child_id ? ` · Source child: ${snapshot.interaction.source_child_id}` : "";
+  const targetChild = snapshot.interaction?.target_child_id ? ` · Target child: ${snapshot.interaction.target_child_id}` : "";
+  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}${promotedChild}${absorbedChild}${childPayment}${sourceChild}${targetChild}`;
 }
 
 function drawCircle(circle, isPlayer, player) {

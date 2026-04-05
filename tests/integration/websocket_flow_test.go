@@ -311,6 +311,12 @@ func TestClientReceivesChildTriggeredReproductionBeforeParentBodiesOverlap(t *te
 		if snapshot.Interaction.ContactOrigin != "attached_child" {
 			t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
 		}
+		if snapshot.Interaction.SourceChildID != "player-1-child-1" {
+			t.Fatalf("expected source child id player-1-child-1, got %q", snapshot.Interaction.SourceChildID)
+		}
+		if snapshot.Interaction.TargetChildID != "" {
+			t.Fatalf("expected empty target child id, got %q", snapshot.Interaction.TargetChildID)
+		}
 		return
 	}
 
@@ -366,6 +372,12 @@ func TestClientReceivesChildToChildTriggeredReproduction(t *testing.T) {
 		}
 		if snapshot.Interaction.ContactOrigin != "attached_child" {
 			t.Fatalf("expected attached_child contact origin, got %q", snapshot.Interaction.ContactOrigin)
+		}
+		if snapshot.Interaction.SourceChildID != "player-1-child-2" {
+			t.Fatalf("expected source child id player-1-child-2, got %q", snapshot.Interaction.SourceChildID)
+		}
+		if snapshot.Interaction.TargetChildID != "circle-2-child-1" {
+			t.Fatalf("expected target child id circle-2-child-1, got %q", snapshot.Interaction.TargetChildID)
 		}
 		if snapshot.Player == nil || len(snapshot.AutonomousCircles) != 1 {
 			t.Fatalf("expected both parents to remain, player=%v autonomous=%d", snapshot.Player != nil, len(snapshot.AutonomousCircles))

@@ -142,6 +142,8 @@ type InteractionClassification struct {
 	ContactOrigin   string `json:"contact_origin,omitempty"`
 	SourceID        string `json:"source_id"`
 	TargetID        string `json:"target_id"`
+	SourceChildID   string `json:"source_child_id,omitempty"`
+	TargetChildID   string `json:"target_child_id,omitempty"`
 	WinnerID        string `json:"winner_id"`
 	LoserID         string `json:"loser_id"`
 	PromotedChildID string `json:"promoted_child_id,omitempty"`
@@ -206,6 +208,12 @@ type Config struct {
 	DisableFoodSeeking                  bool
 	DisableThreatAvoidance              bool
 	DisableBlockedReproductionAvoidance bool
+}
+
+type ContactDetails struct {
+	Origin        string
+	SourceChildID string
+	TargetChildID string
 }
 
 func NewWorld() *World {
@@ -812,7 +820,7 @@ func (w *World) resolveCircleInteractions(tick int64) {
 	currentOverlapPairs := make(map[string]struct{})
 	if w.player != nil {
 		for _, circle := range w.autonomousCircles {
-			contactOrigin, interacting := circlesInteract(*w.player, circle, tick)
+			contactDetails, interacting := circlesInteract(*w.player, circle, tick)
 			if !interacting {
 				continue
 			}
@@ -825,12 +833,12 @@ func (w *World) resolveCircleInteractions(tick int64) {
 					continue
 				}
 
-				w.resolveReproduction(circle.ID, tick, contactOrigin)
+				w.resolveReproduction(circle.ID, tick, contactDetails)
 				w.activeOverlapPairs = currentOverlapPairs
 				return
 			}
 
-			w.resolveFight(circle.ID, contactOrigin, tick)
+			w.resolveFight(circle.ID, contactDetails, tick)
 			w.activeOverlapPairs = currentOverlapPairs
 			return
 		}
@@ -840,7 +848,7 @@ func (w *World) resolveCircleInteractions(tick int64) {
 		for right := left + 1; right < len(w.autonomousCircles); right++ {
 			leftCircle := w.autonomousCircles[left]
 			rightCircle := w.autonomousCircles[right]
-			contactOrigin, interacting := autonomousCirclesInteract(leftCircle, rightCircle, tick)
+			contactDetails, interacting := autonomousCirclesInteract(leftCircle, rightCircle, tick)
 			if !interacting {
 				continue
 			}
@@ -853,12 +861,12 @@ func (w *World) resolveCircleInteractions(tick int64) {
 					continue
 				}
 
-				w.resolveAutonomousReproduction(left, right, tick, contactOrigin)
+				w.resolveAutonomousReproduction(left, right, tick, contactDetails)
 				w.activeOverlapPairs = currentOverlapPairs
 				return
 			}
 
-			w.resolveAutonomousFight(left, right, contactOrigin, tick)
+			w.resolveAutonomousFight(left, right, contactDetails, tick)
 			w.activeOverlapPairs = currentOverlapPairs
 			return
 		}
@@ -867,7 +875,7 @@ func (w *World) resolveCircleInteractions(tick int64) {
 	w.activeOverlapPairs = currentOverlapPairs
 }
 
-func circlesInteract(player PlayerCircle, autonomous AutonomousCircle, tick int64) (string, bool) {
+func circlesInteract(player PlayerCircle, autonomous AutonomousCircle, tick int64) (ContactDetails, bool) {
 	parentBodyOverlap := overlaps(player.X, player.Y, DefaultPlayerRadius, autonomous.X, autonomous.Y, DefaultPlayerRadius)
 
 	playerChildren := layoutAttachedChildren(player.ID, player.X, player.Y, player.Radius, player.AttachedChildren, tick)
@@ -875,32 +883,32 @@ func circlesInteract(player PlayerCircle, autonomous AutonomousCircle, tick int6
 
 	for _, child := range playerChildren {
 		if overlaps(child.X, child.Y, child.Radius, autonomous.X, autonomous.Y, DefaultPlayerRadius) {
-			return "attached_child", true
+			return ContactDetails{Origin: "attached_child", SourceChildID: child.ID}, true
 		}
 	}
 
 	for _, child := range autonomousChildren {
 		if overlaps(player.X, player.Y, DefaultPlayerRadius, child.X, child.Y, child.Radius) {
-			return "attached_child", true
+			return ContactDetails{Origin: "attached_child", TargetChildID: child.ID}, true
 		}
 	}
 
 	for _, playerChild := range playerChildren {
 		for _, autonomousChild := range autonomousChildren {
 			if overlaps(playerChild.X, playerChild.Y, playerChild.Radius, autonomousChild.X, autonomousChild.Y, autonomousChild.Radius) {
-				return "attached_child", true
+				return ContactDetails{Origin: "attached_child", SourceChildID: playerChild.ID, TargetChildID: autonomousChild.ID}, true
 			}
 		}
 	}
 
 	if parentBodyOverlap {
-		return "parent_body", true
+		return ContactDetails{Origin: "parent_body"}, true
 	}
 
-	return "", false
+	return ContactDetails{}, false
 }
 
-func autonomousCirclesInteract(left AutonomousCircle, right AutonomousCircle, tick int64) (string, bool) {
+func autonomousCirclesInteract(left AutonomousCircle, right AutonomousCircle, tick int64) (ContactDetails, bool) {
 	parentBodyOverlap := overlaps(left.X, left.Y, DefaultPlayerRadius, right.X, right.Y, DefaultPlayerRadius)
 
 	leftChildren := layoutAttachedChildren(left.ID, left.X, left.Y, left.Radius, left.AttachedChildren, tick)
@@ -908,32 +916,32 @@ func autonomousCirclesInteract(left AutonomousCircle, right AutonomousCircle, ti
 
 	for _, child := range leftChildren {
 		if overlaps(child.X, child.Y, child.Radius, right.X, right.Y, DefaultPlayerRadius) {
-			return "attached_child", true
+			return ContactDetails{Origin: "attached_child", SourceChildID: child.ID}, true
 		}
 	}
 
 	for _, child := range rightChildren {
 		if overlaps(left.X, left.Y, DefaultPlayerRadius, child.X, child.Y, child.Radius) {
-			return "attached_child", true
+			return ContactDetails{Origin: "attached_child", TargetChildID: child.ID}, true
 		}
 	}
 
 	for _, leftChild := range leftChildren {
 		for _, rightChild := range rightChildren {
 			if overlaps(leftChild.X, leftChild.Y, leftChild.Radius, rightChild.X, rightChild.Y, rightChild.Radius) {
-				return "attached_child", true
+				return ContactDetails{Origin: "attached_child", SourceChildID: leftChild.ID, TargetChildID: rightChild.ID}, true
 			}
 		}
 	}
 
 	if parentBodyOverlap {
-		return "parent_body", true
+		return ContactDetails{Origin: "parent_body"}, true
 	}
 
-	return "", false
+	return ContactDetails{}, false
 }
 
-func (w *World) resolveFight(opponentID string, contactOrigin string, tick int64) {
+func (w *World) resolveFight(opponentID string, contactDetails ContactDetails, tick int64) {
 	opponentIndex := -1
 	for index, circle := range w.autonomousCircles {
 		if circle.ID == opponentID {
@@ -953,9 +961,11 @@ func (w *World) resolveFight(opponentID string, contactOrigin string, tick int64
 		Active:        false,
 		Resolved:      true,
 		Kind:          "",
-		ContactOrigin: contactOrigin,
+		ContactOrigin: contactDetails.Origin,
 		SourceID:      w.player.ID,
 		TargetID:      opponent.ID,
+		SourceChildID: contactDetails.SourceChildID,
+		TargetChildID: contactDetails.TargetChildID,
 		WinnerID:      winnerID,
 		LoserID:       loserID,
 	}
@@ -993,7 +1003,7 @@ func (w *World) resolveFight(opponentID string, contactOrigin string, tick int64
 	w.autonomousCircles[opponentIndex] = replacedOpponent
 }
 
-func (w *World) resolveReproduction(opponentID string, tick int64, contactOrigin string) {
+func (w *World) resolveReproduction(opponentID string, tick int64, contactDetails ContactDetails) {
 	opponentIndex := -1
 	for index, circle := range w.autonomousCircles {
 		if circle.ID == opponentID {
@@ -1014,9 +1024,11 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactOrigin
 			Active:        false,
 			Resolved:      true,
 			Kind:          "reproduce_blocked_energy",
-			ContactOrigin: contactOrigin,
+			ContactOrigin: contactDetails.Origin,
 			SourceID:      w.player.ID,
 			TargetID:      opponent.ID,
+			SourceChildID: contactDetails.SourceChildID,
+			TargetChildID: contactDetails.TargetChildID,
 		}
 		return
 	}
@@ -1033,9 +1045,11 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactOrigin
 		Active:          false,
 		Resolved:        true,
 		Kind:            kind,
-		ContactOrigin:   contactOrigin,
+		ContactOrigin:   contactDetails.Origin,
 		SourceID:        w.player.ID,
 		TargetID:        opponent.ID,
+		SourceChildID:   contactDetails.SourceChildID,
+		TargetChildID:   contactDetails.TargetChildID,
 		SourcePaidChild: playerUsedChild,
 		TargetPaidChild: opponentUsedChild,
 	}
@@ -1061,7 +1075,7 @@ func determineAutonomousFightOutcome(left AutonomousCircle, right AutonomousCirc
 	return right.ID, left.ID
 }
 
-func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactOrigin string, tick int64) {
+func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactDetails ContactDetails, tick int64) {
 	if leftIndex < 0 || rightIndex < 0 || leftIndex >= len(w.autonomousCircles) || rightIndex >= len(w.autonomousCircles) {
 		return
 	}
@@ -1074,9 +1088,11 @@ func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactOri
 		Active:        false,
 		Resolved:      true,
 		Kind:          "",
-		ContactOrigin: contactOrigin,
+		ContactOrigin: contactDetails.Origin,
 		SourceID:      leftCircle.ID,
 		TargetID:      rightCircle.ID,
+		SourceChildID: contactDetails.SourceChildID,
+		TargetChildID: contactDetails.TargetChildID,
 		WinnerID:      winnerID,
 		LoserID:       loserID,
 	}
@@ -1106,7 +1122,7 @@ func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactOri
 	w.autonomousDirections = append(w.autonomousDirections[:loserIndex], w.autonomousDirections[loserIndex+1:]...)
 }
 
-func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tick int64, contactOrigin string) {
+func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tick int64, contactDetails ContactDetails) {
 	if leftIndex < 0 || rightIndex < 0 || leftIndex >= len(w.autonomousCircles) || rightIndex >= len(w.autonomousCircles) {
 		return
 	}
@@ -1120,9 +1136,11 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 			Active:        false,
 			Resolved:      true,
 			Kind:          "reproduce_blocked_energy",
-			ContactOrigin: contactOrigin,
+			ContactOrigin: contactDetails.Origin,
 			SourceID:      leftCircle.ID,
 			TargetID:      rightCircle.ID,
+			SourceChildID: contactDetails.SourceChildID,
+			TargetChildID: contactDetails.TargetChildID,
 		}
 		return
 	}
@@ -1140,9 +1158,11 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 		Active:          false,
 		Resolved:        true,
 		Kind:            kind,
-		ContactOrigin:   contactOrigin,
+		ContactOrigin:   contactDetails.Origin,
 		SourceID:        leftCircle.ID,
 		TargetID:        rightCircle.ID,
+		SourceChildID:   contactDetails.SourceChildID,
+		TargetChildID:   contactDetails.TargetChildID,
 		SourcePaidChild: leftUsedChild,
 		TargetPaidChild: rightUsedChild,
 	}

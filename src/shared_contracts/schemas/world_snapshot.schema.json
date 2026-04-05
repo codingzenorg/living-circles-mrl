@@ -194,6 +194,12 @@
             "target_id": {
               "type": "string"
             },
+            "source_child_id": {
+              "type": "string"
+            },
+            "target_child_id": {
+              "type": "string"
+            },
             "winner_id": {
               "type": "string"
             },
