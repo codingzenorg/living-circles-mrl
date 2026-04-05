@@ -413,6 +413,54 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Expose the triggering attached-child contact path kind during interaction.
+
+## Why This Matters
+
+The interaction path is now highly inspectable at the identity level. The runtime can already say whether contact came from `parent_body` or `attached_child`, and it can name the source-side and target-side child IDs that participated. But the runtime still does not say whether the actual trigger path was child-to-parent or child-to-child. The server knows which geometric path fired first, while the runtime only exposes enough data for the client and tests to infer that path indirectly.
+
+That leaves a mismatch between authoritative knowledge and inspectable output. Child-triggered interaction remains less explicit about geometry than recent reproduction and continuity slices are about child usage.
+
+## Impacted Areas
+
+### Runtime contract
+
+- `attached_child` interactions should expose the triggering contact path kind
+- parent-body-only interactions should remain unchanged and should not emit a child contact path kind
+
+### Simulation model
+
+- the existing deterministic contact precedence should remain unchanged
+- build should surface the chosen path kind already implied by the current geometry and precedence rule rather than inventing a new selection rule
+
+### Browser inspectability
+
+- the HUD should remain sufficient to read the contact path kind
+- no larger visualization system is needed if the path kind is readable through existing debug output
+
+### Deterministic testing
+
+- tests should prove source-child-to-target-parent, source-parent-to-target-child, and child-to-child path kinds
+- tests should also prove that parent-body-only contact emits no child path kind
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether contact path kind is exposed as a small enum rather than inferred from child ID presence
+- whether parent-body-only contact keeps that field absent
+- how deterministic tests pin each path kind without changing current contact semantics
+
+## Risks If Ignored
+
+- child-triggered interaction will remain less inspectable at the geometry-path level than the rest of the current child model
+- debugging contact precedence will continue to rely on indirect inference instead of explicit authoritative output
+- later interaction refinements will still have to work around avoidable ambiguity in the trigger path
+
+---
+
+## Change
+
 Expose the concrete attached-child identity used during child-triggered interaction contact.
 
 ## Why This Matters
