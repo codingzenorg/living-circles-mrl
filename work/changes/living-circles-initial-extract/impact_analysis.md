@@ -365,6 +365,54 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Expose which side received each created child during successful reproduction.
+
+## Why This Matters
+
+The reproduction path is now highly inspectable at the child-creation level. The runtime can already say which new child IDs were created, which concrete child was consumed as payment, and which side lacked enough current capacity when reproduction was blocked. But successful reproduction still stops short of the redistribution result itself: the server knows which side received each created child, while the runtime only exposes the raw created IDs and the final attached-child sets.
+
+That leaves a mismatch between authoritative knowledge and inspectable output. The client and tests still need to infer created-child ownership by diffing per-side attached-child sets, even though the server already knows the exact deterministic allocation result.
+
+## Impacted Areas
+
+### Runtime contract
+
+- successful reproduction outcomes should expose which created child IDs were allocated to the source side and which were allocated to the target side
+- blocked reproduction outcomes should remain unchanged and should not emit created-child ownership
+
+### Simulation model
+
+- the existing deterministic redistribution path should remain unchanged
+- build should surface the ownership implied by the current allocation rule rather than inventing a new redistribution path
+
+### Browser inspectability
+
+- the HUD should remain sufficient to read created-child ownership
+- no larger visualization system is needed if the identity is readable through existing debug output
+
+### Deterministic testing
+
+- tests should prove that energy-paid and child-paid reproduction both expose created-child ownership
+- tests should also prove that blocked reproduction emits no created-child ownership
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether created-child ownership is exposed as one field per side rather than as richer child objects
+- whether blocked reproduction keeps those fields absent
+- how deterministic tests pin the exposed ownership to the actual newly attached children on each side without changing current reproduction semantics
+
+## Risks If Ignored
+
+- successful reproduction will remain less inspectable at the redistribution level than the rest of the current child and reproduction model
+- debugging allocation outcomes will continue to rely on indirect per-side set-diffing instead of explicit authoritative output
+- later reproduction refinements will still have to work around avoidable ambiguity in the ownership path
+
+---
+
+## Change
+
 Expose the concrete attached-child identity used during child-triggered interaction contact.
 
 ## Why This Matters
