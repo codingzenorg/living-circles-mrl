@@ -146,6 +146,8 @@ type InteractionClassification struct {
 	LoserID         string `json:"loser_id"`
 	PromotedChildID string `json:"promoted_child_id,omitempty"`
 	AbsorbedChildID string `json:"absorbed_child_id,omitempty"`
+	SourcePaidChild bool   `json:"source_paid_child,omitempty"`
+	TargetPaidChild bool   `json:"target_paid_child,omitempty"`
 }
 
 type Food struct {
@@ -1028,12 +1030,14 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactOrigin
 	}
 
 	w.lastInteraction = &InteractionClassification{
-		Active:        false,
-		Resolved:      true,
-		Kind:          kind,
-		ContactOrigin: contactOrigin,
-		SourceID:      w.player.ID,
-		TargetID:      opponent.ID,
+		Active:          false,
+		Resolved:        true,
+		Kind:            kind,
+		ContactOrigin:   contactOrigin,
+		SourceID:        w.player.ID,
+		TargetID:        opponent.ID,
+		SourcePaidChild: playerUsedChild,
+		TargetPaidChild: opponentUsedChild,
 	}
 }
 
@@ -1133,12 +1137,14 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 	}
 
 	w.lastInteraction = &InteractionClassification{
-		Active:        false,
-		Resolved:      true,
-		Kind:          kind,
-		ContactOrigin: contactOrigin,
-		SourceID:      leftCircle.ID,
-		TargetID:      rightCircle.ID,
+		Active:          false,
+		Resolved:        true,
+		Kind:            kind,
+		ContactOrigin:   contactOrigin,
+		SourceID:        leftCircle.ID,
+		TargetID:        rightCircle.ID,
+		SourcePaidChild: leftUsedChild,
+		TargetPaidChild: rightUsedChild,
 	}
 }
 

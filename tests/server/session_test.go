@@ -2110,6 +2110,12 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	if snapshot.Interaction.Kind != "reproduce_paid_child" {
 		t.Fatalf("expected reproduce_paid_child, got %q", snapshot.Interaction.Kind)
 	}
+	if snapshot.Interaction.SourcePaidChild {
+		t.Fatal("expected player not to pay with child in this reproduction path")
+	}
+	if !snapshot.Interaction.TargetPaidChild {
+		t.Fatal("expected autonomous target to pay with child in this reproduction path")
+	}
 	if len(snapshot.Player.AttachedChildren)+len(snapshot.AutonomousCircles[0].AttachedChildren) != len(before.Player.AttachedChildren)+len(before.AutonomousCircles[0].AttachedChildren)+1 {
 		t.Fatalf("expected one child to be spent and two children to be redistributed, before player=%d autonomous=%d after player=%d autonomous=%d", len(before.Player.AttachedChildren), len(before.AutonomousCircles[0].AttachedChildren), len(snapshot.Player.AttachedChildren), len(snapshot.AutonomousCircles[0].AttachedChildren))
 	}
@@ -2144,6 +2150,9 @@ func TestDifferentShapeOverlapPaidByEnergyRemainsOrdinaryResolvedReproduction(t 
 	}
 	if snapshot.Interaction.Kind != "reproduce_resolved" {
 		t.Fatalf("expected reproduce_resolved for energy-paid reproduction, got %q", snapshot.Interaction.Kind)
+	}
+	if snapshot.Interaction.SourcePaidChild || snapshot.Interaction.TargetPaidChild {
+		t.Fatalf("expected ordinary resolved reproduction to omit child-payment identity, got source=%v target=%v", snapshot.Interaction.SourcePaidChild, snapshot.Interaction.TargetPaidChild)
 	}
 }
 

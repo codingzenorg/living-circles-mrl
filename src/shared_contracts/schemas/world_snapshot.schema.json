@@ -205,6 +205,12 @@
             },
             "absorbed_child_id": {
               "type": "string"
+            },
+            "source_paid_child": {
+              "type": "boolean"
+            },
+            "target_paid_child": {
+              "type": "boolean"
             }
           }
         }

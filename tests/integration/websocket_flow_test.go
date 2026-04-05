@@ -1506,6 +1506,12 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 		if snapshot.Interaction.Kind != "reproduce_paid_child" {
 			t.Fatalf("expected reproduce_paid_child, got %q", snapshot.Interaction.Kind)
 		}
+		if snapshot.Interaction.SourcePaidChild {
+			t.Fatal("expected player not to pay with child in this reproduction path")
+		}
+		if !snapshot.Interaction.TargetPaidChild {
+			t.Fatal("expected autonomous target to pay with child in this reproduction path")
+		}
 		if len(snapshot.Player.AttachedChildren)+len(snapshot.AutonomousCircles[0].AttachedChildren) != len(previous.Player.AttachedChildren)+len(previous.AutonomousCircles[0].AttachedChildren)+1 {
 			t.Fatalf("expected one child payment plus two redistributed children, before player=%d autonomous=%d after player=%d autonomous=%d", len(previous.Player.AttachedChildren), len(previous.AutonomousCircles[0].AttachedChildren), len(snapshot.Player.AttachedChildren), len(snapshot.AutonomousCircles[0].AttachedChildren))
 		}
