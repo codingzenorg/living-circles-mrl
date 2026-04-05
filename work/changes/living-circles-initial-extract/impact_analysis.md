@@ -263,6 +263,54 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Expose absorbed child identity explicitly during `fight_absorbed_child`.
+
+## Why This Matters
+
+The fight model is now already partially inspectable: `fight_absorbed_child` distinguishes child absorption from full defeat, and the loser remains active. But the runtime still does not expose which child was absorbed. That leaves the server with exact child-loss knowledge that clients and tests can only infer indirectly from the remaining attached-child set.
+
+The next model pressure is to make absorbed-child identity explicit in the runtime contract without changing the actual fight rule.
+
+## Impacted Areas
+
+### Runtime contract
+
+- `fight_absorbed_child` outcomes should expose the absorbed child identity explicitly
+- the contract extension should stay small and scoped to fight inspectability
+
+### Simulation model
+
+- fight absorption already deterministically selects and consumes one child
+- build should surface that existing choice rather than redesigning combat behavior
+
+### Browser rendering
+
+- the client or debug HUD may need a small display update so absorbed-child identity is readable during demos
+- this should remain inspectability-oriented rather than becoming a new combat effect system
+
+### Tests
+
+- server and integration tests should prove the exposed absorbed child ID matches the consumed child
+- contract tests should validate the minimal schema extension
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether absorbed child identity belongs inside the existing interaction payload or another equally small runtime field
+- how to keep the extension fight-specific rather than turning the snapshot into a broader event-history system
+- how the client should surface absorbed-child identity with minimal UI change
+
+## Risks If Ignored
+
+- `fight_absorbed_child` will remain less inspectable than `death_promoted_child`
+- tests will keep inferring child loss indirectly instead of reading the authoritative source
+- later fight refinements will have weaker runtime evidence about which visible child was actually consumed
+
+---
+
+## Change
+
 Remove dead derived-radius state from the server.
 
 ## Why This Matters
