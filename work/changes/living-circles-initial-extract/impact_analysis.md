@@ -221,6 +221,54 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Expose promoted child identity explicitly during continuity.
+
+## Why This Matters
+
+The continuity model is now more embodied than before: one attached child is consumed and the continuing active parent reappears at that promoted child's visible position. But the runtime still does not expose which child was promoted. That leaves continuity only partly inspectable, because the server knows the exact child identity while clients and tests must infer it indirectly from position.
+
+The next model pressure is to make continuity identity explicit in the runtime contract without changing the actual continuity rule.
+
+## Impacted Areas
+
+### Runtime contract
+
+- `death_promoted_child` outcomes should expose the promoted child identity explicitly
+- the contract extension should stay small and scoped to continuity inspectability
+
+### Simulation model
+
+- continuity resolution already deterministically selects a promoted child
+- build should surface that existing choice rather than redesigning promotion behavior
+
+### Browser rendering
+
+- the client or debug HUD may need a small display update so promoted-child identity is readable during demos
+- this should remain inspectability-oriented rather than becoming a new effect system
+
+### Tests
+
+- server and integration tests should prove the exposed promoted child ID matches the consumed child and the continuing active position
+- contract tests should validate the minimal schema extension
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether promoted child identity belongs inside the existing interaction payload or another equally small runtime field
+- how to keep the extension continuity-specific rather than turning the snapshot into a broader event-history system
+- how the client should surface the promoted child identity with minimal UI change
+
+## Risks If Ignored
+
+- continuity will remain less inspectable than contact origin and child-paid reproduction
+- tests will keep inferring promotion identity indirectly from position instead of reading the authoritative source
+- later continuity work will have weaker runtime evidence about which visible child actually became the continuing line
+
+---
+
+## Change
+
 Remove child-derived growth from the visible parent body.
 
 ## Why This Matters
