@@ -461,6 +461,54 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Expose the deterministic redistribution kind used during successful reproduction.
+
+## Why This Matters
+
+Successful reproduction is now highly inspectable at the identity and ownership levels. The runtime can already say which child IDs were created and which side received each created child. But it still does not say which redistribution case was selected by the authoritative rule. The server already knows whether the result was source-only, split, or target-only, while the runtime only exposes enough detail for the client and tests to infer that kind indirectly from the per-side ownership lists.
+
+That leaves a mismatch between authoritative knowledge and inspectable output. Redistribution remains less explicit than other recent child and contact slices even though the underlying rule is already deterministic and bounded.
+
+## Impacted Areas
+
+### Runtime contract
+
+- successful reproduction outcomes should expose the selected redistribution kind
+- blocked reproduction outcomes should remain unchanged and should not emit redistribution kind
+
+### Simulation model
+
+- the existing deterministic redistribution path should remain unchanged
+- build should surface the already-selected case implied by the current allocation rule rather than inventing a new path
+
+### Browser inspectability
+
+- the HUD should remain sufficient to read redistribution kind
+- no larger visualization system is needed if the kind is readable through existing debug output
+
+### Deterministic testing
+
+- tests should prove source-only, split, and target-only successful reproduction kinds
+- tests should also prove that blocked reproduction emits no redistribution kind
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether redistribution kind is exposed as a small enum rather than inferred from ownership lists
+- whether blocked reproduction keeps that field absent
+- how deterministic tests pin the exposed kind to the actual created-child ownership on each side without changing current reproduction semantics
+
+## Risks If Ignored
+
+- successful reproduction will remain less inspectable at the rule-selection level than the rest of the current child and reproduction model
+- debugging redistribution outcomes will continue to rely on indirect ownership inference instead of explicit authoritative output
+- later reproduction refinements will still have to work around avoidable ambiguity in the redistribution path
+
+---
+
+## Change
+
 Expose the concrete attached-child identity used during child-triggered interaction contact.
 
 ## Why This Matters
