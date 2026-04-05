@@ -95,6 +95,14 @@ function draw(snapshot) {
   const capacityValues = snapshot.interaction && (snapshot.interaction.source_capacity_value !== undefined || snapshot.interaction.target_capacity_value !== undefined)
     ? ` · Capacity: ${snapshot.interaction.source_capacity_value ?? "-"}->${snapshot.interaction.target_capacity_value ?? "-"}`
     : "";
+  const capacityComponents = snapshot.interaction && (
+    snapshot.interaction.source_energy_component !== undefined ||
+    snapshot.interaction.target_energy_component !== undefined ||
+    snapshot.interaction.source_reserve_component !== undefined ||
+    snapshot.interaction.target_reserve_component !== undefined
+  )
+    ? ` · Components: e=${snapshot.interaction.source_energy_component ?? "-"}+${snapshot.interaction.source_reserve_component ?? "-"} -> e=${snapshot.interaction.target_energy_component ?? "-"}+${snapshot.interaction.target_reserve_component ?? "-"}`
+    : "";
   const ruleConstants = snapshot.interaction && (snapshot.interaction.reproduction_threshold !== undefined || snapshot.interaction.reproduction_cost !== undefined)
     ? ` · Rule: min=${snapshot.interaction.reproduction_threshold ?? "-"} cost=${snapshot.interaction.reproduction_cost ?? "-"}`
     : "";
@@ -102,7 +110,7 @@ function draw(snapshot) {
   const distributionKind = snapshot.interaction?.distribution_kind ? ` · Distribution: ${snapshot.interaction.distribution_kind}` : "";
   const sourceChild = snapshot.interaction?.source_child_id ? ` · Source child: ${snapshot.interaction.source_child_id}` : "";
   const targetChild = snapshot.interaction?.target_child_id ? ` · Target child: ${snapshot.interaction.target_child_id}` : "";
-  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}${promotedChild}${absorbedChild}${childPayment}${paidSourceChild}${paidTargetChild}${createdChildren}${sourceCreatedChildren}${targetCreatedChildren}${blockedCapacity}${capacityValues}${ruleConstants}${contactPathKind}${distributionKind}${sourceChild}${targetChild}`;
+  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}${promotedChild}${absorbedChild}${childPayment}${paidSourceChild}${paidTargetChild}${createdChildren}${sourceCreatedChildren}${targetCreatedChildren}${blockedCapacity}${capacityValues}${capacityComponents}${ruleConstants}${contactPathKind}${distributionKind}${sourceChild}${targetChild}`;
 }
 
 function drawCircle(circle, isPlayer, player) {

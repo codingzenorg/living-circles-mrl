@@ -262,6 +262,22 @@
               "type": "number",
               "minimum": 0
             },
+            "source_energy_component": {
+              "type": "number",
+              "minimum": 0
+            },
+            "target_energy_component": {
+              "type": "number",
+              "minimum": 0
+            },
+            "source_reserve_component": {
+              "type": "number",
+              "minimum": 0
+            },
+            "target_reserve_component": {
+              "type": "number",
+              "minimum": 0
+            },
             "reproduction_threshold": {
               "type": "number",
               "minimum": 0

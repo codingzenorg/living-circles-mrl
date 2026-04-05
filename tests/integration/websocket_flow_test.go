@@ -137,6 +137,14 @@ func expectedReportedCapacity(kind string, energy float64, childrenCount int) fl
 	return energy + simulation.DefaultReproductionCost
 }
 
+func assertCapacityComponentsMatch(t *testing.T, total float64, energyComponent float64, reserveComponent float64) {
+	t.Helper()
+
+	if total != energyComponent+reserveComponent {
+		t.Fatalf("expected capacity components to sum to %v, got energy=%v reserve=%v", total, energyComponent, reserveComponent)
+	}
+}
+
 func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:            "triangle",
@@ -1577,6 +1585,8 @@ func TestClientReceivesBlockedReproductionWhenEnergyIsInsufficient(t *testing.T)
 			t.Fatalf("expected source capacity to meet reproduction threshold, got %v", snapshot.Interaction.SourceCapacityValue)
 		}
 		assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
+		assertCapacityComponentsMatch(t, snapshot.Interaction.SourceCapacityValue, snapshot.Interaction.SourceEnergyComponent, snapshot.Interaction.SourceReserveComponent)
+		assertCapacityComponentsMatch(t, snapshot.Interaction.TargetCapacityValue, snapshot.Interaction.TargetEnergyComponent, snapshot.Interaction.TargetReserveComponent)
 		assertFloatEqual(t, snapshot.Interaction.ReproductionThreshold, simulation.DefaultReproductionMinEnergy)
 		assertFloatEqual(t, snapshot.Interaction.ReproductionCost, simulation.DefaultReproductionCost)
 		if snapshot.Player == nil {
@@ -1654,6 +1664,8 @@ func TestClientReceivesReproductionPaidByChildWhenEnergyIsLow(t *testing.T) {
 		}
 		assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.Player.Energy, len(snapshot.Player.AttachedChildren)))
 		assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
+		assertCapacityComponentsMatch(t, snapshot.Interaction.SourceCapacityValue, snapshot.Interaction.SourceEnergyComponent, snapshot.Interaction.SourceReserveComponent)
+		assertCapacityComponentsMatch(t, snapshot.Interaction.TargetCapacityValue, snapshot.Interaction.TargetEnergyComponent, snapshot.Interaction.TargetReserveComponent)
 		assertFloatEqual(t, snapshot.Interaction.ReproductionThreshold, simulation.DefaultReproductionMinEnergy)
 		assertFloatEqual(t, snapshot.Interaction.ReproductionCost, simulation.DefaultReproductionCost)
 		if snapshot.Interaction.SourcePaidChildID != "" {
@@ -1733,6 +1745,8 @@ func TestClientReceivesOrdinaryResolvedReproductionWhenNoChildPaymentIsUsed(t *t
 		}
 		assertFloatEqual(t, snapshot.Interaction.SourceCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.Player.Energy, len(snapshot.Player.AttachedChildren)))
 		assertFloatEqual(t, snapshot.Interaction.TargetCapacityValue, expectedReportedCapacity(snapshot.Interaction.Kind, snapshot.AutonomousCircles[0].Energy, len(snapshot.AutonomousCircles[0].AttachedChildren)))
+		assertCapacityComponentsMatch(t, snapshot.Interaction.SourceCapacityValue, snapshot.Interaction.SourceEnergyComponent, snapshot.Interaction.SourceReserveComponent)
+		assertCapacityComponentsMatch(t, snapshot.Interaction.TargetCapacityValue, snapshot.Interaction.TargetEnergyComponent, snapshot.Interaction.TargetReserveComponent)
 		assertFloatEqual(t, snapshot.Interaction.ReproductionThreshold, simulation.DefaultReproductionMinEnergy)
 		assertFloatEqual(t, snapshot.Interaction.ReproductionCost, simulation.DefaultReproductionCost)
 		sourceCreated := newlyOwnedChildIDs(previous.Player.AttachedChildren, snapshot.Player.AttachedChildren)

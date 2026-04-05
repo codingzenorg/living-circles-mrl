@@ -136,33 +136,37 @@ func (circle *AutonomousCircle) UnmarshalJSON(data []byte) error {
 }
 
 type InteractionClassification struct {
-	Active                bool     `json:"active"`
-	Resolved              bool     `json:"resolved"`
-	Kind                  string   `json:"kind"`
-	ContactOrigin         string   `json:"contact_origin,omitempty"`
-	ContactPathKind       string   `json:"contact_path_kind,omitempty"`
-	DistributionKind      string   `json:"distribution_kind,omitempty"`
-	SourceID              string   `json:"source_id"`
-	TargetID              string   `json:"target_id"`
-	SourceChildID         string   `json:"source_child_id,omitempty"`
-	TargetChildID         string   `json:"target_child_id,omitempty"`
-	WinnerID              string   `json:"winner_id"`
-	LoserID               string   `json:"loser_id"`
-	PromotedChildID       string   `json:"promoted_child_id,omitempty"`
-	AbsorbedChildID       string   `json:"absorbed_child_id,omitempty"`
-	SourcePaidChild       bool     `json:"source_paid_child,omitempty"`
-	TargetPaidChild       bool     `json:"target_paid_child,omitempty"`
-	SourceBlockedCapacity bool     `json:"source_blocked_capacity,omitempty"`
-	TargetBlockedCapacity bool     `json:"target_blocked_capacity,omitempty"`
-	SourceCapacityValue   float64  `json:"source_capacity_value,omitempty"`
-	TargetCapacityValue   float64  `json:"target_capacity_value,omitempty"`
-	ReproductionThreshold float64  `json:"reproduction_threshold,omitempty"`
-	ReproductionCost      float64  `json:"reproduction_cost,omitempty"`
-	SourcePaidChildID     string   `json:"source_paid_child_id,omitempty"`
-	TargetPaidChildID     string   `json:"target_paid_child_id,omitempty"`
-	CreatedChildIDs       []string `json:"created_child_ids,omitempty"`
-	SourceCreatedChildIDs []string `json:"source_created_child_ids,omitempty"`
-	TargetCreatedChildIDs []string `json:"target_created_child_ids,omitempty"`
+	Active                 bool     `json:"active"`
+	Resolved               bool     `json:"resolved"`
+	Kind                   string   `json:"kind"`
+	ContactOrigin          string   `json:"contact_origin,omitempty"`
+	ContactPathKind        string   `json:"contact_path_kind,omitempty"`
+	DistributionKind       string   `json:"distribution_kind,omitempty"`
+	SourceID               string   `json:"source_id"`
+	TargetID               string   `json:"target_id"`
+	SourceChildID          string   `json:"source_child_id,omitempty"`
+	TargetChildID          string   `json:"target_child_id,omitempty"`
+	WinnerID               string   `json:"winner_id"`
+	LoserID                string   `json:"loser_id"`
+	PromotedChildID        string   `json:"promoted_child_id,omitempty"`
+	AbsorbedChildID        string   `json:"absorbed_child_id,omitempty"`
+	SourcePaidChild        bool     `json:"source_paid_child,omitempty"`
+	TargetPaidChild        bool     `json:"target_paid_child,omitempty"`
+	SourceBlockedCapacity  bool     `json:"source_blocked_capacity,omitempty"`
+	TargetBlockedCapacity  bool     `json:"target_blocked_capacity,omitempty"`
+	SourceCapacityValue    float64  `json:"source_capacity_value,omitempty"`
+	TargetCapacityValue    float64  `json:"target_capacity_value,omitempty"`
+	SourceEnergyComponent  float64  `json:"source_energy_component,omitempty"`
+	TargetEnergyComponent  float64  `json:"target_energy_component,omitempty"`
+	SourceReserveComponent float64  `json:"source_reserve_component,omitempty"`
+	TargetReserveComponent float64  `json:"target_reserve_component,omitempty"`
+	ReproductionThreshold  float64  `json:"reproduction_threshold,omitempty"`
+	ReproductionCost       float64  `json:"reproduction_cost,omitempty"`
+	SourcePaidChildID      string   `json:"source_paid_child_id,omitempty"`
+	TargetPaidChildID      string   `json:"target_paid_child_id,omitempty"`
+	CreatedChildIDs        []string `json:"created_child_ids,omitempty"`
+	SourceCreatedChildIDs  []string `json:"source_created_child_ids,omitempty"`
+	TargetCreatedChildIDs  []string `json:"target_created_child_ids,omitempty"`
 }
 
 type Food struct {
@@ -1034,25 +1038,31 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 	opponent := w.autonomousCircles[opponentIndex]
 	playerCapacity := reproductionCapacityForPlayer(*w.player)
 	opponentCapacity := reproductionCapacityForAutonomous(opponent)
+	playerEnergyComponent, playerReserveComponent := reproductionCapacityComponents(w.player.Energy, childCountForPlayer(*w.player))
+	opponentEnergyComponent, opponentReserveComponent := reproductionCapacityComponents(opponent.Energy, childCountForAutonomous(opponent))
 	playerPaid, playerUsedChild, playerPaidChildID := payPlayerReproductionCost(w.player)
 	opponentPaid, opponentUsedChild, opponentPaidChildID, opponent := payAutonomousReproductionCost(opponent)
 	if !playerPaid || !opponentPaid {
 		w.lastInteraction = &InteractionClassification{
-			Active:                false,
-			Resolved:              true,
-			Kind:                  "reproduce_blocked_energy",
-			ContactOrigin:         contactDetails.Origin,
-			ContactPathKind:       contactDetails.PathKind,
-			SourceID:              w.player.ID,
-			TargetID:              opponent.ID,
-			SourceChildID:         contactDetails.SourceChildID,
-			TargetChildID:         contactDetails.TargetChildID,
-			SourceBlockedCapacity: !playerPaid,
-			TargetBlockedCapacity: !opponentPaid,
-			SourceCapacityValue:   playerCapacity,
-			TargetCapacityValue:   opponentCapacity,
-			ReproductionThreshold: DefaultReproductionMinEnergy,
-			ReproductionCost:      DefaultReproductionCost,
+			Active:                 false,
+			Resolved:               true,
+			Kind:                   "reproduce_blocked_energy",
+			ContactOrigin:          contactDetails.Origin,
+			ContactPathKind:        contactDetails.PathKind,
+			SourceID:               w.player.ID,
+			TargetID:               opponent.ID,
+			SourceChildID:          contactDetails.SourceChildID,
+			TargetChildID:          contactDetails.TargetChildID,
+			SourceBlockedCapacity:  !playerPaid,
+			TargetBlockedCapacity:  !opponentPaid,
+			SourceCapacityValue:    playerCapacity,
+			TargetCapacityValue:    opponentCapacity,
+			SourceEnergyComponent:  playerEnergyComponent,
+			TargetEnergyComponent:  opponentEnergyComponent,
+			SourceReserveComponent: playerReserveComponent,
+			TargetReserveComponent: opponentReserveComponent,
+			ReproductionThreshold:  DefaultReproductionMinEnergy,
+			ReproductionCost:       DefaultReproductionCost,
 		}
 		return
 	}
@@ -1067,27 +1077,31 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 	}
 
 	w.lastInteraction = &InteractionClassification{
-		Active:                false,
-		Resolved:              true,
-		Kind:                  kind,
-		ContactOrigin:         contactDetails.Origin,
-		ContactPathKind:       contactDetails.PathKind,
-		DistributionKind:      reproductionDistributionKind(distribution),
-		SourceID:              w.player.ID,
-		TargetID:              opponent.ID,
-		SourceChildID:         contactDetails.SourceChildID,
-		TargetChildID:         contactDetails.TargetChildID,
-		SourceCapacityValue:   playerCapacity,
-		TargetCapacityValue:   opponentCapacity,
-		ReproductionThreshold: DefaultReproductionMinEnergy,
-		ReproductionCost:      DefaultReproductionCost,
-		SourcePaidChild:       playerUsedChild,
-		TargetPaidChild:       opponentUsedChild,
-		SourcePaidChildID:     playerPaidChildID,
-		TargetPaidChildID:     opponentPaidChildID,
-		CreatedChildIDs:       createdChildIDs,
-		SourceCreatedChildIDs: sourceCreatedChildIDs,
-		TargetCreatedChildIDs: targetCreatedChildIDs,
+		Active:                 false,
+		Resolved:               true,
+		Kind:                   kind,
+		ContactOrigin:          contactDetails.Origin,
+		ContactPathKind:        contactDetails.PathKind,
+		DistributionKind:       reproductionDistributionKind(distribution),
+		SourceID:               w.player.ID,
+		TargetID:               opponent.ID,
+		SourceChildID:          contactDetails.SourceChildID,
+		TargetChildID:          contactDetails.TargetChildID,
+		SourceCapacityValue:    playerCapacity,
+		TargetCapacityValue:    opponentCapacity,
+		SourceEnergyComponent:  playerEnergyComponent,
+		TargetEnergyComponent:  opponentEnergyComponent,
+		SourceReserveComponent: playerReserveComponent,
+		TargetReserveComponent: opponentReserveComponent,
+		ReproductionThreshold:  DefaultReproductionMinEnergy,
+		ReproductionCost:       DefaultReproductionCost,
+		SourcePaidChild:        playerUsedChild,
+		TargetPaidChild:        opponentUsedChild,
+		SourcePaidChildID:      playerPaidChildID,
+		TargetPaidChildID:      opponentPaidChildID,
+		CreatedChildIDs:        createdChildIDs,
+		SourceCreatedChildIDs:  sourceCreatedChildIDs,
+		TargetCreatedChildIDs:  targetCreatedChildIDs,
 	}
 }
 
@@ -1168,25 +1182,31 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 	rightCircle := w.autonomousCircles[rightIndex]
 	leftCapacity := reproductionCapacityForAutonomous(leftCircle)
 	rightCapacity := reproductionCapacityForAutonomous(rightCircle)
+	leftEnergyComponent, leftReserveComponent := reproductionCapacityComponents(leftCircle.Energy, childCountForAutonomous(leftCircle))
+	rightEnergyComponent, rightReserveComponent := reproductionCapacityComponents(rightCircle.Energy, childCountForAutonomous(rightCircle))
 	leftPaid, leftUsedChild, leftPaidChildID, leftCircle := payAutonomousReproductionCost(leftCircle)
 	rightPaid, rightUsedChild, rightPaidChildID, rightCircle := payAutonomousReproductionCost(rightCircle)
 	if !leftPaid || !rightPaid {
 		w.lastInteraction = &InteractionClassification{
-			Active:                false,
-			Resolved:              true,
-			Kind:                  "reproduce_blocked_energy",
-			ContactOrigin:         contactDetails.Origin,
-			ContactPathKind:       contactDetails.PathKind,
-			SourceID:              leftCircle.ID,
-			TargetID:              rightCircle.ID,
-			SourceChildID:         contactDetails.SourceChildID,
-			TargetChildID:         contactDetails.TargetChildID,
-			SourceBlockedCapacity: !leftPaid,
-			TargetBlockedCapacity: !rightPaid,
-			SourceCapacityValue:   leftCapacity,
-			TargetCapacityValue:   rightCapacity,
-			ReproductionThreshold: DefaultReproductionMinEnergy,
-			ReproductionCost:      DefaultReproductionCost,
+			Active:                 false,
+			Resolved:               true,
+			Kind:                   "reproduce_blocked_energy",
+			ContactOrigin:          contactDetails.Origin,
+			ContactPathKind:        contactDetails.PathKind,
+			SourceID:               leftCircle.ID,
+			TargetID:               rightCircle.ID,
+			SourceChildID:          contactDetails.SourceChildID,
+			TargetChildID:          contactDetails.TargetChildID,
+			SourceBlockedCapacity:  !leftPaid,
+			TargetBlockedCapacity:  !rightPaid,
+			SourceCapacityValue:    leftCapacity,
+			TargetCapacityValue:    rightCapacity,
+			SourceEnergyComponent:  leftEnergyComponent,
+			TargetEnergyComponent:  rightEnergyComponent,
+			SourceReserveComponent: leftReserveComponent,
+			TargetReserveComponent: rightReserveComponent,
+			ReproductionThreshold:  DefaultReproductionMinEnergy,
+			ReproductionCost:       DefaultReproductionCost,
 		}
 		return
 	}
@@ -1202,27 +1222,31 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 	}
 
 	w.lastInteraction = &InteractionClassification{
-		Active:                false,
-		Resolved:              true,
-		Kind:                  kind,
-		ContactOrigin:         contactDetails.Origin,
-		ContactPathKind:       contactDetails.PathKind,
-		DistributionKind:      reproductionDistributionKind(distribution),
-		SourceID:              leftCircle.ID,
-		TargetID:              rightCircle.ID,
-		SourceChildID:         contactDetails.SourceChildID,
-		TargetChildID:         contactDetails.TargetChildID,
-		SourceCapacityValue:   leftCapacity,
-		TargetCapacityValue:   rightCapacity,
-		ReproductionThreshold: DefaultReproductionMinEnergy,
-		ReproductionCost:      DefaultReproductionCost,
-		SourcePaidChild:       leftUsedChild,
-		TargetPaidChild:       rightUsedChild,
-		SourcePaidChildID:     leftPaidChildID,
-		TargetPaidChildID:     rightPaidChildID,
-		CreatedChildIDs:       createdChildIDs,
-		SourceCreatedChildIDs: sourceCreatedChildIDs,
-		TargetCreatedChildIDs: targetCreatedChildIDs,
+		Active:                 false,
+		Resolved:               true,
+		Kind:                   kind,
+		ContactOrigin:          contactDetails.Origin,
+		ContactPathKind:        contactDetails.PathKind,
+		DistributionKind:       reproductionDistributionKind(distribution),
+		SourceID:               leftCircle.ID,
+		TargetID:               rightCircle.ID,
+		SourceChildID:          contactDetails.SourceChildID,
+		TargetChildID:          contactDetails.TargetChildID,
+		SourceCapacityValue:    leftCapacity,
+		TargetCapacityValue:    rightCapacity,
+		SourceEnergyComponent:  leftEnergyComponent,
+		TargetEnergyComponent:  rightEnergyComponent,
+		SourceReserveComponent: leftReserveComponent,
+		TargetReserveComponent: rightReserveComponent,
+		ReproductionThreshold:  DefaultReproductionMinEnergy,
+		ReproductionCost:       DefaultReproductionCost,
+		SourcePaidChild:        leftUsedChild,
+		TargetPaidChild:        rightUsedChild,
+		SourcePaidChildID:      leftPaidChildID,
+		TargetPaidChildID:      rightPaidChildID,
+		CreatedChildIDs:        createdChildIDs,
+		SourceCreatedChildIDs:  sourceCreatedChildIDs,
+		TargetCreatedChildIDs:  targetCreatedChildIDs,
 	}
 }
 
@@ -1348,6 +1372,14 @@ func reproductionCapacity(energy float64, childrenCount int) float64 {
 	}
 
 	return energy + DefaultReproductionCost
+}
+
+func reproductionCapacityComponents(energy float64, childrenCount int) (float64, float64) {
+	if childrenCount == 0 {
+		return energy, 0
+	}
+
+	return energy, DefaultReproductionCost
 }
 
 func (w *World) resolveEnergyCollapse(tick int64) {

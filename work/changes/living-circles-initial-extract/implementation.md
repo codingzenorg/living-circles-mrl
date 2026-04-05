@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_reproduction_rule_constant_identity.md`
+`docs/slices/initial_reproduction_capacity_component_identity.md`
 
 ## Implemented Shape
 
@@ -65,6 +65,7 @@
 - successful reproduction outcomes now explicitly expose which deterministic child-distribution case was selected
 - reproduction outcomes now explicitly expose the decision-time current capacity value on each side
 - reproduction outcomes now explicitly expose the governing threshold and cost constants
+- reproduction outcomes now explicitly expose the energy and reserve components that compose each side's current capacity
 - Go-side snapshot structs now derive child quantity only from attached children instead of mirroring a separate `ChildrenCount` field
 - dead derived-radius scaffolding has been removed and parent radius is now expressed directly as the fixed visible body size
 - browser demo reset through an authoritative server restart endpoint
@@ -224,6 +225,7 @@ The slice needed these implementation choices not fully specified in the refined
 - successful reproduction now exposes whether deterministic redistribution resolved as `source_only`, `split`, or `target_only`
 - reproduction outcomes now expose source-side and target-side current capacity values from the authoritative decision point before payment is applied
 - reproduction outcomes now also expose the current threshold and cost constants used by that same authoritative rule
+- reproduction outcomes now also expose how much of each side's reported capacity comes from direct energy versus child reserve contribution
 - child-dependent rule evaluation now derives child quantity from attached children directly
 - runtime snapshots no longer expose `children_count`; contract consumers derive child quantity from attached children
 - same-shape fight ordering now uses child presence only after energy, not raw child-count magnitude
