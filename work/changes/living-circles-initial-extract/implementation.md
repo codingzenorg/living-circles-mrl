@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_remove_derived_children_count_from_go_snapshots.md`
+`docs/slices/initial_remove_dead_derived_radius_state.md`
 
 ## Implemented Shape
 
@@ -16,7 +16,6 @@
 - deterministic same-shape fight resolution with loser removal
 - default demo visibility for both same-shape and different-shape interaction paths
 - deterministic different-shape reproduction resolution with child accumulation counts
-- deterministic radius growth derived from child accumulation
 - deterministic child replacement on defeat when the loser has available children
 - zero-energy collapse now causes death or replacement continuity
 - deterministic food-slot regeneration after consumption
@@ -56,6 +55,7 @@
 - continuity promotion now repositions the continuing active parent to the promoted child's last visible position
 - continuity outcomes now explicitly expose the promoted child identity
 - Go-side snapshot structs now derive child quantity only from attached children instead of mirroring a separate `ChildrenCount` field
+- dead derived-radius scaffolding has been removed and parent radius is now expressed directly as the fixed visible body size
 - browser demo reset through an authoritative server restart endpoint
 
 ## Runtime Contract
@@ -168,10 +168,9 @@
 - deterministic shape assignment in the default demo world: player `triangle`, same-shape autonomous `triangle`, different-shape autonomous `square`
 - deterministic fixed food placement
 - deterministic food regeneration returns consumed slots to their original positions after a fixed delay
-- child accumulation remains the source of truth for current radius, fight power, replacement continuity, and child-payment rules, but is now also embodied as attached orbiting children
+- attached children remain the source of truth for fight power, replacement continuity, and child-payment rules, and are embodied as attached orbiting children
 - attached-child positions now extend a parent's effective food collection reach
 - different-shape reproduction resolves through deterministic child redistribution across the participating parents when both participants satisfy the energy rule
-- radius is derived from child accumulation with a fixed per-child increment
 - continuity is limited to one-child replacement after fight defeat
 - lineage is represented only by a stable `lineage_id` plus monotonic `generation`
 - zero energy is now a death threshold rather than only a movement stop condition
@@ -211,7 +210,7 @@ The slice needed these implementation choices not fully specified in the refined
 - parent movement clamping now uses the fixed visible parent-core body rather than the derived grown radius
 - attached-child orbit distance now uses the fixed visible parent-core body rather than the derived grown radius
 - parent `radius` now stays fixed at the visible parent-core body even when child count changes
-- child-dependent rule evaluation now derives child quantity from attached children, while snapshots still expose `children_count`
+- child-dependent rule evaluation now derives child quantity from attached children directly
 - runtime snapshots no longer expose `children_count`; contract consumers derive child quantity from attached children
 - same-shape fight ordering now uses child presence only after energy, not raw child-count magnitude
 - interaction provenance now records whether contact came from `parent_body` or `attached_child`
@@ -242,7 +241,6 @@ The slice needed these implementation choices not fully specified in the refined
 - reproduction costs `10` from each participant on success
 - one child may contribute one `10`-point reserve unit toward the threshold check and payment path
 - a circle below the reproduction cost may consume exactly one child, convert it into a `10`-point temporary reserve, pay the reproduction cost, and then receive the reproduction result
-- each accumulated child increases radius by a fixed deterministic amount of `4`
 - a circle pair may reproduce at most once while continuously overlapping and must separate before reproducing again
 - same-shape fights resolve in one tick using: higher energy wins, then larger radius, then player wins exact ties
 - a fight loser with at least one child remains active through immediate replacement, consuming exactly one child

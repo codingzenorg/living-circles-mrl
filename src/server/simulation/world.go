@@ -9,7 +9,6 @@ const (
 	DefaultWorldWidth                           = 800.0
 	DefaultWorldHeight                          = 600.0
 	DefaultPlayerRadius                         = 12.0
-	DefaultChildRadiusGain                      = 4.0
 	DefaultAttachedChildRadius                  = 4.0
 	DefaultAttachedChildOrbitGap                = 8.0
 	DefaultChildOrbitSpeed                      = 0.12
@@ -242,7 +241,7 @@ func NewWorldWithConfig(config Config) *World {
 			Shape:            config.AutonomousShape,
 			X:                autonomousX,
 			Y:                autonomousY,
-			Radius:           derivedRadius(0),
+			Radius:           DefaultPlayerRadius,
 			Energy:           config.AutonomousEnergy,
 			AttachedChildren: initialAttachedChildren(DefaultAutonomousID, config.AutonomousChildrenCount),
 		},
@@ -257,7 +256,7 @@ func NewWorldWithConfig(config Config) *World {
 			Shape:            config.SecondaryAutonomousShape,
 			X:                secondaryX,
 			Y:                secondaryY,
-			Radius:           derivedRadius(0),
+			Radius:           DefaultPlayerRadius,
 			Energy:           config.SecondaryAutonomousEnergy,
 			AttachedChildren: initialAttachedChildren(DefaultSecondaryID, config.SecondaryChildrenCount),
 		})
@@ -281,7 +280,7 @@ func NewWorldWithConfig(config Config) *World {
 			Shape:            config.PlayerShape,
 			X:                playerX,
 			Y:                playerY,
-			Radius:           derivedRadius(0),
+			Radius:           DefaultPlayerRadius,
 			Energy:           config.PlayerEnergy,
 			AttachedChildren: initialAttachedChildren(playerID, config.PlayerChildrenCount),
 		},
@@ -1175,11 +1174,6 @@ func initialAutonomousDirections(count int) []Vector {
 	return directions
 }
 
-func derivedRadius(childrenCount int) float64 {
-	_ = childrenCount
-	return DefaultPlayerRadius
-}
-
 func lineageIDFor(circleID string) string {
 	return "lineage-" + circleID
 }
@@ -1535,9 +1529,9 @@ func hasAttachedChildrenAutonomous(circle AutonomousCircle) bool {
 }
 
 func syncPlayerChildrenState(circle *PlayerCircle) {
-	circle.Radius = derivedRadius(childCountForPlayer(*circle))
+	circle.Radius = DefaultPlayerRadius
 }
 
 func syncAutonomousChildrenState(circle *AutonomousCircle) {
-	circle.Radius = derivedRadius(childCountForAutonomous(*circle))
+	circle.Radius = DefaultPlayerRadius
 }
