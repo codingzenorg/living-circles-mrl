@@ -5,6 +5,7 @@ __pycache__/
 .env
 .python-version
 runs/
+tmp/
 .codex
 .codex-session
 .notes
