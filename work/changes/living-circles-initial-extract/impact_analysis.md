@@ -263,6 +263,54 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Expose child-payment identity explicitly during `reproduce_paid_child`.
+
+## Why This Matters
+
+The reproduction model is now partially inspectable: `reproduce_paid_child` distinguishes child-funded payment from ordinary energy-funded reproduction. But the runtime still does not expose which participant actually paid through a child. That leaves the server with exact payer knowledge that clients and tests can only infer indirectly from before-and-after child sets.
+
+The next model pressure is to make child-payment identity explicit in the runtime contract without changing the actual reproduction rule.
+
+## Impacted Areas
+
+### Runtime contract
+
+- `reproduce_paid_child` outcomes should expose which participant or participants paid through a child
+- the contract extension should stay small and scoped to reproduction inspectability
+
+### Simulation model
+
+- child-payment logic already deterministically decides whether the player, the opponent, or neither uses a child
+- build should surface that existing choice rather than redesigning payment behavior
+
+### Browser rendering
+
+- the client or debug HUD may need a small display update so child-payment identity is readable during demos
+- this should remain inspectability-oriented rather than becoming a new reproduction effect system
+
+### Tests
+
+- server and integration tests should prove the exposed payer identity matches the actual child-payment path
+- contract tests should validate the minimal schema extension
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether child-payment identity belongs inside the existing interaction payload or another equally small runtime field
+- how to keep the extension reproduction-specific rather than turning the snapshot into a broader event-history system
+- how the client should surface child-payment identity with minimal UI change
+
+## Risks If Ignored
+
+- `reproduce_paid_child` will remain less inspectable than `death_promoted_child` and `fight_absorbed_child`
+- tests will keep inferring payer identity indirectly instead of reading the authoritative source
+- later reproduction refinements will have weaker runtime evidence about which participant actually consumed a child for payment
+
+---
+
+## Change
+
 Expose absorbed child identity explicitly during `fight_absorbed_child`.
 
 ## Why This Matters
