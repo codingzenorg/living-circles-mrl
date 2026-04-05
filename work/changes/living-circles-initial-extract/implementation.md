@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_remove_dead_derived_radius_state.md`
+`docs/slices/initial_absorbed_child_identity_in_fight.md`
 
 ## Implemented Shape
 
@@ -54,6 +54,7 @@
 - same-shape fights now treat child-based fight leverage as attached-child presence versus absence rather than raw child-count magnitude
 - continuity promotion now repositions the continuing active parent to the promoted child's last visible position
 - continuity outcomes now explicitly expose the promoted child identity
+- `fight_absorbed_child` outcomes now explicitly expose the absorbed child identity
 - Go-side snapshot structs now derive child quantity only from attached children instead of mirroring a separate `ChildrenCount` field
 - dead derived-radius scaffolding has been removed and parent radius is now expressed directly as the fixed visible body size
 - browser demo reset through an authoritative server restart endpoint
@@ -222,6 +223,7 @@ The slice needed these implementation choices not fully specified in the refined
 - zero-energy collapse that preserves continuity now resolves as `death_promoted_child`
 - when continuity promotes one attached child, the continuing active parent now takes that child's last visible position at the current tick
 - `death_promoted_child` outcomes now expose the promoted child ID explicitly
+- `fight_absorbed_child` outcomes now expose the absorbed child ID explicitly
 - Go-side snapshot readers now derive child quantity directly from attached children with no mirrored `ChildrenCount` field
 - pair contact may be initiated by one attached child touching the other parent's body even when the two parent cores do not yet overlap
 - pair contact may also be initiated by one attached child touching another attached child across the pair

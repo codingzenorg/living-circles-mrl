@@ -1535,6 +1535,7 @@ func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
 		DisableThreatAvoidance:    true,
 	})
 	before := session.Snapshot()
+	expectedChildID := before.AutonomousCircles[0].AttachedChildren[0].ID
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -1553,6 +1554,9 @@ func TestDefaultWorldSupportsSameShapeFightPath(t *testing.T) {
 	}
 	if snapshot.Interaction.TargetID != simulation.DefaultAutonomousID {
 		t.Fatalf("expected fight against %q, got %q", simulation.DefaultAutonomousID, snapshot.Interaction.TargetID)
+	}
+	if snapshot.Interaction.AbsorbedChildID != expectedChildID {
+		t.Fatalf("expected absorbed child id %q, got %q", expectedChildID, snapshot.Interaction.AbsorbedChildID)
 	}
 	if len(snapshot.AutonomousCircles) != 2 {
 		t.Fatalf("expected both autonomous circles to remain, got %d circles", len(snapshot.AutonomousCircles))
@@ -1677,6 +1681,7 @@ func TestAutonomousLoserWithChildAbsorbsFightLossAndRemainsActive(t *testing.T) 
 		DisableThreatAvoidance:  true,
 	})
 	before := session.Snapshot()
+	expectedChildID := before.AutonomousCircles[0].AttachedChildren[0].ID
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -1694,6 +1699,9 @@ func TestAutonomousLoserWithChildAbsorbsFightLossAndRemainsActive(t *testing.T) 
 	}
 	if snapshot.Interaction.LoserID != simulation.DefaultAutonomousID {
 		t.Fatalf("expected autonomous loser, got %q", snapshot.Interaction.LoserID)
+	}
+	if snapshot.Interaction.AbsorbedChildID != expectedChildID {
+		t.Fatalf("expected absorbed child id %q, got %q", expectedChildID, snapshot.Interaction.AbsorbedChildID)
 	}
 	if len(snapshot.AutonomousCircles) != 1 {
 		t.Fatalf("expected autonomous loser to remain active, got %d circles", len(snapshot.AutonomousCircles))
@@ -2507,6 +2515,7 @@ func TestPlayerLoserWithChildAbsorbsFightLossAndRemainsActive(t *testing.T) {
 		AutonomousChildrenCount: 0,
 	})
 	before := session.Snapshot()
+	expectedChildID := before.Player.AttachedChildren[0].ID
 
 	var snapshot simulation.Snapshot
 	for range 20 {
@@ -2524,6 +2533,9 @@ func TestPlayerLoserWithChildAbsorbsFightLossAndRemainsActive(t *testing.T) {
 	}
 	if snapshot.Interaction.LoserID != "player-1" {
 		t.Fatalf("expected player loser, got %q", snapshot.Interaction.LoserID)
+	}
+	if snapshot.Interaction.AbsorbedChildID != expectedChildID {
+		t.Fatalf("expected absorbed child id %q, got %q", expectedChildID, snapshot.Interaction.AbsorbedChildID)
 	}
 	if snapshot.Player == nil {
 		t.Fatal("expected player to remain active after child absorption")

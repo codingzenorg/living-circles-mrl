@@ -145,6 +145,7 @@ type InteractionClassification struct {
 	WinnerID        string `json:"winner_id"`
 	LoserID         string `json:"loser_id"`
 	PromotedChildID string `json:"promoted_child_id,omitempty"`
+	AbsorbedChildID string `json:"absorbed_child_id,omitempty"`
 }
 
 type Food struct {
@@ -959,8 +960,10 @@ func (w *World) resolveFight(opponentID string, contactOrigin string, tick int64
 
 	if loserID == w.player.ID {
 		if childCountForPlayer(*w.player) > 0 {
+			absorbedChildID, _ := consumedPlayerChildID(w.player)
 			consumePlayerChild(w.player)
 			w.lastInteraction.Kind = "fight_absorbed_child"
+			w.lastInteraction.AbsorbedChildID = absorbedChildID
 			return
 		}
 		w.lastInteraction.Kind = "fight_resolved"
@@ -969,9 +972,11 @@ func (w *World) resolveFight(opponentID string, contactOrigin string, tick int64
 	}
 
 	if childCountForAutonomous(opponent) > 0 {
+		absorbedChildID, _ := consumedAutonomousChildID(opponent)
 		consumeAutonomousChild(&opponent)
 		w.autonomousCircles[opponentIndex] = opponent
 		w.lastInteraction.Kind = "fight_absorbed_child"
+		w.lastInteraction.AbsorbedChildID = absorbedChildID
 		return
 	}
 
@@ -1078,9 +1083,11 @@ func (w *World) resolveAutonomousFight(leftIndex int, rightIndex int, contactOri
 	}
 	loser := w.autonomousCircles[loserIndex]
 	if childCountForAutonomous(loser) > 0 {
+		absorbedChildID, _ := consumedAutonomousChildID(loser)
 		consumeAutonomousChild(&loser)
 		w.autonomousCircles[loserIndex] = loser
 		w.lastInteraction.Kind = "fight_absorbed_child"
+		w.lastInteraction.AbsorbedChildID = absorbedChildID
 		return
 	}
 
@@ -1349,6 +1356,24 @@ func continuityPromotedChildIDForAutonomous(circle AutonomousCircle, tick int64)
 func continuityPromotedChildID(ownerID string, x, y, parentRadius float64, children []AttachedChild, tick int64) (string, bool) {
 	promotedID, _, _, ok := promotedChildSelection(ownerID, x, y, parentRadius, children, tick)
 	return promotedID, ok
+}
+
+func consumedPlayerChildID(circle *PlayerCircle) (string, bool) {
+	if circle == nil || len(circle.AttachedChildren) == 0 {
+		return "", false
+	}
+	return consumedChildID(circle.AttachedChildren), true
+}
+
+func consumedAutonomousChildID(circle AutonomousCircle) (string, bool) {
+	if len(circle.AttachedChildren) == 0 {
+		return "", false
+	}
+	return consumedChildID(circle.AttachedChildren), true
+}
+
+func consumedChildID(children []AttachedChild) string {
+	return children[len(children)-1].ID
 }
 
 func promotedChildSelection(ownerID string, x, y, parentRadius float64, children []AttachedChild, tick int64) (string, float64, float64, bool) {

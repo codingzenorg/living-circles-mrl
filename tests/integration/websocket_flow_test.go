@@ -150,6 +150,7 @@ func TestClientReceivesFightAbsorptionThroughChildLoss(t *testing.T) {
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
+	expectedChildID := initial.AutonomousCircles[0].AttachedChildren[0].ID
 
 	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
 
@@ -168,6 +169,9 @@ func TestClientReceivesFightAbsorptionThroughChildLoss(t *testing.T) {
 		}
 		if snapshot.Interaction.LoserID != simulation.DefaultAutonomousID {
 			t.Fatalf("expected autonomous loser, got %q", snapshot.Interaction.LoserID)
+		}
+		if snapshot.Interaction.AbsorbedChildID != expectedChildID {
+			t.Fatalf("expected absorbed child id %q, got %q", expectedChildID, snapshot.Interaction.AbsorbedChildID)
 		}
 		if len(snapshot.AutonomousCircles) != 1 {
 			t.Fatalf("expected autonomous loser to remain active, got %d", len(snapshot.AutonomousCircles))
