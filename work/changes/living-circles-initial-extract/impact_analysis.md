@@ -259,6 +259,54 @@ The next implementation-facing slice should explicitly choose:
 - how to keep the extension continuity-specific rather than turning the snapshot into a broader event-history system
 - how the client should surface the promoted child identity with minimal UI change
 
+---
+
+## Change
+
+Remove dead derived-radius state from the server.
+
+## Why This Matters
+
+The embodied-radius transition is behaviorally complete: parent radius no longer changes food reach, contact reach, fight tie-breaks, movement boundaries, orbit distance, or rendered body size. But the server still carries dead radius-growth structure such as `derivedRadius(...)` and `DefaultChildRadiusGain`, which now only disguise the fact that parent radius is fixed.
+
+The next model pressure is to make the implementation say what the simulation already does, instead of preserving inert growth scaffolding.
+
+## Impacted Areas
+
+### Simulation model
+
+- parent radius initialization and child-sync paths should express fixed radius directly
+- dead growth helpers and constants should be removed or collapsed
+- gameplay behavior should remain unchanged
+
+### Tests
+
+- existing fixed-radius tests should continue to prove that child-related state changes do not alter parent radius
+- tests or implementation notes that still describe active child-driven radius growth need alignment
+
+### Runtime contract
+
+- no wire-level change is expected
+- this slice should preserve the current snapshot shape exactly
+
+### Implementation memory
+
+- implementation notes should stop describing child-derived parent radius growth as active behavior once build removes the dead state
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether to delete dead helpers outright rather than leave no-op abstractions for hypothetical future growth
+- how to keep the cleanup bounded to internal state and documentation alignment
+- which tests should act as the fixed-radius regression proof after dead growth state is removed
+
+## Risks If Ignored
+
+- the code will keep implying a growth mechanic that no longer exists
+- future refinement will have to reason through dead scaffolding when changing parent-body semantics
+- implementation memory will stay partially inconsistent about whether radius growth is active or only historical
+
 ## Risks If Ignored
 
 - continuity will remain less inspectable than contact origin and child-paid reproduction
