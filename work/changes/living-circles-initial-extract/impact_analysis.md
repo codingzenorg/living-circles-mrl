@@ -269,6 +269,54 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Expose the concrete child identity consumed during child-paid reproduction.
+
+## Why This Matters
+
+The reproduction path is now close to fully inspectable. The runtime can already say which side paid through a child, which side lacked enough current capacity when reproduction was blocked, and which child or children triggered attached-child contact. But `reproduce_paid_child` still stops short of the concrete payment-child identity: it says the source side, target side, or both used a child, while hiding which attached child was actually consumed.
+
+That leaves a mismatch between authoritative knowledge and inspectable output. The server already knows the exact child ID removed from each paying side, yet the client and tests still need to infer it from the changed attached-child set after resolution.
+
+## Impacted Areas
+
+### Runtime contract
+
+- `reproduce_paid_child` outcomes should expose the concrete consumed child ID for the source side and/or target side
+- energy-only reproduction outcomes should remain unchanged and should not emit payment-child identity fields
+
+### Simulation model
+
+- the existing deterministic child-payment path should remain unchanged
+- build should surface the child identity already chosen by the current payment rule rather than inventing a new selection rule
+
+### Browser inspectability
+
+- the HUD should remain sufficient to read which child was consumed as payment
+- no larger visualization system is needed if the identity is readable through existing debug output
+
+### Deterministic testing
+
+- tests should prove source-only, target-only, and both-sides child-payment identity paths
+- tests should also prove that energy-only reproduction emits no payment-child identity
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether consumed payment-child identity is exposed as one field per side rather than a more complex payment object
+- whether the same fields remain absent on energy-only reproduction
+- how deterministic tests pin source-only, target-only, and both-sides payment cases without changing current reproduction semantics
+
+## Risks If Ignored
+
+- child-paid reproduction will remain less inspectable than continuity promotion, fight absorption, and child-triggered contact
+- debugging current payment behavior will continue to rely on indirect inference instead of explicit authoritative output
+- later reproduction refinements will still have to work around avoidable ambiguity in the payment path
+
+---
+
+## Change
+
 Expose the concrete attached-child identity used during child-triggered interaction contact.
 
 ## Why This Matters
