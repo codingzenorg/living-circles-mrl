@@ -2074,6 +2074,18 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	if snapshot.Interaction.Kind != "reproduce_resolved" {
 		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
 	}
+	if len(snapshot.Interaction.CreatedChildIDs) != 2 {
+		t.Fatalf("expected two created child ids, got %d", len(snapshot.Interaction.CreatedChildIDs))
+	}
+	createdChildIDs := map[string]struct{}{}
+	for _, childID := range snapshot.Interaction.CreatedChildIDs {
+		createdChildIDs[childID] = struct{}{}
+	}
+	for _, childID := range newlyCreatedChildIDs(before.Player.AttachedChildren, snapshot.Player.AttachedChildren, before.AutonomousCircles[0].AttachedChildren, snapshot.AutonomousCircles[0].AttachedChildren) {
+		if _, exists := createdChildIDs[childID]; !exists {
+			t.Fatalf("expected created child id %q in interaction payload, got %+v", childID, snapshot.Interaction.CreatedChildIDs)
+		}
+	}
 	if len(snapshot.AutonomousCircles) != len(before.AutonomousCircles) {
 		t.Fatalf("expected no new autonomous circles, before=%d after=%d", len(before.AutonomousCircles), len(snapshot.AutonomousCircles))
 	}
@@ -2122,6 +2134,9 @@ func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *test
 	}
 	if snapshot.Interaction.Kind != "reproduce_blocked_energy" {
 		t.Fatalf("expected reproduce_blocked_energy, got %q", snapshot.Interaction.Kind)
+	}
+	if len(snapshot.Interaction.CreatedChildIDs) != 0 {
+		t.Fatalf("expected no created child ids on blocked reproduction, got %+v", snapshot.Interaction.CreatedChildIDs)
 	}
 	if snapshot.Interaction.SourceBlockedCapacity {
 		t.Fatal("expected source side to have enough reproduction capacity")
@@ -2230,6 +2245,9 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	if snapshot.Interaction.Kind != "reproduce_paid_child" {
 		t.Fatalf("expected reproduce_paid_child, got %q", snapshot.Interaction.Kind)
 	}
+	if len(snapshot.Interaction.CreatedChildIDs) != 2 {
+		t.Fatalf("expected two created child ids, got %d", len(snapshot.Interaction.CreatedChildIDs))
+	}
 	if snapshot.Interaction.SourceBlockedCapacity || snapshot.Interaction.TargetBlockedCapacity {
 		t.Fatalf("expected no blocked-capacity flags on successful reproduction, source=%v target=%v", snapshot.Interaction.SourceBlockedCapacity, snapshot.Interaction.TargetBlockedCapacity)
 	}
@@ -2244,6 +2262,15 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 	}
 	if snapshot.Interaction.TargetPaidChildID != "circle-2-child-1" {
 		t.Fatalf("expected target paid child id circle-2-child-1, got %q", snapshot.Interaction.TargetPaidChildID)
+	}
+	createdChildIDs := map[string]struct{}{}
+	for _, childID := range snapshot.Interaction.CreatedChildIDs {
+		createdChildIDs[childID] = struct{}{}
+	}
+	for _, childID := range newlyCreatedChildIDs(before.Player.AttachedChildren, snapshot.Player.AttachedChildren, before.AutonomousCircles[0].AttachedChildren, snapshot.AutonomousCircles[0].AttachedChildren) {
+		if _, exists := createdChildIDs[childID]; !exists {
+			t.Fatalf("expected created child id %q in interaction payload, got %+v", childID, snapshot.Interaction.CreatedChildIDs)
+		}
 	}
 	if len(snapshot.Player.AttachedChildren)+len(snapshot.AutonomousCircles[0].AttachedChildren) != len(before.Player.AttachedChildren)+len(before.AutonomousCircles[0].AttachedChildren)+1 {
 		t.Fatalf("expected one child to be spent and two children to be redistributed, before player=%d autonomous=%d after player=%d autonomous=%d", len(before.Player.AttachedChildren), len(before.AutonomousCircles[0].AttachedChildren), len(snapshot.Player.AttachedChildren), len(snapshot.AutonomousCircles[0].AttachedChildren))
@@ -2280,12 +2307,39 @@ func TestDifferentShapeOverlapPaidByEnergyRemainsOrdinaryResolvedReproduction(t 
 	if snapshot.Interaction.Kind != "reproduce_resolved" {
 		t.Fatalf("expected reproduce_resolved for energy-paid reproduction, got %q", snapshot.Interaction.Kind)
 	}
+	if len(snapshot.Interaction.CreatedChildIDs) != 2 {
+		t.Fatalf("expected two created child ids for energy-paid reproduction, got %d", len(snapshot.Interaction.CreatedChildIDs))
+	}
 	if snapshot.Interaction.SourcePaidChild || snapshot.Interaction.TargetPaidChild {
 		t.Fatalf("expected ordinary resolved reproduction to omit child-payment identity, got source=%v target=%v", snapshot.Interaction.SourcePaidChild, snapshot.Interaction.TargetPaidChild)
 	}
 	if snapshot.Interaction.SourcePaidChildID != "" || snapshot.Interaction.TargetPaidChildID != "" {
 		t.Fatalf("expected ordinary resolved reproduction to omit paid child ids, got source=%q target=%q", snapshot.Interaction.SourcePaidChildID, snapshot.Interaction.TargetPaidChildID)
 	}
+}
+
+func newlyCreatedChildIDs(beforeSource []simulation.AttachedChild, afterSource []simulation.AttachedChild, beforeTarget []simulation.AttachedChild, afterTarget []simulation.AttachedChild) []string {
+	beforeIDs := make(map[string]struct{}, len(beforeSource)+len(beforeTarget))
+	for _, child := range beforeSource {
+		beforeIDs[child.ID] = struct{}{}
+	}
+	for _, child := range beforeTarget {
+		beforeIDs[child.ID] = struct{}{}
+	}
+
+	created := make([]string, 0, 2)
+	for _, child := range afterSource {
+		if _, exists := beforeIDs[child.ID]; !exists {
+			created = append(created, child.ID)
+		}
+	}
+	for _, child := range afterTarget {
+		if _, exists := beforeIDs[child.ID]; !exists {
+			created = append(created, child.ID)
+		}
+	}
+
+	return created
 }
 
 func TestContinuousOverlapDoesNotRepeatChildAccumulation(t *testing.T) {

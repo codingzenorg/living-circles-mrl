@@ -136,24 +136,25 @@ func (circle *AutonomousCircle) UnmarshalJSON(data []byte) error {
 }
 
 type InteractionClassification struct {
-	Active                bool   `json:"active"`
-	Resolved              bool   `json:"resolved"`
-	Kind                  string `json:"kind"`
-	ContactOrigin         string `json:"contact_origin,omitempty"`
-	SourceID              string `json:"source_id"`
-	TargetID              string `json:"target_id"`
-	SourceChildID         string `json:"source_child_id,omitempty"`
-	TargetChildID         string `json:"target_child_id,omitempty"`
-	WinnerID              string `json:"winner_id"`
-	LoserID               string `json:"loser_id"`
-	PromotedChildID       string `json:"promoted_child_id,omitempty"`
-	AbsorbedChildID       string `json:"absorbed_child_id,omitempty"`
-	SourcePaidChild       bool   `json:"source_paid_child,omitempty"`
-	TargetPaidChild       bool   `json:"target_paid_child,omitempty"`
-	SourceBlockedCapacity bool   `json:"source_blocked_capacity,omitempty"`
-	TargetBlockedCapacity bool   `json:"target_blocked_capacity,omitempty"`
-	SourcePaidChildID     string `json:"source_paid_child_id,omitempty"`
-	TargetPaidChildID     string `json:"target_paid_child_id,omitempty"`
+	Active                bool     `json:"active"`
+	Resolved              bool     `json:"resolved"`
+	Kind                  string   `json:"kind"`
+	ContactOrigin         string   `json:"contact_origin,omitempty"`
+	SourceID              string   `json:"source_id"`
+	TargetID              string   `json:"target_id"`
+	SourceChildID         string   `json:"source_child_id,omitempty"`
+	TargetChildID         string   `json:"target_child_id,omitempty"`
+	WinnerID              string   `json:"winner_id"`
+	LoserID               string   `json:"loser_id"`
+	PromotedChildID       string   `json:"promoted_child_id,omitempty"`
+	AbsorbedChildID       string   `json:"absorbed_child_id,omitempty"`
+	SourcePaidChild       bool     `json:"source_paid_child,omitempty"`
+	TargetPaidChild       bool     `json:"target_paid_child,omitempty"`
+	SourceBlockedCapacity bool     `json:"source_blocked_capacity,omitempty"`
+	TargetBlockedCapacity bool     `json:"target_blocked_capacity,omitempty"`
+	SourcePaidChildID     string   `json:"source_paid_child_id,omitempty"`
+	TargetPaidChildID     string   `json:"target_paid_child_id,omitempty"`
+	CreatedChildIDs       []string `json:"created_child_ids,omitempty"`
 }
 
 type Food struct {
@@ -1039,7 +1040,7 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 		return
 	}
 
-	w.assignReproductionChildren(&opponent, tick)
+	createdChildIDs := w.assignReproductionChildren(&opponent, tick)
 	w.autonomousCircles[opponentIndex] = opponent
 
 	kind := "reproduce_resolved"
@@ -1060,6 +1061,7 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 		TargetPaidChild:   opponentUsedChild,
 		SourcePaidChildID: playerPaidChildID,
 		TargetPaidChildID: opponentPaidChildID,
+		CreatedChildIDs:   createdChildIDs,
 	}
 }
 
@@ -1155,7 +1157,7 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 		return
 	}
 
-	w.assignAutonomousPairReproductionChildren(&leftCircle, &rightCircle, tick)
+	createdChildIDs := w.assignAutonomousPairReproductionChildren(&leftCircle, &rightCircle, tick)
 	w.autonomousCircles[leftIndex] = leftCircle
 	w.autonomousCircles[rightIndex] = rightCircle
 
@@ -1177,6 +1179,7 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 		TargetPaidChild:   rightUsedChild,
 		SourcePaidChildID: leftPaidChildID,
 		TargetPaidChildID: rightPaidChildID,
+		CreatedChildIDs:   createdChildIDs,
 	}
 }
 
@@ -1498,19 +1501,27 @@ func hashString(value string) int {
 	return hash
 }
 
-func (w *World) assignReproductionChildren(opponent *AutonomousCircle, tick int64) {
+func (w *World) assignReproductionChildren(opponent *AutonomousCircle, tick int64) []string {
+	createdChildIDs := make([]string, 0, 2)
 	distribution := reproductionDistributionCase(tick, *w.player, *opponent)
 	switch distribution {
 	case 0:
-		w.addPlayerChild()
-		w.addPlayerChild()
+		createdChildIDs = append(createdChildIDs, w.addPlayerChild())
+		createdChildIDs = append(createdChildIDs, w.addPlayerChild())
 	case 1:
-		w.addPlayerChild()
-		addAutonomousChild(opponent, w.allocateChildID())
+		createdChildIDs = append(createdChildIDs, w.addPlayerChild())
+		childID := w.allocateChildID()
+		addAutonomousChild(opponent, childID)
+		createdChildIDs = append(createdChildIDs, childID)
 	case 2:
-		addAutonomousChild(opponent, w.allocateChildID())
-		addAutonomousChild(opponent, w.allocateChildID())
+		firstChildID := w.allocateChildID()
+		addAutonomousChild(opponent, firstChildID)
+		createdChildIDs = append(createdChildIDs, firstChildID)
+		secondChildID := w.allocateChildID()
+		addAutonomousChild(opponent, secondChildID)
+		createdChildIDs = append(createdChildIDs, secondChildID)
 	}
+	return createdChildIDs
 }
 
 func reproductionDistributionCase(tick int64, player PlayerCircle, opponent AutonomousCircle) int {
@@ -1529,15 +1540,17 @@ func (w *World) allocateChildID() string {
 	return childID
 }
 
-func (w *World) addPlayerChild() {
+func (w *World) addPlayerChild() string {
 	if w.player == nil {
-		return
+		return ""
 	}
+	childID := w.allocateChildID()
 	w.player.AttachedChildren = append(w.player.AttachedChildren, AttachedChild{
-		ID:      w.allocateChildID(),
+		ID:      childID,
 		OwnerID: w.player.ID,
 	})
 	syncPlayerChildrenState(w.player)
+	return childID
 }
 
 func addAutonomousChild(circle *AutonomousCircle, childID string) {
@@ -1548,19 +1561,33 @@ func addAutonomousChild(circle *AutonomousCircle, childID string) {
 	syncAutonomousChildrenState(circle)
 }
 
-func (w *World) assignAutonomousPairReproductionChildren(left *AutonomousCircle, right *AutonomousCircle, tick int64) {
+func (w *World) assignAutonomousPairReproductionChildren(left *AutonomousCircle, right *AutonomousCircle, tick int64) []string {
+	createdChildIDs := make([]string, 0, 2)
 	distribution := autonomousReproductionDistributionCase(tick, *left, *right)
 	switch distribution {
 	case 0:
-		addAutonomousChild(left, w.allocateChildID())
-		addAutonomousChild(left, w.allocateChildID())
+		firstChildID := w.allocateChildID()
+		addAutonomousChild(left, firstChildID)
+		createdChildIDs = append(createdChildIDs, firstChildID)
+		secondChildID := w.allocateChildID()
+		addAutonomousChild(left, secondChildID)
+		createdChildIDs = append(createdChildIDs, secondChildID)
 	case 1:
-		addAutonomousChild(left, w.allocateChildID())
-		addAutonomousChild(right, w.allocateChildID())
+		leftChildID := w.allocateChildID()
+		addAutonomousChild(left, leftChildID)
+		createdChildIDs = append(createdChildIDs, leftChildID)
+		rightChildID := w.allocateChildID()
+		addAutonomousChild(right, rightChildID)
+		createdChildIDs = append(createdChildIDs, rightChildID)
 	case 2:
-		addAutonomousChild(right, w.allocateChildID())
-		addAutonomousChild(right, w.allocateChildID())
+		firstChildID := w.allocateChildID()
+		addAutonomousChild(right, firstChildID)
+		createdChildIDs = append(createdChildIDs, firstChildID)
+		secondChildID := w.allocateChildID()
+		addAutonomousChild(right, secondChildID)
+		createdChildIDs = append(createdChildIDs, secondChildID)
 	}
+	return createdChildIDs
 }
 
 func consumePlayerChild(circle *PlayerCircle) {

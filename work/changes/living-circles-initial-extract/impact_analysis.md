@@ -317,6 +317,54 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Expose the concrete child identities created during successful reproduction.
+
+## Why This Matters
+
+The reproduction path is now highly inspectable on the failure and payment sides. The runtime can already say which side paid through a child, which concrete child was consumed as payment, and which side lacked enough current capacity when reproduction was blocked. But successful reproduction still stops short of the created-child identity itself: the server knows exactly which new child IDs it allocated, while the runtime only exposes the resulting attached-child state after redistribution.
+
+That leaves a mismatch between authoritative knowledge and inspectable output. The client and tests still need to infer newly created children by diffing before and after attached-child sets, even though the server already knows the exact created IDs.
+
+## Impacted Areas
+
+### Runtime contract
+
+- successful reproduction outcomes should expose the concrete created child IDs
+- blocked reproduction outcomes should remain unchanged and should not emit created-child identity
+
+### Simulation model
+
+- the existing deterministic child-allocation and redistribution path should remain unchanged
+- build should surface the IDs already allocated by the current creation rule rather than inventing a new allocation path
+
+### Browser inspectability
+
+- the HUD should remain sufficient to read which child IDs were created
+- no larger visualization system is needed if the identity is readable through existing debug output
+
+### Deterministic testing
+
+- tests should prove that energy-paid and child-paid reproduction both expose the created child IDs
+- tests should also prove that blocked reproduction emits no created-child identity
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether created-child identity is exposed as one list shared across the interaction rather than split per side
+- whether blocked reproduction keeps those fields absent
+- how deterministic tests pin the exposed created IDs to the actual newly attached children without changing current reproduction semantics
+
+## Risks If Ignored
+
+- successful reproduction will remain less inspectable than the rest of the current child and reproduction model
+- debugging child creation and redistribution will continue to rely on indirect set-diffing instead of explicit authoritative output
+- later reproduction refinements will still have to work around avoidable ambiguity in the creation path
+
+---
+
+## Change
+
 Expose the concrete attached-child identity used during child-triggered interaction contact.
 
 ## Why This Matters
