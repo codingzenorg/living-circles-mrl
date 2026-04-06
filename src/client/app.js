@@ -16,6 +16,7 @@ const resetButton = document.getElementById("reset");
 let latestSnapshot = null;
 let eventLog = ["Awaiting first world snapshot..."];
 let previousAutonomousById = new Map();
+let previousPlayerPosition = null;
 let recentEffects = [];
 let lastInteractionSignature = null;
 let previousCamera = null;
@@ -585,6 +586,7 @@ function draw(snapshot) {
 
   if (snapshot.player) {
     drawCircle(snapshot.player, true, snapshot.player, circles, snapshot.foods);
+    drawPlayerHeadingCue(snapshot.player);
     const pressure = isCrowded(snapshot.player, circles) ? "pressure" : "";
     const foodState = playerFoodPressure?.scarcity ? "scarce" : playerFoodPressure?.opportunity ? "food-rich" : "";
     energyNode.textContent = `${displayName(snapshot.player.id)}`;
@@ -599,12 +601,40 @@ function draw(snapshot) {
   tickNode.textContent = `${snapshot.tick} · ${snapshot.foods.length}f · ${snapshot.autonomous_circles.length}o`;
   pushEventLog(interactionSummary(snapshot.interaction));
   previousAutonomousById = new Map(snapshot.autonomous_circles.map((circle) => [circle.id, { x: circle.x, y: circle.y }]));
+  previousPlayerPosition = snapshot.player ? { x: snapshot.player.x, y: snapshot.player.y } : null;
   recentEffects = recentEffects
     .map((effect) => ({ ...effect, ttl: effect.ttl - 1 }))
     .filter((effect) => effect.ttl > 0);
   drawOffscreenAwareness(snapshot, camera);
   context.restore();
   drawMinimap(snapshot, camera);
+}
+
+function drawPlayerHeadingCue(player) {
+  if (!previousPlayerPosition) {
+    return;
+  }
+
+  const movement = normalizedVector(player.x - previousPlayerPosition.x, player.y - previousPlayerPosition.y);
+  if (!movement || movement.magnitude < MIN_MOVEMENT_FOR_INTENT) {
+    return;
+  }
+
+  const tipX = player.x + movement.x * (player.radius + 18);
+  const tipY = player.y + movement.y * (player.radius + 18);
+  const wingX = movement.y * 5;
+  const wingY = -movement.x * 5;
+
+  context.strokeStyle = "rgba(255, 224, 160, 0.96)";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.moveTo(player.x, player.y);
+  context.lineTo(tipX, tipY);
+  context.moveTo(tipX, tipY);
+  context.lineTo(tipX - movement.x * 8 + wingX, tipY - movement.y * 8 + wingY);
+  context.moveTo(tipX, tipY);
+  context.lineTo(tipX - movement.x * 8 - wingX, tipY - movement.y * 8 - wingY);
+  context.stroke();
 }
 
 function drawOffscreenAwareness(snapshot, camera) {
