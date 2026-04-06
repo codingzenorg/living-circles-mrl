@@ -505,6 +505,60 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Improve player-facing legibility of shape meaning, danger, and opportunity using the already authoritative snapshot state.
+
+## Why This Matters
+
+The simulation now has substantially more world behavior than the earlier demo baseline, but EGD still highlights an important gap: too much of the meaning still depends on reading dense labels and HUD text instead of perceiving the world directly.
+
+That creates a real evaluation problem:
+
+- the server truth may be coherent
+- but the player may still struggle to read same-shape danger, different-shape opportunity, or blocked opportunity at ordinary play speed
+
+The next pressure is therefore not another hidden rule. It is to make existing authoritative semantics legible in the client.
+
+## Impacted Areas
+
+### Browser rendering
+
+- client rendering should make shape-driven risk and opportunity easier to read at a glance
+- the current dark-mode presentation should remain coherent
+- the slice should prefer a few strong visual cues over more text
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because shape, energy, children, and interaction outcomes are already present
+- build should avoid new contract fields unless one tiny authoritative readability field becomes clearly necessary
+
+### Evaluation expectations
+
+- this slice directly addresses the EGD finding that play meaning is still too dependent on HUD/debug reading
+- future EGD should be able to assess readability, not only mechanical completeness
+
+### Existing semantics
+
+- no server-side rule changes should be needed
+- fight, reproduction, food, continuity, crowding pressure, and autonomy remain unchanged
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- which nearby semantic distinctions deserve direct visual treatment first
+- how to convey danger and opportunity without turning the client into a second rules engine
+- how to keep the rendering readable rather than noisy
+
+## Risks If Ignored
+
+- the world can become mechanically richer while still feeling opaque to the player
+- evaluation may keep conflating model weakness with presentation weakness
+- the simulation may remain harder to judge and enjoy than it needs to be
+
+---
+
+## Change
+
 Expose which side failed the capacity check when reproduction is blocked.
 
 ## Why This Matters
