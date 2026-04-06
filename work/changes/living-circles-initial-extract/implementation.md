@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_support_panel_growth_bounds.md`
+`docs/slices/initial_fullscreen_demo_layout.md`
 
 ## Implemented Shape
 
@@ -15,6 +15,7 @@
 - NPC summaries now use tighter single-line text rows with lighter formatting so the support area scans faster during play
 - the player card now spans the full support width, with NPC summaries and recent encounters sharing a lower two-panel row so growing lists do not push the player summary around
 - the lower NPC and recent-encounter panels now have bounded vertical growth with internal scrolling so content accumulation does not keep expanding the support area
+- the demo now uses a fullscreen desktop layout with the canvas taking the main viewport area and the support column docked to the side while preserving a narrow-screen collapse
 - the legend is now reduced to the strongest cue families so the canvas and external panels carry more of the explanatory load during ordinary play
 - browser rendering now keeps a very short-lived client-local afterglow for recent resolved fights, reproductions, and continuity-preserving promotion so important outcomes remain briefly visible in-world
 - recent event afterglow remains grounded in current authoritative interaction outcomes and current entity positions without introducing server-side event history
