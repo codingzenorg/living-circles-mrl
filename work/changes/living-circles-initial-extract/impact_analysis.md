@@ -3280,3 +3280,18 @@ That points to a bounded client-only slice:
 - add a simple camera deadzone
 - keep the viewport deterministic and easy to reason about
 - leave server semantics and contract shape unchanged
+## Pressure: Minimap Orientation In Viewport Mode
+
+The viewport and deadzone slices improved scale and camera comfort, but they also removed the always-visible whole-world overview. That makes the experience stronger moment to moment, while weakening larger-world orientation.
+
+The new pressure is:
+
+- the viewport should remain the primary way to see the world
+- the player should regain a sense of where they are in the larger space
+- any orientation aid should stay small and secondary
+
+That points to a bounded client-only slice:
+
+- add a small minimap or equivalent orientation aid
+- preserve the main viewport as the dominant rendering mode
+- leave server semantics and contract shape unchanged
