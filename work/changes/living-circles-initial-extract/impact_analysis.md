@@ -392,6 +392,60 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Introduce a local crowding-based energy pressure so denser areas impose an immediate survival cost before explicit collision outcomes occur.
+
+## Why This Matters
+
+The world is now larger, population is higher, startup food support is more rule-shaped, and regeneration pressure already reacts to depletion. But density itself still has little direct cost until food, fight, reproduction, or death events happen.
+
+That keeps the expanded world at risk of feeling like “more actors on a larger board” rather than a genuinely pressured ecosystem. If local clustering has no immediate energetic consequence, then increased population can remain mechanically thinner than the model hypothesis suggests.
+
+## Impacted Areas
+
+### Simulation model
+
+- tick advancement should apply one bounded additional energy pressure based on local nearby-circle density
+- the rule should be local rather than global
+- player and autonomous circles should remain under the same pressure rule
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because energy already appears in ordinary snapshots
+- build should avoid new protocol fields unless the chosen rule becomes too opaque without a small inspectability aid
+
+### Browser rendering
+
+- the client may not need any rendering change because the effect should be visible through ordinary energy shifts and resulting outcomes
+- this should remain a simulation-behavior slice, not a visualization slice
+
+### Evaluation expectations
+
+- EGD after this slice should be able to assess whether dense regions now create stronger dispersal, collapse, or survival pressure
+- this directly strengthens the ecosystem-validity path opened by recent scale and food-pressure slices
+
+### Existing semantics
+
+- movement cost, food placement, food regeneration, fight, reproduction, continuity, child ownership, and steering should remain unchanged
+- the new rule should add local pressure, not redesign the rest of the model
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- one neighborhood radius for crowding
+- one simple deterministic threshold or formula for additional energy loss
+- a pressure magnitude small enough to avoid overwhelming the existing energy loop
+
+## Risks If Ignored
+
+- increased population may continue to read mostly as higher token count rather than as a denser ecosystem
+- local spatial concentration will remain less meaningful than the model hypothesis implies
+- future ecosystem evaluation will still be missing one important route to collapse and recovery dynamics
+
+---
+
+## Change
+
 Expose which side failed the capacity check when reproduction is blocked.
 
 ## Why This Matters
