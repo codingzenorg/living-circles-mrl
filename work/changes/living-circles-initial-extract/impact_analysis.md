@@ -441,6 +441,50 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make recent important world outcomes linger briefly in the scene.
+
+## Why This Matters
+
+The recent play-legibility slices made the present state of the world easier to read: danger, crowding, food, nearby autonomy, motion, and lineage continuity are all more visible. But important interaction outcomes still vanish from the world too quickly. A player may notice a log message, yet still miss where the fight, reproduction, or promotion actually occurred.
+
+The next pressure is therefore to keep recent authoritative outcomes briefly visible in-world without turning the client into an event history system.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the client should render brief world-tied aftermath cues for recent important outcomes
+- the cues should remain visually restrained and compatible with the existing layers
+- the scene should become easier to interpret during and just after fast interactions
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because interaction kinds and entity positions are already available
+- build should avoid adding event-history fields unless one minimal readability field is clearly justified
+
+### Existing semantics
+
+- interaction outcomes remain authoritative on the server
+- fight, reproduction, continuity, food, crowding, autonomy, and movement rules should remain unchanged in this slice
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether recent outcomes are best shown through short-lived rings, pulses, local glow, or another restrained cue
+- how long the client-local memory should persist without becoming a replay feature
+- how to avoid clutter when several outcomes happen close together
+
+## Risks If Ignored
+
+- fast interaction outcomes will remain harder to connect to places in the world
+- the encounter log will stay more informative than the scene itself in busy moments
+- future playability review will remain partly blocked by weak recent-event readability
+
+---
+
+## Change
+
 Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
 
 ## Why This Matters
