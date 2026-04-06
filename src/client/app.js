@@ -6,6 +6,7 @@ const statusNode = document.getElementById("status");
 const energyNode = document.getElementById("energy");
 const tickNode = document.getElementById("tick");
 const detailsNode = document.getElementById("details");
+const playerCardNode = document.getElementById("player-card");
 const resetButton = document.getElementById("reset");
 
 let latestSnapshot = null;
@@ -27,9 +28,27 @@ const SCARCITY_THRESHOLD = 1;
 const INTENT_CUE_DISTANCE = 260;
 const MIN_MOVEMENT_FOR_INTENT = 1.5;
 const AFTERGLOW_TTL = 10;
+const NAME_ADJECTIVES = ["brave", "calm", "eager", "gentle", "keen", "lucky", "mellow", "nimble", "quiet", "solar", "swift", "vivid"];
+const NAME_NOUNS = ["badger", "comet", "falcon", "harbor", "lantern", "meadow", "otter", "panda", "reef", "sable", "thunder", "willow"];
 
 function normalizeKey(key) {
   return key.toLowerCase();
+}
+
+function hashString(value) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+
+  return hash;
+}
+
+function displayName(id) {
+  const hash = hashString(id);
+  const adjective = NAME_ADJECTIVES[hash % NAME_ADJECTIVES.length];
+  const noun = NAME_NOUNS[Math.floor(hash / NAME_ADJECTIVES.length) % NAME_NOUNS.length];
+  return `${adjective}_${noun}`;
 }
 
 function childCount(circle) {
@@ -333,6 +352,45 @@ function renderEventLog() {
   detailsNode.innerHTML = eventLog.map((entry) => `<li>${entry}</li>`).join("");
 }
 
+function renderPlayerCard(player, pressure, foodState) {
+  if (!player) {
+    playerCardNode.innerHTML = `
+      <div class="player-stat">
+        <span class="player-stat-label">Status</span>
+        <span class="player-stat-value">Defeated</span>
+      </div>
+    `;
+    return;
+  }
+
+  playerCardNode.innerHTML = `
+    <div class="player-stat">
+      <span class="player-stat-label">Name</span>
+      <span class="player-stat-value">${displayName(player.id)}</span>
+    </div>
+    <div class="player-stat">
+      <span class="player-stat-label">Shape</span>
+      <span class="player-stat-value">${player.shape}</span>
+    </div>
+    <div class="player-stat">
+      <span class="player-stat-label">Energy</span>
+      <span class="player-stat-value">${player.energy.toFixed(0)}</span>
+    </div>
+    <div class="player-stat">
+      <span class="player-stat-label">Children</span>
+      <span class="player-stat-value">${childCount(player)}</span>
+    </div>
+    <div class="player-stat">
+      <span class="player-stat-label">Generation</span>
+      <span class="player-stat-value">${player.generation}</span>
+    </div>
+    <div class="player-stat">
+      <span class="player-stat-label">State</span>
+      <span class="player-stat-value">${pressure || foodState ? `${pressure}${pressure && foodState ? " · " : ""}${foodState}` : "stable"}</span>
+    </div>
+  `;
+}
+
 function pushEventLog(message) {
   if (!message) {
     return;
@@ -412,11 +470,13 @@ function draw(snapshot) {
 
   if (snapshot.player) {
     drawCircle(snapshot.player, true, snapshot.player, circles, snapshot.foods);
-    const pressure = isCrowded(snapshot.player, circles) ? " · pressure" : "";
-    const foodState = playerFoodPressure?.scarcity ? " · scarce" : playerFoodPressure?.opportunity ? " · food" : "";
-    energyNode.textContent = `E ${snapshot.player.energy.toFixed(0)} · C ${childCount(snapshot.player)} · G ${snapshot.player.generation}${pressure}${foodState}`;
+    const pressure = isCrowded(snapshot.player, circles) ? "pressure" : "";
+    const foodState = playerFoodPressure?.scarcity ? "scarce" : playerFoodPressure?.opportunity ? "food-rich" : "";
+    energyNode.textContent = `You: ${displayName(snapshot.player.id)}`;
+    renderPlayerCard(snapshot.player, pressure, foodState);
   } else {
-    energyNode.textContent = "E defeated";
+    energyNode.textContent = "You: defeated";
+    renderPlayerCard(null, "", "");
   }
 
   tickNode.textContent = `T ${snapshot.tick} · F ${snapshot.foods.length} · O ${snapshot.autonomous_circles.length}`;
@@ -667,13 +727,9 @@ function drawCircle(circle, isPlayer, player, circles, foods) {
   context.font = "16px Georgia";
   const children = childCount(circle);
   const label = isPlayer
-    ? `YOU ${circle.id} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}${continuityReserve ? " lineage" : ""}`
-    : `${circle.id} ${relationToPlayer === "danger" ? "danger" : relationToPlayer === "opportunity" ? "open" : relationToPlayer === "blocked" ? "blocked" : matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}${intent ? ` ${intent}` : ""}${continuityReserve ? " lineage" : ""}`;
-  context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
-
-  context.font = "12px Georgia";
-  context.fillStyle = "#9cb8c0";
-  context.fillText(circle.lineage_id, circle.x - 40, circle.y + circle.radius + 18);
+    ? displayName(circle.id)
+    : displayName(circle.id);
+  context.fillText(label, circle.x - 28, circle.y - circle.radius - 10);
 }
 
 function drawAttachedChildren(circle, color) {

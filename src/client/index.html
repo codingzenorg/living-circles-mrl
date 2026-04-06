@@ -186,6 +186,49 @@
         min-height: 52px;
       }
 
+      .player-card {
+        margin-top: 14px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: rgba(8, 20, 26, 0.78);
+      }
+
+      .player-card-title {
+        margin: 0 0 10px;
+        color: var(--ink);
+        font-size: 0.82rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .player-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .player-stat {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(111, 213, 255, 0.06);
+      }
+
+      .player-stat-label {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--muted);
+        font-size: 0.76rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .player-stat-value {
+        color: var(--ink);
+        font-size: 1rem;
+      }
+
       .details-title {
         margin: 0 0 8px;
         color: var(--ink);
@@ -205,6 +248,10 @@
 
       @media (max-width: 860px) {
         .hud {
+          grid-template-columns: 1fr;
+        }
+
+        .player-card-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -238,6 +285,15 @@
           <div class="chip chip--afterglow">Soft rings: recent world outcome</div>
         </div>
         <canvas id="world" width="800" height="600"></canvas>
+        <div class="player-card">
+          <div class="player-card-title">Player</div>
+          <div class="player-card-grid" id="player-card">
+            <div class="player-stat">
+              <span class="player-stat-label">Status</span>
+              <span class="player-stat-value">Awaiting first world snapshot...</span>
+            </div>
+          </div>
+        </div>
         <div class="details">
           <div class="details-title">Recent Encounters</div>
           <ol class="details-log" id="details">
