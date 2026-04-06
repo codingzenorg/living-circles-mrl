@@ -2,6 +2,7 @@ import { CONTRACT_VERSION, createMovementIntent, MESSAGE_TYPES } from "/shared_c
 
 const canvas = document.getElementById("world");
 const context = canvas.getContext("2d");
+const playStageNode = document.querySelector(".play-stage");
 const statusNode = document.getElementById("status");
 const energyNode = document.getElementById("energy");
 const tickNode = document.getElementById("tick");
@@ -29,6 +30,9 @@ const SCARCITY_THRESHOLD = 1;
 const INTENT_CUE_DISTANCE = 260;
 const MIN_MOVEMENT_FOR_INTENT = 1.5;
 const AFTERGLOW_TTL = 10;
+const VIEWPORT_MIN_WIDTH = 640;
+const VIEWPORT_MIN_HEIGHT = 420;
+const VIEWPORT_BOTTOM_MARGIN = 24;
 const NAME_ADJECTIVES = ["brave", "calm", "eager", "gentle", "keen", "lucky", "mellow", "nimble", "quiet", "solar", "swift", "vivid"];
 const NAME_NOUNS = ["badger", "comet", "falcon", "harbor", "lantern", "meadow", "otter", "panda", "reef", "sable", "thunder", "willow"];
 
@@ -427,22 +431,91 @@ function currentDirection() {
   return vector;
 }
 
+function contentBoxSize(node) {
+  const rect = node.getBoundingClientRect();
+  const style = window.getComputedStyle(node);
+  const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  const verticalPadding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+
+  return {
+    width: Math.max(0, Math.floor(rect.width - horizontalPadding)),
+    height: Math.max(0, Math.floor(rect.height - verticalPadding)),
+  };
+}
+
+function viewportSize(world) {
+  const stageSize = contentBoxSize(playStageNode);
+  const availableWidth = Math.max(VIEWPORT_MIN_WIDTH, stageSize.width);
+  const stageRect = playStageNode.getBoundingClientRect();
+  const availableHeight = Math.max(
+    VIEWPORT_MIN_HEIGHT,
+    Math.floor(window.innerHeight - stageRect.top - VIEWPORT_BOTTOM_MARGIN),
+  );
+
+  return {
+    width: Math.min(world.width, availableWidth),
+    height: Math.min(world.height, availableHeight),
+  };
+}
+
+function cameraFocus(snapshot) {
+  if (snapshot.player) {
+    return { x: snapshot.player.x, y: snapshot.player.y };
+  }
+
+  if (snapshot.autonomous_circles.length > 0) {
+    return {
+      x: snapshot.autonomous_circles[0].x,
+      y: snapshot.autonomous_circles[0].y,
+    };
+  }
+
+  return {
+    x: snapshot.world.width / 2,
+    y: snapshot.world.height / 2,
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function cameraRect(snapshot, viewport) {
+  const focus = cameraFocus(snapshot);
+  const maxX = Math.max(0, snapshot.world.width - viewport.width);
+  const maxY = Math.max(0, snapshot.world.height - viewport.height);
+
+  return {
+    x: clamp(Math.round(focus.x - viewport.width / 2), 0, maxX),
+    y: clamp(Math.round(focus.y - viewport.height / 2), 0, maxY),
+    width: viewport.width,
+    height: viewport.height,
+  };
+}
+
 function draw(snapshot) {
   const circles = snapshot.player ? [snapshot.player, ...snapshot.autonomous_circles] : [...snapshot.autonomous_circles];
   const playerFoodPressure = snapshot.player ? foodPressureAt(snapshot.player, snapshot.foods) : null;
   trackRecentInteraction(snapshot);
 
-  canvas.width = snapshot.world.width;
-  canvas.height = snapshot.world.height;
+  const viewport = viewportSize(snapshot.world);
+  const camera = cameraRect(snapshot, viewport);
+
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  canvas.style.width = `${viewport.width}px`;
+  canvas.style.height = `${viewport.height}px`;
 
   context.clearRect(0, 0, canvas.width, canvas.height);
+  context.save();
+  context.translate(-camera.x, -camera.y);
 
   context.fillStyle = "rgba(6, 22, 30, 0.9)";
-  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillRect(camera.x, camera.y, viewport.width, viewport.height);
 
   context.strokeStyle = "rgba(127, 174, 188, 0.28)";
   context.lineWidth = 2;
-  context.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+  context.strokeRect(1, 1, snapshot.world.width - 2, snapshot.world.height - 2);
 
   drawRecentEffects();
   drawCrowdingZones(circles, snapshot.player);
@@ -491,6 +564,7 @@ function draw(snapshot) {
   recentEffects = recentEffects
     .map((effect) => ({ ...effect, ttl: effect.ttl - 1 }))
     .filter((effect) => effect.ttl > 0);
+  context.restore();
 }
 
 function drawRecentEffects() {
@@ -863,6 +937,12 @@ window.addEventListener("keyup", (event) => {
 
 window.addEventListener("blur", () => {
   pressedKeys.clear();
+});
+
+window.addEventListener("resize", () => {
+  if (latestSnapshot) {
+    draw(latestSnapshot);
+  }
 });
 
 resetButton.addEventListener("click", () => {
