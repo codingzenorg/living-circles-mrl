@@ -615,6 +615,49 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Reduce text density inside the support area.
+
+## Why This Matters
+
+The support layout is now structurally cleaner, but it still carries a fair amount of status text. That means the interface has improved where information is placed, but not yet fully improved how quickly that information can be scanned. If the support area stays text-heavy, it can still act like a status dump even with better grouping.
+
+The next pressure is therefore to reduce support-text density without losing the small set of state that actually helps during ordinary play.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the player and NPC summaries should become more compact
+- supporting text should feel lighter and easier to scan
+- the canvas should remain the dominant source of attention
+
+### Runtime contract
+
+- no contract change should be necessary
+
+### Existing semantics
+
+- all world rules remain authoritative and unchanged
+- this is a presentation simplification only
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- which support text can be shortened without losing meaning
+- how to keep player state easiest to parse
+- how to keep NPC state useful while lighter-weight than the current line format
+
+## Risks If Ignored
+
+- the support area may remain more verbose than necessary even after structural cleanup
+- simplification work may stall at the layout level and leave textual clutter untouched
+- future UI refinement may keep moving density around instead of removing it
+
+---
+
+## Change
+
 Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
 
 ## Why This Matters
