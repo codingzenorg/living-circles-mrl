@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_legend_density_reduction.md`
+`docs/slices/initial_support_panel_density_reduction.md`
 
 ## Implemented Shape
 
@@ -10,6 +10,7 @@
 - browser client under `src/client/`
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
+- the support area now has a clearer hierarchy: the player card is primary in the left column, while NPC summaries and recent encounters are grouped into a tighter secondary stack on the right
 - the legend is now reduced to the strongest cue families so the canvas and external panels carry more of the explanatory load during ordinary play
 - browser rendering now keeps a very short-lived client-local afterglow for recent resolved fights, reproductions, and continuity-preserving promotion so important outcomes remain briefly visible in-world
 - recent event afterglow remains grounded in current authoritative interaction outcomes and current entity positions without introducing server-side event history
