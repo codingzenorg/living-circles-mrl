@@ -7,6 +7,7 @@ const energyNode = document.getElementById("energy");
 const tickNode = document.getElementById("tick");
 const detailsNode = document.getElementById("details");
 const playerCardNode = document.getElementById("player-card");
+const npcCardNode = document.getElementById("npc-card");
 const resetButton = document.getElementById("reset");
 
 let latestSnapshot = null;
@@ -391,6 +392,17 @@ function renderPlayerCard(player, pressure, foodState) {
   `;
 }
 
+function renderNpcCard(circles) {
+  if (!circles.length) {
+    npcCardNode.innerHTML = "<li>No active NPCs.</li>";
+    return;
+  }
+
+  npcCardNode.innerHTML = circles.map((circle) => `
+    <li>${displayName(circle.id)}: ${circle.shape} - e:${circle.energy.toFixed(0)} c:${childCount(circle)} g:${circle.generation}</li>
+  `).join("");
+}
+
 function pushEventLog(message) {
   if (!message) {
     return;
@@ -478,6 +490,8 @@ function draw(snapshot) {
     energyNode.textContent = "You: defeated";
     renderPlayerCard(null, "", "");
   }
+
+  renderNpcCard(snapshot.autonomous_circles);
 
   tickNode.textContent = `T ${snapshot.tick} · F ${snapshot.foods.length} · O ${snapshot.autonomous_circles.length}`;
   pushEventLog(interactionSummary(snapshot.interaction));

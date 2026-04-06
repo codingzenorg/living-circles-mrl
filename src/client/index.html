@@ -229,6 +229,24 @@
         font-size: 1rem;
       }
 
+      .npc-card {
+        margin-top: 14px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: rgba(8, 20, 26, 0.78);
+      }
+
+      .npc-list {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--ink);
+      }
+
+      .npc-list li + li {
+        margin-top: 6px;
+      }
+
       .details-title {
         margin: 0 0 8px;
         color: var(--ink);
@@ -293,6 +311,12 @@
               <span class="player-stat-value">Awaiting first world snapshot...</span>
             </div>
           </div>
+        </div>
+        <div class="npc-card">
+          <div class="player-card-title">NPCs</div>
+          <ul class="npc-list" id="npc-card">
+            <li>Awaiting first world snapshot...</li>
+          </ul>
         </div>
         <div class="details">
           <div class="details-title">Recent Encounters</div>
