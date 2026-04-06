@@ -3325,3 +3325,18 @@ That points to a bounded client-only slice:
 - add a local player heading cue
 - keep it tied to recent authoritative motion
 - leave server semantics and contract shape unchanged
+## Pressure: Offscreen Food Awareness In Viewport Mode
+
+The viewport, minimap, offscreen circle awareness, and player heading cue now make movement and nearby pressure much easier to read. The remaining immediate gap is recovery awareness: food just outside the viewport can still remain locally invisible until it crosses into view.
+
+The new pressure is:
+
+- the viewport should remain the primary surface
+- the player should gain lightweight awareness of nearby offscreen food
+- food cues should complement, not compete with, existing offscreen circle awareness
+
+That points to a bounded client-only slice:
+
+- add lightweight offscreen food awareness
+- keep the cues local and secondary
+- leave server semantics and contract shape unchanged
