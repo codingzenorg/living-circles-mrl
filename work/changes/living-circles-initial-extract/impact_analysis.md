@@ -265,6 +265,50 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make nearby food opportunity and local food scarcity more legible during ordinary play.
+
+## Why This Matters
+
+The simulation now has meaningful resource pressure: food is finite, startup abundance scales with population, and regeneration slows under deeper depletion. But the player still mostly reads this system indirectly by watching energy drop and by gradually noticing whether food happens to be nearby. That makes one of the main ecosystem loops less immediately legible than shape danger or crowding pressure.
+
+The next pressure is therefore to make current food opportunity and food scarcity easier to perceive on the client without inventing hidden timer logic or predictive overlays.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the client should make nearby food-rich space easier to recognize as recovery opportunity
+- the client should make locally sparse space easier to recognize as resource pressure
+- any new food-pressure cue should remain compatible with the current shape-risk and crowding cues
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because visible food and circle positions are already available
+- build should avoid adding food-specific contract fields unless one minimal readability field is clearly justified
+
+### Existing semantics
+
+- food placement, consumption, and regeneration remain authoritative on the server
+- crowding, fight, reproduction, continuity, and autonomy rules should remain unchanged in this slice
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether food pressure is best shown through nearby area glow, richer food emphasis, player-centered scarcity framing, or another small local cue
+- how to keep the cue grounded in current visible food state instead of hidden regeneration timing
+- how to avoid visual competition with the new crowding-pressure cues
+
+## Risks If Ignored
+
+- one of the main ecosystem loops will remain less readable than the newer interaction and crowding cues
+- energy management will continue to feel more reactive than readable during live play
+- future evaluation of ecosystem quality will remain partly blocked by weak resource-legibility
+
+---
+
+## Change
+
 Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
 
 ## Why This Matters
