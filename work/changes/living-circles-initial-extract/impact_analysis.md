@@ -572,6 +572,49 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Reduce density in the support area below the canvas.
+
+## Why This Matters
+
+Recent UI work successfully moved meaning out of the canvas: player state, NPC summaries, and recent encounters now live in dedicated external panels. That improved the play surface, but it also concentrated interface density into the support stack beneath it. If that area keeps growing without hierarchy improvements, the UI will simply move clutter rather than remove it.
+
+The next pressure is therefore to simplify and prioritize the support area so the canvas remains the clear primary surface and the external panels feel genuinely supporting.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the player, NPC, and encounter panels should become easier to scan as a group
+- the support area should communicate clearer priority and lower visual load
+- the canvas should remain visually primary
+
+### Runtime contract
+
+- no contract change should be necessary
+
+### Existing semantics
+
+- all world rules remain authoritative and unchanged
+- this is a presentation simplification only
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether support density is best reduced through tighter grouping, stronger hierarchy, or partial layout compression
+- which support block should remain most prominent
+- how to reduce scan cost without hiding useful state
+
+## Risks If Ignored
+
+- the UI may simply relocate complexity rather than reducing it
+- the support area may start competing with the canvas for attention
+- future simplification work may become harder because more data keeps accumulating in the same stacked region
+
+---
+
+## Change
+
 Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
 
 ## Why This Matters
