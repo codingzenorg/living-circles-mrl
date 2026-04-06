@@ -450,6 +450,16 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 				recreated.AutonomousCircles[index].Y,
 			)
 		}
+		if recreated.AutonomousCircles[index].Shape != circle.Shape || recreated.AutonomousCircles[index].Energy != circle.Energy {
+			t.Fatalf(
+				"expected recreated world to keep deterministic autonomous state at %d, before=(%q,%v) after=(%q,%v)",
+				index,
+				circle.Shape,
+				circle.Energy,
+				recreated.AutonomousCircles[index].Shape,
+				recreated.AutonomousCircles[index].Energy,
+			)
+		}
 	}
 	expectedFoodCount := len(snapshot.AutonomousCircles) + 3
 	if len(snapshot.Foods) != expectedFoodCount {
@@ -505,6 +515,16 @@ func TestDefaultSessionResetRestoresExpandedPopulationDeterministically(t *testi
 				circle.Y,
 				reset.AutonomousCircles[index].X,
 				reset.AutonomousCircles[index].Y,
+			)
+		}
+		if reset.AutonomousCircles[index].Shape != circle.Shape || reset.AutonomousCircles[index].Energy != circle.Energy {
+			t.Fatalf(
+				"expected reset autonomous %d to match initial state, before=(%q,%v) after=(%q,%v)",
+				index,
+				circle.Shape,
+				circle.Energy,
+				reset.AutonomousCircles[index].Shape,
+				reset.AutonomousCircles[index].Energy,
 			)
 		}
 	}

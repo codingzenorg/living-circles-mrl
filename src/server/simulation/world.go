@@ -46,6 +46,7 @@ const (
 	DefaultExpandedFoodCount                    = DefaultExpandedAutonomousCount + 3
 	DefaultExpandedFoodSeed               int64 = 73
 	DefaultExpandedAutonomousSeed         int64 = 131
+	DefaultExpandedAutonomousStateSeed    int64 = 211
 )
 
 type Bounds struct {
@@ -382,12 +383,17 @@ func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64, reserved 
 		shape  string
 		energy float64
 	}{
-		{id: DefaultTertiaryID, shape: DefaultPlayerShape, energy: 90},
-		{id: DefaultQuaternaryID, shape: DefaultAutoShape, energy: 85},
-		{id: DefaultQuinaryID, shape: DefaultPlayerShape, energy: 95},
-		{id: DefaultSenaryID, shape: DefaultAutoShape, energy: 88},
-		{id: DefaultSeptenaryID, shape: DefaultPlayerShape, energy: 92},
-		{id: DefaultOctonaryID, shape: DefaultAutoShape, energy: 86},
+		{id: DefaultTertiaryID},
+		{id: DefaultQuaternaryID},
+		{id: DefaultQuinaryID},
+		{id: DefaultSenaryID},
+		{id: DefaultSeptenaryID},
+		{id: DefaultOctonaryID},
+	}
+	stateMix := seededExpandedAutonomousStateMix(len(specs))
+	for index := range specs {
+		specs[index].shape = stateMix[index].shape
+		specs[index].energy = stateMix[index].energy
 	}
 
 	positions := seededExpandedAutonomousPositions(worldWidth, worldHeight, len(specs), reserved)
@@ -407,6 +413,39 @@ func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64, reserved 
 	}
 
 	return circles
+}
+
+func seededExpandedAutonomousStateMix(count int) []struct {
+	shape  string
+	energy float64
+} {
+	seed := DefaultExpandedAutonomousStateSeed
+	mix := make([]struct {
+		shape  string
+		energy float64
+	}, 0, count)
+
+	advanceSeed := func() int64 {
+		seed = (seed*214013 + 2531011) & 0x7fffffff
+		return seed
+	}
+
+	for range count {
+		shape := DefaultPlayerShape
+		if advanceSeed()%2 == 1 {
+			shape = DefaultAutoShape
+		}
+		energy := 82 + float64(advanceSeed()%15)
+		mix = append(mix, struct {
+			shape  string
+			energy float64
+		}{
+			shape:  shape,
+			energy: energy,
+		})
+	}
+
+	return mix
 }
 
 func seededExpandedAutonomousPositions(worldWidth, worldHeight float64, count int, reserved []Vector) []Vector {

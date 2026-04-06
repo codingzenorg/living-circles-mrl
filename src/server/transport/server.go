@@ -20,6 +20,23 @@ type movementIntentMessage struct {
 	Direction simulation.Vector `json:"direction"`
 }
 
+type clientConnection struct {
+	conn    *websocket.Conn
+	writeMu sync.Mutex
+}
+
+func (c *clientConnection) WriteJSON(value any) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	return c.conn.WriteJSON(value)
+}
+
+func (c *clientConnection) Close() error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	return c.conn.Close()
+}
+
 type Server struct {
 	mux       *http.ServeMux
 	session   *simulation.Session
@@ -27,7 +44,7 @@ type Server struct {
 	upgrader  websocket.Upgrader
 
 	mu    sync.Mutex
-	conns map[*websocket.Conn]struct{}
+	conns map[*websocket.Conn]*clientConnection
 }
 
 func NewServer() *Server {
@@ -46,7 +63,7 @@ func NewServerWithSession(session *simulation.Session) *Server {
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(*http.Request) bool { return true },
 		},
-		conns: make(map[*websocket.Conn]struct{}),
+		conns: make(map[*websocket.Conn]*clientConnection),
 	}
 
 	server.routes()
@@ -89,10 +106,10 @@ func (s *Server) handleWebSocket(writer http.ResponseWriter, request *http.Reque
 		return
 	}
 
-	s.addConnection(connection)
-	if err := connection.WriteJSON(s.session.Snapshot()); err != nil {
+	client := s.addConnection(connection)
+	if err := client.WriteJSON(s.session.Snapshot()); err != nil {
 		s.removeConnection(connection)
-		_ = connection.Close()
+		_ = client.Close()
 		return
 	}
 
@@ -140,8 +157,8 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 
 func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot) {
 	s.mu.Lock()
-	connections := make([]*websocket.Conn, 0, len(s.conns))
-	for connection := range s.conns {
+	connections := make([]*clientConnection, 0, len(s.conns))
+	for _, connection := range s.conns {
 		connections = append(connections, connection)
 	}
 	s.mu.Unlock()
@@ -149,17 +166,19 @@ func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot) {
 	for _, connection := range connections {
 		if err := connection.WriteJSON(snapshot); err != nil {
 			if !errors.Is(err, websocket.ErrCloseSent) {
-				s.removeConnection(connection)
+				s.removeConnection(connection.conn)
 			}
 			_ = connection.Close()
 		}
 	}
 }
 
-func (s *Server) addConnection(connection *websocket.Conn) {
+func (s *Server) addConnection(connection *websocket.Conn) *clientConnection {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.conns[connection] = struct{}{}
+	client := &clientConnection{conn: connection}
+	s.conns[connection] = client
+	return client
 }
 
 func (s *Server) removeConnection(connection *websocket.Conn) {
@@ -171,8 +190,8 @@ func (s *Server) removeConnection(connection *websocket.Conn) {
 func (s *Server) closeConnections() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for connection := range s.conns {
+	for key, connection := range s.conns {
 		_ = connection.Close()
-		delete(s.conns, connection)
+		delete(s.conns, key)
 	}
 }

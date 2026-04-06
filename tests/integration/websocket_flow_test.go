@@ -1565,6 +1565,11 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.AutonomousCircles[0].Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected fixed first autonomous radius %v, got %v", simulation.DefaultPlayerRadius, initial.AutonomousCircles[0].Radius)
 	}
+	for _, circle := range initial.AutonomousCircles[2:] {
+		if circle.Energy < 82 || circle.Energy > 96 {
+			t.Fatalf("expected seeded expanded autonomous energy to stay in range, got %+v", circle)
+		}
+	}
 }
 
 func TestClientReceivesAutonomousFoodSeekingMotion(t *testing.T) {
