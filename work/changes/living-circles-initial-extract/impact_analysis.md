@@ -280,6 +280,60 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make food regeneration respond deterministically to the larger world and population baseline instead of using one static global delay for every situation.
+
+## Why This Matters
+
+The expanded-world slice made the system feel less staged, but it also made the current food-recovery rule more visibly provisional. Right now every consumed food slot returns after one fixed delay, regardless of how many circles are alive or how depleted the world currently is.
+
+That static timer was acceptable in the tiny demo phase. In the larger world, it weakens ecosystem validity because resource recovery still behaves like a lab constant rather than part of the living system.
+
+## Impacted Areas
+
+### Simulation model
+
+- food-slot regeneration timing should become sensitive to one small deterministic pressure rule
+- consumed slots should still return to the same identity and position
+- depletion and recovery should become more meaningful at world level without redesigning the whole economy
+
+### Runtime contract
+
+- the current snapshot shape is likely still sufficient
+- build should avoid adding new fields unless the pressure rule becomes too opaque without a minimal inspectability aid
+
+### Browser rendering
+
+- the client may not need any rendering changes if the timing shift is visible from ordinary food disappearance and return
+- this should remain a simulation slice, not a HUD expansion by default
+
+### Evaluation expectations
+
+- EGD after this slice should be able to assess whether the larger world shows more believable depletion and recovery cycles
+- this is a direct follow-up to the current ecosystem-validity pressure
+
+### Existing semantics
+
+- movement, energy, fight, reproduction, continuity, child ownership, and steering should remain unchanged
+- food slot identity and fixed position should remain unchanged
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- one deterministic pressure signal for regeneration timing
+- a bounded rule that is simple enough to explain and test
+- whether the rule should respond to missing-slot count, active-population pressure, or another single world-level signal
+
+## Risks If Ignored
+
+- the world may be larger, but food recovery will still feel like a static demo constant
+- depletion and recovery cycles will remain weaker than the model hypothesis suggests
+- future ecosystem evaluation will keep conflating scale-up with actual ecological pressure
+
+---
+
+## Change
+
 Expose which side failed the capacity check when reproduction is blocked.
 
 ## Why This Matters
