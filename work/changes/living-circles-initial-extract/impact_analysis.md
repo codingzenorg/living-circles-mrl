@@ -3310,3 +3310,18 @@ That points to a bounded client-only slice:
 - add lightweight offscreen edge awareness
 - keep the minimap secondary
 - leave server semantics and contract shape unchanged
+## Pressure: Player Heading Cue In Viewport Mode
+
+The viewport, deadzone, minimap, and offscreen-awareness slices improved scale, comfort, orientation, and nearby awareness. The remaining pressure is more local: the player still lacks a simple cue for current heading inside the viewport itself.
+
+The new pressure is:
+
+- the main viewport should remain primary
+- the player should gain more immediate local direction readability
+- the solution should stay lightweight and not become path prediction or navigation UI
+
+That points to a bounded client-only slice:
+
+- add a local player heading cue
+- keep it tied to recent authoritative motion
+- leave server semantics and contract shape unchanged
