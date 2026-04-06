@@ -104,6 +104,11 @@
         border-color: rgba(255, 201, 92, 0.28);
       }
 
+      .chip--crowding {
+        background: rgba(255, 167, 61, 0.12);
+        border-color: rgba(255, 167, 61, 0.28);
+      }
+
       .control {
         appearance: none;
         padding: 8px 14px;
@@ -188,6 +193,7 @@
           <div class="chip chip--danger">Red ring: same-shape danger</div>
           <div class="chip chip--opportunity">Green ring: different-shape opportunity</div>
           <div class="chip chip--blocked">Amber dashed ring: blocked reproduction</div>
+          <div class="chip chip--crowding">Amber glow: costly crowding zone</div>
         </div>
         <canvas id="world" width="800" height="600"></canvas>
         <div class="details">

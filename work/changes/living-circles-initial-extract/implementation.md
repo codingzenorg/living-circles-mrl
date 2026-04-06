@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_shape_and_risk_play_legibility.md`
+`docs/slices/initial_crowding_pressure_play_legibility.md`
 
 ## Implemented Shape
 
@@ -10,6 +10,8 @@
 - browser client under `src/client/`
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
+- browser rendering now highlights costly nearby crowding zones with local amber halos and circle-level crowding rings grounded only in visible circle positions
+- the player HUD now surfaces immediate crowding pressure without adding any new server-side crowding fields
 - browser rendering now uses stronger on-canvas cues for same-shape danger, different-shape opportunity, and blocked reproduction near the player instead of relying mainly on dense HUD text
 - the live HUD now summarizes interaction meaning in more readable language while preserving detailed authoritative identifiers for inspection
 - authoritative food initialization and consumption inside the Go world model

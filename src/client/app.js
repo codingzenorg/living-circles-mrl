@@ -15,6 +15,9 @@ let activeSocket = null;
 let senderIntervalId = null;
 
 const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown", "w", "a", "s", "d"]);
+const CROWDING_RADIUS = 120;
+const CROWDING_THRESHOLD = 2;
+const CROWDING_CUE_DISTANCE = 260;
 
 function normalizeKey(key) {
   return key.toLowerCase();
@@ -26,6 +29,26 @@ function childCount(circle) {
 
 function distanceBetween(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function nearbyCircles(circle, circles, radius) {
+  return circles.filter((other) => other.id !== circle.id && distanceBetween(circle, other) <= radius);
+}
+
+function crowdingCount(circle, circles) {
+  return nearbyCircles(circle, circles, CROWDING_RADIUS).length;
+}
+
+function isCrowded(circle, circles) {
+  return crowdingCount(circle, circles) >= CROWDING_THRESHOLD;
+}
+
+function shouldRenderCrowdingCue(circle, circles, player) {
+  if (!player) {
+    return false;
+  }
+
+  return isCrowded(circle, circles) && distanceBetween(circle, player) <= CROWDING_CUE_DISTANCE;
 }
 
 function playerRiskState(circle, player, interaction) {
@@ -119,6 +142,8 @@ function currentDirection() {
 }
 
 function draw(snapshot) {
+  const circles = snapshot.player ? [snapshot.player, ...snapshot.autonomous_circles] : [...snapshot.autonomous_circles];
+
   canvas.width = snapshot.world.width;
   canvas.height = snapshot.world.height;
 
@@ -131,6 +156,8 @@ function draw(snapshot) {
   context.lineWidth = 2;
   context.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
 
+  drawCrowdingZones(circles, snapshot.player);
+
   context.fillStyle = "#ff8a5b";
   for (const food of snapshot.foods) {
     context.beginPath();
@@ -139,12 +166,13 @@ function draw(snapshot) {
   }
 
   for (const circle of snapshot.autonomous_circles) {
-    drawCircle(circle, false, snapshot.player);
+    drawCircle(circle, false, snapshot.player, circles);
   }
 
   if (snapshot.player) {
-    drawCircle(snapshot.player, true, snapshot.player);
-    energyNode.textContent = `E ${snapshot.player.energy.toFixed(0)} · C ${childCount(snapshot.player)} · G ${snapshot.player.generation}`;
+    drawCircle(snapshot.player, true, snapshot.player, circles);
+    const pressure = isCrowded(snapshot.player, circles) ? " · pressure" : "";
+    energyNode.textContent = `E ${snapshot.player.energy.toFixed(0)} · C ${childCount(snapshot.player)} · G ${snapshot.player.generation}${pressure}`;
   } else {
     energyNode.textContent = "E defeated";
   }
@@ -153,9 +181,27 @@ function draw(snapshot) {
   pushEventLog(interactionSummary(snapshot.interaction));
 }
 
-function drawCircle(circle, isPlayer, player) {
+function drawCrowdingZones(circles, player) {
+  for (const circle of circles) {
+    if (!shouldRenderCrowdingCue(circle, circles, player)) {
+      continue;
+    }
+
+    const gradient = context.createRadialGradient(circle.x, circle.y, circle.radius + 8, circle.x, circle.y, 92);
+    gradient.addColorStop(0, "rgba(255, 170, 61, 0.18)");
+    gradient.addColorStop(0.65, "rgba(255, 128, 61, 0.08)");
+    gradient.addColorStop(1, "rgba(255, 128, 61, 0)");
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(circle.x, circle.y, 92, 0, Math.PI * 2);
+    context.fill();
+  }
+}
+
+function drawCircle(circle, isPlayer, player, circles) {
   const matchesPlayerShape = !isPlayer && player && circle.shape === player.shape;
   const relationToPlayer = playerRiskState(circle, player, latestSnapshot?.interaction);
+  const crowded = shouldRenderCrowdingCue(circle, circles, player);
   const color = isPlayer ? "#ff8a5b" : circle.shape === "triangle" ? "#6fd5ff" : "#c08cff";
   context.fillStyle = color;
 
@@ -208,6 +254,14 @@ function drawCircle(circle, isPlayer, player) {
     context.setLineDash([]);
   }
 
+  if (crowded) {
+    context.strokeStyle = "rgba(255, 170, 61, 0.85)";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.arc(circle.x, circle.y, circle.radius + 15, 0, Math.PI * 2);
+    context.stroke();
+  }
+
   if (isPlayer) {
     context.strokeStyle = "#ffe082";
     context.lineWidth = 4;
@@ -227,8 +281,8 @@ function drawCircle(circle, isPlayer, player) {
   context.font = "16px Georgia";
   const children = childCount(circle);
   const label = isPlayer
-    ? `YOU ${circle.id} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}`
-    : `${circle.id} ${relationToPlayer === "danger" ? "danger" : relationToPlayer === "opportunity" ? "open" : relationToPlayer === "blocked" ? "blocked" : matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}`;
+    ? `YOU ${circle.id} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}`
+    : `${circle.id} ${relationToPlayer === "danger" ? "danger" : relationToPlayer === "opportunity" ? "open" : relationToPlayer === "blocked" ? "blocked" : matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}`;
   context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
 
   context.font = "12px Georgia";
