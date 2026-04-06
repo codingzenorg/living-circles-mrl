@@ -446,6 +446,65 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make autonomous steering respond in a bounded way to the local crowding pressure that now exists in the world.
+
+## Why This Matters
+
+The simulation now applies extra energy pressure in dense local neighborhoods. That improves ecosystem validity, but it also creates a new coherence tension: autonomous circles still choose movement as if dense local concentration had no direct downside until after the cost is already paid.
+
+Without a steering adjustment, the model risks splitting into two inconsistent layers:
+
+- the energy system says crowding matters
+- the steering system still behaves as if crowding is mostly irrelevant
+
+The next pressure is therefore to let autonomy react minimally to the local pressure already present in the simulation.
+
+## Impacted Areas
+
+### Simulation model
+
+- autonomous steering should consider local crowding as one bounded influence
+- the adjustment should remain deterministic and local rather than strategic or global
+- the player should remain under unchanged manual steering for now
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because movement and energy consequences are already visible
+- build should avoid new protocol fields unless the steering adjustment becomes too opaque without a small inspectability aid
+
+### Browser rendering
+
+- no rendering change should be required if the effect is visible through ordinary movement
+- this should remain a simulation-behavior slice rather than a UI slice
+
+### Evaluation expectations
+
+- EGD after this slice should be able to assess whether dense clusters now create not only extra cost but also more plausible dispersal behavior
+- this directly follows the new local crowding-pressure baseline
+
+### Existing semantics
+
+- food placement, regeneration, fight, reproduction, continuity, child ownership, and the crowding energy rule itself should remain unchanged
+- the slice should refine steering coherence, not redesign the world
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- one bounded way for local crowding to influence autonomous direction choice
+- how that influence coexists with current food, threat, and interaction priorities
+- a deterministic tie-break rule when crowding differences are small or equal
+
+## Risks If Ignored
+
+- autonomy may keep paying for crowding without ever learning to avoid it
+- the new crowding-pressure rule may feel bolted on rather than integrated into world behavior
+- future ecosystem evaluation will still be missing a stronger route toward dispersal dynamics
+
+---
+
+## Change
+
 Expose which side failed the capacity check when reproduction is blocked.
 
 ## Why This Matters
