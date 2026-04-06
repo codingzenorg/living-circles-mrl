@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_population_scaled_food_capacity_baseline.md`
+`docs/slices/initial_local_crowding_energy_pressure.md`
 
 ## Implemented Shape
 
@@ -13,6 +13,7 @@
 - authoritative food initialization and consumption inside the Go world model
 - expanded default-world food capacity now derives from the initial active-circle count rather than remaining a purely hand-picked slot count
 - food-slot regeneration delay now scales deterministically with current missing-slot count rather than remaining one unconditional global timer
+- circles now pay a small additional energy cost when at least two other active circles are within a fixed local crowding radius
 - expanded default world baseline with a larger bounded map, five deterministic autonomous circles, and eight deterministic food slots
 - explicit shape identity and current interaction classification in snapshots
 - deterministic same-shape fight resolution with loser removal
@@ -179,6 +180,7 @@
 - deterministic shape assignment in the default demo world: player `triangle`, same-shape autonomous `triangle`, different-shape autonomous `square`
 - deterministic fixed food placement scaled to the expanded default world
 - the expanded default world now derives its starting food count as active circles plus two, capped by the available deterministic slot set, while narrow custom worlds keep the smaller three-slot baseline
+- local neighborhoods now become more expensive when at least two nearby active circles are within `120` units
 - deterministic food regeneration returns consumed slots to their original positions after a fixed delay
 - deterministic food regeneration returns consumed slots to their original positions, with delay now increasing under deeper current depletion
 - attached children remain the source of truth for fight power, replacement continuity, and child-payment rules, and are embodied as attached orbiting children
@@ -199,6 +201,7 @@ The slice needed these implementation choices not fully specified in the refined
 - when player energy reaches zero, movement stops and energy clamps at zero
 - food grants a fixed energy recovery amount of `10`
 - each consumed food slot regenerates after `12` ticks when it is the only missing slot, with the delay increasing by `2` ticks for each additional currently missing slot
+- each active circle pays an additional `1` energy on a tick when at least two other active circles are within `120` units
 - attached-child food collection gives the same parent energy gain as parent-body food collection
 - attached-child body contact against another parent body now counts as authoritative pair contact for interaction triggering
 - attached-child-to-attached-child overlap also counts as authoritative pair contact for interaction triggering

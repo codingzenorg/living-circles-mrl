@@ -57,6 +57,87 @@ func TestAdvanceConsumesEnergyWhenMovementOccurs(t *testing.T) {
 	}
 }
 
+func TestPlayerAvoidsCrowdingCostWhenNeighborhoodIsSparse(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:               simulation.DefaultWorldWidth,
+		WorldHeight:              simulation.DefaultWorldHeight,
+		UseExpandedPopulation:    false,
+		PlayerShape:              "triangle",
+		AutonomousShape:          "square",
+		SecondaryAutonomousShape: "",
+		PlayerEnergy:             simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:         simulation.DefaultPlayerEnergy,
+		AutonomousX:              80,
+		AutonomousY:              80,
+	})
+	before := session.Snapshot()
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	after := session.Advance()
+
+	expectedEnergy := before.Player.Energy - simulation.DefaultMoveCost
+	if after.Player.Energy != expectedEnergy {
+		t.Fatalf("expected sparse player movement energy %v, got %v", expectedEnergy, after.Player.Energy)
+	}
+}
+
+func TestPlayerPaysCrowdingCostWhenTwoNeighborsAreNearby(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                1000,
+		WorldHeight:               800,
+		UseExpandedPopulation:     false,
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "triangle",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          simulation.DefaultPlayerEnergy,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+		PlayerX:                   120,
+		PlayerY:                   120,
+		AutonomousX:               180,
+		AutonomousY:               120,
+		SecondaryAutonomousX:      120,
+		SecondaryAutonomousY:      180,
+	})
+	before := session.Snapshot()
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	after := session.Advance()
+
+	expectedEnergy := before.Player.Energy - simulation.DefaultMoveCost - simulation.DefaultCrowdingMoveCost
+	if after.Player.Energy != expectedEnergy {
+		t.Fatalf("expected crowded player movement energy %v, got %v", expectedEnergy, after.Player.Energy)
+	}
+}
+
+func TestAutonomousPaysCrowdingCostWhenTwoNeighborsAreNearby(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                1000,
+		WorldHeight:               800,
+		UseExpandedPopulation:     false,
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "triangle",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          80,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+		PlayerX:                   120,
+		PlayerY:                   120,
+		AutonomousX:               180,
+		AutonomousY:               120,
+		SecondaryAutonomousX:      180,
+		SecondaryAutonomousY:      180,
+	})
+	before := session.Snapshot()
+
+	after := session.Advance()
+
+	expectedEnergy := before.AutonomousCircles[0].Energy - simulation.DefaultMoveCost - simulation.DefaultCrowdingMoveCost
+	if after.AutonomousCircles[0].Energy != expectedEnergy {
+		t.Fatalf("expected crowded autonomous movement energy %v, got %v", expectedEnergy, after.AutonomousCircles[0].Energy)
+	}
+}
+
 func TestPlayerWithZeroEnergyDisappearsWithoutChildren(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:      "triangle",

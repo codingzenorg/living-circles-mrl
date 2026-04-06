@@ -31,6 +31,9 @@ const (
 	DefaultLowEnergyFoodThreshold               = 40.0
 	DefaultThreatAvoidanceDistance              = 120.0
 	DefaultBlockedReproductionAvoidanceDistance = 120.0
+	DefaultCrowdingDistance                     = 120.0
+	DefaultCrowdingThreshold                    = 2
+	DefaultCrowdingMoveCost                     = 1.0
 	DefaultReproductionMinEnergy                = 15.0
 	DefaultReproductionCost                     = 10.0
 	DefaultPlayerShape                          = "triangle"
@@ -545,6 +548,7 @@ func (w *World) advanceCircle(circle *PlayerCircle, intent Vector) *PlayerCircle
 	circle.X = clamp(circle.X+normalized.X*w.speed, DefaultPlayerRadius, w.bounds.Width-DefaultPlayerRadius)
 	circle.Y = clamp(circle.Y+normalized.Y*w.speed, DefaultPlayerRadius, w.bounds.Height-DefaultPlayerRadius)
 	circle.Energy = math.Max(0, circle.Energy-w.moveCost)
+	circle.Energy = math.Max(0, circle.Energy-w.playerCrowdingCost(*circle))
 
 	return circle
 }
@@ -564,11 +568,49 @@ func (w *World) advanceAutonomousCircles(tick int64) {
 		circle.X = clamp(circle.X+normalized.X*w.speed, DefaultPlayerRadius, w.bounds.Width-DefaultPlayerRadius)
 		circle.Y = clamp(circle.Y+normalized.Y*w.speed, DefaultPlayerRadius, w.bounds.Height-DefaultPlayerRadius)
 		circle.Energy = math.Max(0, circle.Energy-w.moveCost)
+		circle.Energy = math.Max(0, circle.Energy-w.autonomousCrowdingCost(circle))
 		if circle.X == DefaultPlayerRadius || circle.X == w.bounds.Width-DefaultPlayerRadius {
 			w.autonomousDirections[index] = Vector{X: -intent.X, Y: intent.Y}
 		}
 		w.autonomousCircles[index] = circle
 	}
+}
+
+func (w *World) playerCrowdingCost(circle PlayerCircle) float64 {
+	neighbors := 0
+	for _, other := range w.autonomousCircles {
+		if other.Energy <= 0 {
+			continue
+		}
+		if distanceBetween(circle.X, circle.Y, other.X, other.Y) <= DefaultCrowdingDistance {
+			neighbors++
+		}
+	}
+	if neighbors < DefaultCrowdingThreshold {
+		return 0
+	}
+
+	return DefaultCrowdingMoveCost
+}
+
+func (w *World) autonomousCrowdingCost(circle AutonomousCircle) float64 {
+	neighbors := 0
+	if w.player != nil && w.player.Energy > 0 && distanceBetween(circle.X, circle.Y, w.player.X, w.player.Y) <= DefaultCrowdingDistance {
+		neighbors++
+	}
+	for _, other := range w.autonomousCircles {
+		if other.ID == circle.ID || other.Energy <= 0 {
+			continue
+		}
+		if distanceBetween(circle.X, circle.Y, other.X, other.Y) <= DefaultCrowdingDistance {
+			neighbors++
+		}
+	}
+	if neighbors < DefaultCrowdingThreshold {
+		return 0
+	}
+
+	return DefaultCrowdingMoveCost
 }
 
 func (w *World) autonomousIntent(circle AutonomousCircle, index int, tick int64) Vector {

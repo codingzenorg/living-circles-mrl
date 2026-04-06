@@ -228,6 +228,76 @@ func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	}
 }
 
+func TestClientReceivesCrowdingEnergyPressureInClusteredWorld(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                1000,
+		WorldHeight:               800,
+		UseExpandedPopulation:     false,
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "triangle",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          simulation.DefaultPlayerEnergy,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+		PlayerX:                   120,
+		PlayerY:                   120,
+		AutonomousX:               180,
+		AutonomousY:               120,
+		SecondaryAutonomousX:      120,
+		SecondaryAutonomousY:      180,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	message := map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 1,
+			"y": 0,
+		},
+	}
+	if err := connection.WriteJSON(message); err != nil {
+		t.Fatalf("write movement intent: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read updated snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.Player == nil {
+			continue
+		}
+
+		expectedEnergy := initial.Player.Energy - simulation.DefaultMoveCost - simulation.DefaultCrowdingMoveCost
+		if snapshot.Player.Energy != expectedEnergy {
+			t.Fatalf("expected crowded player energy %v, got %v", expectedEnergy, snapshot.Player.Energy)
+		}
+		return
+	}
+}
+
 func TestClientReceivesFightAbsorptionThroughChildLoss(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:             "triangle",
