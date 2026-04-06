@@ -3127,3 +3127,19 @@ That pressure points to a bounded client-only slice:
 - bound NPC and encounter panel growth
 - preserve readable access within those bounds
 - leave server semantics and contract shape unchanged
+## Pressure: Fullscreen Demo Layout
+
+The demo started as a tightly constrained evaluation surface, which was useful while the world was small and the support area was still unstable. Recent slices reduced legend density, reduced support text density, stabilized the player card position, and bounded lower support-panel growth. That means the support area is now sufficiently controlled that the main pressure has shifted.
+
+The new pressure is:
+
+- the simulated world is now larger and denser
+- the current centered layout leaves available viewport space unused
+- the canvas no longer feels proportionate to the larger default world
+
+That points to a bounded client-only slice:
+
+- expand the demo across more of the viewport
+- preserve the canvas as the dominant surface
+- keep support information readable and secondary
+- leave server semantics and contract shape unchanged
