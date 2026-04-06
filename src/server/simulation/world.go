@@ -620,51 +620,89 @@ func (w *World) autonomousIntent(circle AutonomousCircle, index int, tick int64)
 
 	foodTarget, foodDistance, foodFound := nearestFoodTarget(circle, w.foods, tick)
 	if foodFound && circle.Energy < DefaultLowEnergyFoodThreshold {
-		return Vector{
+		return w.adjustForCrowding(circle, Vector{
 			X: foodTarget.X - circle.X,
 			Y: foodTarget.Y - circle.Y,
-		}
+		})
 	}
 
 	threatTarget, threatFound := nearestThreatTarget(circle, w.player, w.autonomousCircles, tick)
 	if !w.disableThreatAvoidance && threatFound {
-		return Vector{
+		return w.adjustForCrowding(circle, Vector{
 			X: circle.X - threatTarget.X,
 			Y: circle.Y - threatTarget.Y,
-		}
+		})
 	}
 
 	blockedTarget, blockedFound := nearestBlockedReproductionTarget(circle, w.player, w.autonomousCircles, tick)
 	if !w.disableBlockedReproductionAvoidance && blockedFound {
-		return Vector{
+		return w.adjustForCrowding(circle, Vector{
 			X: circle.X - blockedTarget.X,
 			Y: circle.Y - blockedTarget.Y,
-		}
+		})
 	}
 
 	if foodFound && foodDistance <= DefaultFoodPriorityDistance {
-		return Vector{
+		return w.adjustForCrowding(circle, Vector{
 			X: foodTarget.X - circle.X,
 			Y: foodTarget.Y - circle.Y,
-		}
+		})
 	}
 
 	interactionTarget, _, interactionFound := nearestInteractionTarget(circle, w.player, w.autonomousCircles, tick)
 	if interactionFound {
-		return Vector{
+		return w.adjustForCrowding(circle, Vector{
 			X: interactionTarget.X - circle.X,
 			Y: interactionTarget.Y - circle.Y,
-		}
+		})
 	}
 
 	if foodFound {
-		return Vector{
+		return w.adjustForCrowding(circle, Vector{
 			X: foodTarget.X - circle.X,
 			Y: foodTarget.Y - circle.Y,
+		})
+	}
+
+	return w.adjustForCrowding(circle, w.autonomousDirections[index])
+}
+
+func (w *World) adjustForCrowding(circle AutonomousCircle, intent Vector) Vector {
+	normalized := normalize(intent)
+	if normalized.X == 0 && normalized.Y == 0 {
+		return intent
+	}
+
+	currentNeighbors := w.localCrowdingNeighbors(circle.X, circle.Y, circle.ID)
+	nextX := clamp(circle.X+normalized.X*w.speed, DefaultPlayerRadius, w.bounds.Width-DefaultPlayerRadius)
+	nextY := clamp(circle.Y+normalized.Y*w.speed, DefaultPlayerRadius, w.bounds.Height-DefaultPlayerRadius)
+	nextNeighbors := w.localCrowdingNeighbors(nextX, nextY, circle.ID)
+
+	if nextNeighbors > currentNeighbors+1 {
+		return Vector{
+			X: -normalized.X,
+			Y: -normalized.Y,
 		}
 	}
 
-	return w.autonomousDirections[index]
+	return intent
+}
+
+func (w *World) localCrowdingNeighbors(x, y float64, selfID string) int {
+	neighbors := 0
+	if w.player != nil && w.player.Energy > 0 && w.player.ID != selfID && distanceBetween(x, y, w.player.X, w.player.Y) <= DefaultCrowdingDistance {
+		neighbors++
+	}
+	for _, other := range w.autonomousCircles {
+		if other.ID == selfID || other.Energy <= 0 {
+			continue
+		}
+		if distanceBetween(x, y, other.X, other.Y) <= DefaultCrowdingDistance {
+			neighbors++
+		}
+	}
+
+	return neighbors
 }
 
 func nearestFoodTarget(circle AutonomousCircle, foods []Food, tick int64) (Food, float64, bool) {

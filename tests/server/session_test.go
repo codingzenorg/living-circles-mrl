@@ -971,6 +971,64 @@ func TestLowEnergyChildAwareFoodTargetingCanOverrideParentOnlyDistance(t *testin
 	}
 }
 
+func TestAutonomousKeepsOrdinarySteeringWhenCrowdingDifferenceIsSmall(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                          1000,
+		WorldHeight:                         800,
+		UseExpandedPopulation:               false,
+		PlayerShape:                         "square",
+		PlayerX:                             700,
+		PlayerY:                             500,
+		PlayerEnergy:                        100,
+		PlayerChildrenCount:                 0,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "",
+		AutonomousX:                         369,
+		AutonomousY:                         300,
+		AutonomousEnergy:                    100,
+		AutonomousChildrenCount:             1,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	before := session.Snapshot()
+	snapshot := session.Advance()
+
+	if snapshot.AutonomousCircles[0].X <= before.AutonomousCircles[0].X {
+		t.Fatalf("expected ordinary food steering to remain in control when crowding difference is small, before=%v after=%v", before.AutonomousCircles[0].X, snapshot.AutonomousCircles[0].X)
+	}
+}
+
+func TestAutonomousAvoidsMovingIntoClearlyMoreCrowdedDirection(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                          1000,
+		WorldHeight:                         800,
+		UseExpandedPopulation:               true,
+		PlayerShape:                         "square",
+		PlayerX:                             520,
+		PlayerY:                             260,
+		PlayerEnergy:                        100,
+		PlayerChildrenCount:                 0,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "square",
+		AutonomousX:                         360,
+		AutonomousY:                         260,
+		SecondaryAutonomousX:                620,
+		SecondaryAutonomousY:                260,
+		AutonomousEnergy:                    100,
+		SecondaryAutonomousEnergy:           100,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	before := session.Snapshot()
+	snapshot := session.Advance()
+
+	if snapshot.AutonomousCircles[0].X >= before.AutonomousCircles[0].X {
+		t.Fatalf("expected autonomous circle to reverse away from clearly more crowded direction, before=%v after=%v", before.AutonomousCircles[0].X, snapshot.AutonomousCircles[0].X)
+	}
+}
+
 func TestAutonomousInteractionSeekingCanCreatePreferredDifferentShapeInteractionWithoutPlayerMovement(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:               "square",
