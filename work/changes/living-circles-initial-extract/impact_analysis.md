@@ -3143,3 +3143,18 @@ That points to a bounded client-only slice:
 - preserve the canvas as the dominant surface
 - keep support information readable and secondary
 - leave server semantics and contract shape unchanged
+## Pressure: Side Column Visual Weight Reduction
+
+The fullscreen layout solved the previous underuse of the available viewport by giving the canvas a larger main surface and docking the support area into a persistent side column. That improved spatial usage, but it also made the support area feel visually heavier because three bordered support blocks now read as a dense vertical mass beside the play surface.
+
+The new pressure is:
+
+- the canvas should remain clearly dominant
+- the side column should stay secondary now that it is always visible on desktop
+- support readability should be preserved without the current amount of visual chrome
+
+That points to a bounded client-only slice:
+
+- reduce side-column visual weight
+- preserve current information hierarchy and readability
+- leave server semantics and contract shape unchanged
