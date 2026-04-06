@@ -172,6 +172,59 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Add a small directional camera lookahead to viewport mode.
+
+## Why This Matters
+
+Viewport mode now solves several orientation problems:
+
+- the player no longer sees the whole world shrunk down
+- the camera follows the player with a deadzone
+- the minimap restores whole-world orientation
+- local heading and offscreen cues make nearby pressure easier to read
+
+But camera feel is still slightly neutral. Once the player is already moving in a clear direction, the viewport still gives equal space in every direction. That keeps the stage readable, but it leaves some of the new fullscreen eye-candy potential unused.
+
+The next pressure is to make the viewport feel a bit more alive and responsive without crossing into cinematic camera behavior.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the client camera transform should allow a small directional lookahead
+- that offset should be derived from recent authoritative player motion
+- the stage should still feel anchored and controllable
+
+### Camera behavior
+
+- the current deadzone model should remain intact
+- world-edge clamping should remain intact
+- lookahead should be small enough to avoid jitter or floatiness
+
+### Existing semantics
+
+- server/world behavior should remain unchanged
+- minimap, heading cue, and offscreen awareness should keep working under the shifted viewport
+- support panels and other UI should remain secondary to the stage
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether lookahead is derived from the player's recent authoritative heading or only from active input direction
+- how large the offset can become before it starts harming control clarity
+- how lookahead recenters when the player slows or changes direction
+
+## Risks If Ignored
+
+- viewport mode will remain more readable than the old whole-world view but still flatter than it could be
+- the player will gain awareness cues without gaining a stronger sense of forward motion in the stage
+- later polish work may need to revisit the camera as a separate concern instead of building on the existing viewport track
+
+---
+
+## Change
+
 Remove grown derived radius from attached-child orbit distance.
 
 ## Why This Matters
