@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -302,9 +303,9 @@ func TestClientReceivesCrowdingAwareAutonomousSteering(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		WorldWidth:                          1000,
 		WorldHeight:                         800,
-		UseExpandedPopulation:               true,
+		UseExpandedPopulation:               false,
 		PlayerShape:                         "square",
-		PlayerX:                             520,
+		PlayerX:                             486,
 		PlayerY:                             260,
 		PlayerEnergy:                        100,
 		PlayerChildrenCount:                 0,
@@ -312,7 +313,7 @@ func TestClientReceivesCrowdingAwareAutonomousSteering(t *testing.T) {
 		SecondaryAutonomousShape:            "square",
 		AutonomousX:                         360,
 		AutonomousY:                         260,
-		SecondaryAutonomousX:                620,
+		SecondaryAutonomousX:                487,
 		SecondaryAutonomousY:                260,
 		AutonomousEnergy:                    100,
 		SecondaryAutonomousEnergy:           100,
@@ -1503,6 +1504,15 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if len(initial.Foods) != simulation.DefaultExpandedFoodCount {
 		t.Fatalf("expected %d food slots, got %d", simulation.DefaultExpandedFoodCount, len(initial.Foods))
 	}
+	for index, food := range initial.Foods {
+		expectedID := "food-" + strconv.Itoa(index+1)
+		if food.ID != expectedID {
+			t.Fatalf("expected deterministic expanded food id %q, got %q", expectedID, food.ID)
+		}
+		if food.X == simulation.DefaultExpandedWorldWidth/2 && food.Y == simulation.DefaultExpandedWorldHeight/2 {
+			t.Fatalf("expected seeded expanded food layout to avoid exact center, got %+v", food)
+		}
+	}
 	if initial.AutonomousCircles[0].Shape != initial.Player.Shape {
 		t.Fatalf("expected first autonomous circle to match player shape %q, got %q", initial.Player.Shape, initial.AutonomousCircles[0].Shape)
 	}
@@ -1548,7 +1558,20 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 }
 
 func TestClientReceivesAutonomousFoodSeekingMotion(t *testing.T) {
-	server := transport.NewServer()
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               simulation.DefaultPlayerShape,
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousShape:           simulation.DefaultPlayerShape,
+		AutonomousX:               100,
+		AutonomousY:               100,
+		AutonomousEnergy:          simulation.DefaultPlayerEnergy,
+		SecondaryAutonomousShape:  simulation.DefaultAutoShape,
+		SecondaryAutonomousX:      520,
+		SecondaryAutonomousY:      300,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+	}))
 	httpServer := httptest.NewServer(server.Handler())
 	defer httpServer.Close()
 

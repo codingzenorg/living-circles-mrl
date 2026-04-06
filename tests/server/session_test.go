@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"math"
+	"strconv"
 	"testing"
 
 	"github.com/codingzen/living-circles-mrl/src/server/simulation"
@@ -365,18 +366,10 @@ func TestAdvanceDoesNotMoveOnIdleTick(t *testing.T) {
 func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	world := simulation.NewWorld()
 	snapshot := world.Snapshot(0)
+	recreated := simulation.NewWorld().Snapshot(0)
 
 	if snapshot.World.Width != simulation.DefaultExpandedWorldWidth || snapshot.World.Height != simulation.DefaultExpandedWorldHeight {
 		t.Fatalf("expected expanded default world %vx%v, got %vx%v", simulation.DefaultExpandedWorldWidth, simulation.DefaultExpandedWorldHeight, snapshot.World.Width, snapshot.World.Height)
-	}
-	if len(snapshot.Foods) != simulation.DefaultExpandedFoodCount {
-		t.Fatalf("expected %d deterministic food items, got %d", simulation.DefaultExpandedFoodCount, len(snapshot.Foods))
-	}
-	if snapshot.Foods[0].ID != "food-1" || snapshot.Foods[0].X != simulation.DefaultExpandedWorldWidth/2+32 || snapshot.Foods[0].Y != simulation.DefaultExpandedWorldHeight/2 {
-		t.Fatalf("unexpected first food placement: %+v", snapshot.Foods[0])
-	}
-	if snapshot.Foods[1].ID != "food-2" || snapshot.Foods[1].X != simulation.DefaultExpandedWorldWidth/2-108 || snapshot.Foods[1].Y != simulation.DefaultExpandedWorldHeight/2 {
-		t.Fatalf("unexpected second food placement: %+v", snapshot.Foods[1])
 	}
 	if len(snapshot.AutonomousCircles) != simulation.DefaultExpandedAutonomousCount {
 		t.Fatalf("expected %d autonomous circles, got %d", simulation.DefaultExpandedAutonomousCount, len(snapshot.AutonomousCircles))
@@ -438,12 +431,34 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.AutonomousCircles[1].Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected base autonomous radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.AutonomousCircles[1].Radius)
 	}
-	if snapshot.AutonomousCircles[2].ID != simulation.DefaultTertiaryID || snapshot.AutonomousCircles[3].ID != simulation.DefaultQuaternaryID || snapshot.AutonomousCircles[4].ID != simulation.DefaultQuinaryID {
+	if snapshot.AutonomousCircles[2].ID != simulation.DefaultTertiaryID ||
+		snapshot.AutonomousCircles[3].ID != simulation.DefaultQuaternaryID ||
+		snapshot.AutonomousCircles[4].ID != simulation.DefaultQuinaryID ||
+		snapshot.AutonomousCircles[5].ID != simulation.DefaultSenaryID ||
+		snapshot.AutonomousCircles[6].ID != simulation.DefaultSeptenaryID ||
+		snapshot.AutonomousCircles[7].ID != simulation.DefaultOctonaryID {
 		t.Fatalf("expected deterministic expanded autonomous ids, got %+v", snapshot.AutonomousCircles)
 	}
 	expectedFoodCount := len(snapshot.AutonomousCircles) + 3
 	if len(snapshot.Foods) != expectedFoodCount {
 		t.Fatalf("expected expanded food baseline to derive from active population, expected %d got %d", expectedFoodCount, len(snapshot.Foods))
+	}
+	if len(snapshot.Foods) != simulation.DefaultExpandedFoodCount {
+		t.Fatalf("expected expanded default food count %d, got %d", simulation.DefaultExpandedFoodCount, len(snapshot.Foods))
+	}
+	if len(recreated.Foods) != len(snapshot.Foods) {
+		t.Fatalf("expected recreated world to keep food count %d, got %d", len(snapshot.Foods), len(recreated.Foods))
+	}
+	for index, food := range snapshot.Foods {
+		if food.ID != "food-"+strconv.Itoa(index+1) {
+			t.Fatalf("expected deterministic expanded food id food-%d, got %q", index+1, food.ID)
+		}
+		if food.X == simulation.DefaultExpandedWorldWidth/2 && food.Y == simulation.DefaultExpandedWorldHeight/2 {
+			t.Fatalf("expected seeded food layout to avoid exact world center, got %+v", food)
+		}
+		if recreated.Foods[index] != food {
+			t.Fatalf("expected recreated world to keep deterministic food slot at %d, before=%+v after=%+v", index, food, recreated.Foods[index])
+		}
 	}
 }
 
@@ -468,6 +483,11 @@ func TestDefaultSessionResetRestoresExpandedPopulationDeterministically(t *testi
 	}
 	if reset.Player.X != before.Player.X || reset.Player.Y != before.Player.Y {
 		t.Fatalf("expected reset player position (%v,%v), got (%v,%v)", before.Player.X, before.Player.Y, reset.Player.X, reset.Player.Y)
+	}
+	for index, food := range before.Foods {
+		if reset.Foods[index] != food {
+			t.Fatalf("expected reset food slot %d to match initial slot, before=%+v after=%+v", index, food, reset.Foods[index])
+		}
 	}
 }
 
@@ -512,7 +532,14 @@ func TestExpandedDefaultWorldKeepsInitialEntitiesInsideBounds(t *testing.T) {
 }
 
 func TestOverlappingFoodRemovesItAndRestoresEnergy(t *testing.T) {
-	session := simulation.NewSession()
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          0,
+		SecondaryAutonomousEnergy: 0,
+	})
 	before := session.Snapshot()
 
 	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
@@ -608,20 +635,24 @@ func TestConsumedFoodDoesNotRegenerateBeforeDelayBoundary(t *testing.T) {
 }
 
 func TestMultipleMissingFoodSlotsIncreaseRegenDelayDeterministically(t *testing.T) {
-	session := simulation.NewSession()
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerX:                   424,
+		PlayerY:                   300,
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousX:               292,
+		AutonomousY:               300,
+		AutonomousEnergy:          simulation.DefaultPlayerEnergy,
+		SecondaryAutonomousEnergy: 0,
+	})
 	before := session.Snapshot()
-
-	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
-	_ = session.Advance()
 	snapshot := session.Advance()
 
 	consumedExtra := false
-	for range 20 {
-		snapshot = session.Advance()
-		if len(snapshot.Foods) <= len(before.Foods)-2 {
-			consumedExtra = true
-			break
-		}
+	if len(snapshot.Foods) <= len(before.Foods)-2 {
+		consumedExtra = true
 	}
 
 	if !consumedExtra {
@@ -688,7 +719,14 @@ func TestInitialChildrenDoNotChangeVisibleParentRadius(t *testing.T) {
 }
 
 func TestFoodRecoveryRespectsEnergyCap(t *testing.T) {
-	session := simulation.NewSession()
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          0,
+		SecondaryAutonomousEnergy: 0,
+	})
 	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
 	_ = session.Advance()
 	snapshot := session.Advance()
@@ -878,7 +916,20 @@ func TestAutonomousAttachedChildCanCollectFoodForParent(t *testing.T) {
 }
 
 func TestAutonomousFoodSeekingCanCollectOffLaneFood(t *testing.T) {
-	session := simulation.NewSession()
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:               "triangle",
+		PlayerX:                   700,
+		PlayerY:                   500,
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousShape:           "triangle",
+		AutonomousX:               100,
+		AutonomousY:               100,
+		AutonomousEnergy:          simulation.DefaultPlayerEnergy,
+		SecondaryAutonomousShape:  "square",
+		SecondaryAutonomousX:      520,
+		SecondaryAutonomousY:      300,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+	})
 	before := session.Snapshot()
 
 	var snapshot simulation.Snapshot
@@ -1003,9 +1054,9 @@ func TestAutonomousAvoidsMovingIntoClearlyMoreCrowdedDirection(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		WorldWidth:                          1000,
 		WorldHeight:                         800,
-		UseExpandedPopulation:               true,
+		UseExpandedPopulation:               false,
 		PlayerShape:                         "square",
-		PlayerX:                             520,
+		PlayerX:                             486,
 		PlayerY:                             260,
 		PlayerEnergy:                        100,
 		PlayerChildrenCount:                 0,
@@ -1013,7 +1064,7 @@ func TestAutonomousAvoidsMovingIntoClearlyMoreCrowdedDirection(t *testing.T) {
 		SecondaryAutonomousShape:            "square",
 		AutonomousX:                         360,
 		AutonomousY:                         260,
-		SecondaryAutonomousX:                620,
+		SecondaryAutonomousX:                487,
 		SecondaryAutonomousY:                260,
 		AutonomousEnergy:                    100,
 		SecondaryAutonomousEnergy:           100,

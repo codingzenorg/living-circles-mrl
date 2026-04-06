@@ -3,13 +3,14 @@ package simulation
 import (
 	"encoding/json"
 	"math"
+	"strconv"
 )
 
 const (
 	DefaultWorldWidth                           = 800.0
 	DefaultWorldHeight                          = 600.0
-	DefaultExpandedWorldWidth                   = 1200.0
-	DefaultExpandedWorldHeight                  = 900.0
+	DefaultExpandedWorldWidth                   = 1600.0
+	DefaultExpandedWorldHeight                  = 1200.0
 	DefaultPlayerRadius                         = 12.0
 	DefaultAttachedChildRadius                  = 4.0
 	DefaultAttachedChildOrbitGap                = 8.0
@@ -19,6 +20,9 @@ const (
 	DefaultTertiaryID                           = "circle-4"
 	DefaultQuaternaryID                         = "circle-5"
 	DefaultQuinaryID                            = "circle-6"
+	DefaultSenaryID                             = "circle-7"
+	DefaultSeptenaryID                          = "circle-8"
+	DefaultOctonaryID                           = "circle-9"
 	DefaultPlayerEnergy                         = 100.0
 	DefaultReplacementEnergy                    = 100.0
 	DefaultMaxEnergy                            = 100.0
@@ -38,8 +42,9 @@ const (
 	DefaultReproductionCost                     = 10.0
 	DefaultPlayerShape                          = "triangle"
 	DefaultAutoShape                            = "square"
-	DefaultExpandedAutonomousCount              = 5
-	DefaultExpandedFoodCount                    = 8
+	DefaultExpandedAutonomousCount              = 8
+	DefaultExpandedFoodCount                    = DefaultExpandedAutonomousCount + 3
+	DefaultExpandedFoodSeed               int64 = 73
 )
 
 type Bounds struct {
@@ -398,6 +403,39 @@ func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64) []Autonom
 			Energy:           95,
 			AttachedChildren: initialAttachedChildren(DefaultQuinaryID, 0),
 		},
+		{
+			ID:               DefaultSenaryID,
+			LineageID:        lineageIDFor(DefaultSenaryID),
+			Generation:       0,
+			Shape:            DefaultAutoShape,
+			X:                centerX + 420,
+			Y:                centerY - 110,
+			Radius:           DefaultPlayerRadius,
+			Energy:           88,
+			AttachedChildren: initialAttachedChildren(DefaultSenaryID, 0),
+		},
+		{
+			ID:               DefaultSeptenaryID,
+			LineageID:        lineageIDFor(DefaultSeptenaryID),
+			Generation:       0,
+			Shape:            DefaultPlayerShape,
+			X:                centerX - 430,
+			Y:                centerY - 150,
+			Radius:           DefaultPlayerRadius,
+			Energy:           92,
+			AttachedChildren: initialAttachedChildren(DefaultSeptenaryID, 0),
+		},
+		{
+			ID:               DefaultOctonaryID,
+			LineageID:        lineageIDFor(DefaultOctonaryID),
+			Generation:       0,
+			Shape:            DefaultAutoShape,
+			X:                centerX + 80,
+			Y:                centerY + 300,
+			Radius:           DefaultPlayerRadius,
+			Energy:           86,
+			AttachedChildren: initialAttachedChildren(DefaultOctonaryID, 0),
+		},
 	}
 }
 
@@ -405,29 +443,82 @@ func defaultFoodSlots(worldWidth, worldHeight float64, expanded bool, activeCirc
 	centerX := worldWidth / 2
 	centerY := worldHeight / 2
 
-	allSlots := []Food{
+	narrowSlots := []Food{
 		{ID: "food-1", X: centerX + 32, Y: centerY, Radius: DefaultFoodRadius},
 		{ID: "food-2", X: centerX - 108, Y: centerY, Radius: DefaultFoodRadius},
 		{ID: "food-3", X: centerX + 120, Y: centerY + 84, Radius: DefaultFoodRadius},
-		Food{ID: "food-4", X: centerX - 280, Y: centerY + 120, Radius: DefaultFoodRadius},
-		Food{ID: "food-5", X: centerX + 300, Y: centerY + 150, Radius: DefaultFoodRadius},
-		Food{ID: "food-6", X: centerX, Y: centerY - 180, Radius: DefaultFoodRadius},
-		Food{ID: "food-7", X: centerX - 220, Y: centerY - 160, Radius: DefaultFoodRadius},
-		Food{ID: "food-8", X: centerX + 220, Y: centerY - 140, Radius: DefaultFoodRadius},
 	}
 	if !expanded {
-		return append([]Food(nil), allSlots[:3]...)
+		return append([]Food(nil), narrowSlots...)
 	}
 
 	slotCount := activeCircleCount + 2
-	if slotCount < 3 {
-		slotCount = 3
+	if slotCount < DefaultExpandedFoodCount {
+		slotCount = DefaultExpandedFoodCount
 	}
-	if slotCount > len(allSlots) {
-		slotCount = len(allSlots)
+	return seededExpandedFoodSlots(worldWidth, worldHeight, slotCount)
+}
+
+func seededExpandedFoodSlots(worldWidth, worldHeight float64, slotCount int) []Food {
+	seed := DefaultExpandedFoodSeed
+	margin := 96.0
+	centerX := worldWidth / 2
+	centerY := worldHeight / 2
+	minDistanceBetweenFoods := 72.0
+	minDistanceFromCenter := 92.0
+
+	advanceSeed := func() int64 {
+		seed = (seed*1664525 + 1013904223) & 0x7fffffff
+		return seed
 	}
 
-	return append([]Food(nil), allSlots[:slotCount]...)
+	nextCoordinate := func(size float64) float64 {
+		usable := math.Max(1, size-margin*2)
+		return margin + math.Mod(float64(advanceSeed()), usable)
+	}
+
+	slots := make([]Food, 0, slotCount)
+	for index := 0; index < slotCount; index++ {
+		var x float64
+		var y float64
+		found := false
+		for attempt := 0; attempt < 400; attempt++ {
+			x = math.Round(nextCoordinate(worldWidth))
+			y = math.Round(nextCoordinate(worldHeight))
+
+			if math.Hypot(x-centerX, y-centerY) < minDistanceFromCenter {
+				continue
+			}
+
+			tooClose := false
+			for _, existing := range slots {
+				if math.Hypot(existing.X-x, existing.Y-y) < minDistanceBetweenFoods {
+					tooClose = true
+					break
+				}
+			}
+			if tooClose {
+				continue
+			}
+
+			found = true
+			break
+		}
+
+		if !found {
+			x = margin + float64((index*137)%int(math.Max(1, worldWidth-margin*2)))
+			y = margin + float64((index*211)%int(math.Max(1, worldHeight-margin*2)))
+		}
+
+		slots = append(slots, Food{
+			ID:     "food-" + strconv.Itoa(index+1),
+			X:      x,
+			Y:      y,
+			Radius: DefaultFoodRadius,
+		})
+	}
+
+	return slots
 }
 
 func (w *World) Advance(tick int64, intent Vector) Snapshot {
