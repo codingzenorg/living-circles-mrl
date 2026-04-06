@@ -3295,3 +3295,18 @@ That points to a bounded client-only slice:
 - add a small minimap or equivalent orientation aid
 - preserve the main viewport as the dominant rendering mode
 - leave server semantics and contract shape unchanged
+## Pressure: Offscreen Edge Awareness In Viewport Mode
+
+The viewport, deadzone, and minimap slices improved scale, comfort, and large-world orientation. The remaining pressure is local awareness: meaningful entities just outside the visible camera window can disappear too abruptly, while the minimap is better at whole-world position than immediate nearby pressure.
+
+The new pressure is:
+
+- the viewport should remain the primary surface
+- the player should gain lightweight awareness of nearby offscreen pressure
+- cues should stay local and not become a general tracking overlay
+
+That points to a bounded client-only slice:
+
+- add lightweight offscreen edge awareness
+- keep the minimap secondary
+- leave server semantics and contract shape unchanged
