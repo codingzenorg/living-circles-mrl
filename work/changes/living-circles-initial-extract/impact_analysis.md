@@ -3173,3 +3173,18 @@ That points to a bounded client-only slice:
 - reduce legend footprint or prominence in the fullscreen layout
 - preserve core cue recoverability
 - leave server semantics and contract shape unchanged
+## Pressure: Header Footprint Reduction In Fullscreen Layout
+
+The fullscreen demo now uses more of the viewport, the side column is lighter, and the legend has been collapsed into a compact line. That leaves the remaining top-of-page pressure concentrated in the title and introductory paragraph, which still take more vertical space than they need during ordinary use.
+
+The new pressure is:
+
+- the canvas should begin higher in the viewport
+- the page should still clearly identify the demo
+- the current header footprint is larger than necessary for a fullscreen play surface
+
+That points to a bounded client-only slice:
+
+- reduce header footprint
+- preserve clear project identity
+- leave server semantics and contract shape unchanged
