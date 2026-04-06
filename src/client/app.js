@@ -16,6 +16,7 @@ let eventLog = ["Awaiting first world snapshot..."];
 let previousAutonomousById = new Map();
 let recentEffects = [];
 let lastInteractionSignature = null;
+let previousCamera = null;
 const pressedKeys = new Set();
 let activeSocket = null;
 let senderIntervalId = null;
@@ -33,6 +34,8 @@ const AFTERGLOW_TTL = 10;
 const VIEWPORT_MIN_WIDTH = 640;
 const VIEWPORT_MIN_HEIGHT = 420;
 const VIEWPORT_BOTTOM_MARGIN = 24;
+const CAMERA_DEADZONE_X_RATIO = 0.22;
+const CAMERA_DEADZONE_Y_RATIO = 0.2;
 const NAME_ADJECTIVES = ["brave", "calm", "eager", "gentle", "keen", "lucky", "mellow", "nimble", "quiet", "solar", "swift", "vivid"];
 const NAME_NOUNS = ["badger", "comet", "falcon", "harbor", "lantern", "meadow", "otter", "panda", "reef", "sable", "thunder", "willow"];
 
@@ -484,10 +487,40 @@ function cameraRect(snapshot, viewport) {
   const focus = cameraFocus(snapshot);
   const maxX = Math.max(0, snapshot.world.width - viewport.width);
   const maxY = Math.max(0, snapshot.world.height - viewport.height);
+  const deadzoneHalfWidth = Math.floor(viewport.width * CAMERA_DEADZONE_X_RATIO);
+  const deadzoneHalfHeight = Math.floor(viewport.height * CAMERA_DEADZONE_Y_RATIO);
+  const baseCamera = previousCamera && previousCamera.width === viewport.width && previousCamera.height === viewport.height
+    ? previousCamera
+    : {
+        x: clamp(Math.round(focus.x - viewport.width / 2), 0, maxX),
+        y: clamp(Math.round(focus.y - viewport.height / 2), 0, maxY),
+        width: viewport.width,
+        height: viewport.height,
+      };
+
+  let cameraX = baseCamera.x;
+  let cameraY = baseCamera.y;
+
+  const deadzoneLeft = cameraX + viewport.width / 2 - deadzoneHalfWidth;
+  const deadzoneRight = cameraX + viewport.width / 2 + deadzoneHalfWidth;
+  const deadzoneTop = cameraY + viewport.height / 2 - deadzoneHalfHeight;
+  const deadzoneBottom = cameraY + viewport.height / 2 + deadzoneHalfHeight;
+
+  if (focus.x < deadzoneLeft) {
+    cameraX -= Math.round(deadzoneLeft - focus.x);
+  } else if (focus.x > deadzoneRight) {
+    cameraX += Math.round(focus.x - deadzoneRight);
+  }
+
+  if (focus.y < deadzoneTop) {
+    cameraY -= Math.round(deadzoneTop - focus.y);
+  } else if (focus.y > deadzoneBottom) {
+    cameraY += Math.round(focus.y - deadzoneBottom);
+  }
 
   return {
-    x: clamp(Math.round(focus.x - viewport.width / 2), 0, maxX),
-    y: clamp(Math.round(focus.y - viewport.height / 2), 0, maxY),
+    x: clamp(cameraX, 0, maxX),
+    y: clamp(cameraY, 0, maxY),
     width: viewport.width,
     height: viewport.height,
   };
@@ -500,6 +533,7 @@ function draw(snapshot) {
 
   const viewport = viewportSize(snapshot.world);
   const camera = cameraRect(snapshot, viewport);
+  previousCamera = camera;
 
   canvas.width = viewport.width;
   canvas.height = viewport.height;

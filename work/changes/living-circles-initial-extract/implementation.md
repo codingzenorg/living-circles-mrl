@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_player_follow_camera_viewport.md`
+`docs/slices/initial_camera_deadzone_follow.md`
 
 ## Implemented Shape
 
@@ -24,6 +24,7 @@
 - the fullscreen side column now gives the player panel stronger emphasis while NPCs and recent encounters use progressively lighter treatment, clarifying the internal support hierarchy
 - the fullscreen desktop split now gives the play stage a slightly larger share while keeping the support rail readable and secondary
 - the browser now renders a bounded player-following viewport into the authoritative world instead of shrinking the full world to fit the stage, with the camera clamped at world bounds
+- the player-follow camera now uses a centered deadzone so small movements do not constantly recenter the viewport while world-edge clamping remains intact
 - the legend is now reduced to the strongest cue families so the canvas and external panels carry more of the explanatory load during ordinary play
 - browser rendering now keeps a very short-lived client-local afterglow for recent resolved fights, reproductions, and continuity-preserving promotion so important outcomes remain briefly visible in-world
 - recent event afterglow remains grounded in current authoritative interaction outcomes and current entity positions without introducing server-side event history
