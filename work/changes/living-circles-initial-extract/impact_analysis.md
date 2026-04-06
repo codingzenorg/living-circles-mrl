@@ -309,6 +309,50 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make nearby autonomous intent more legible during ordinary play.
+
+## Why This Matters
+
+The recent legibility slices made shape danger, crowding pressure, and food pressure easier to read from the world. But nearby autonomous circles still often look behaviorally opaque. A circle may be moving toward food, closing on another circle, or retreating from local danger, yet the player still has to infer too much of that only by watching several moments in sequence.
+
+The next pressure is therefore to make current autonomous behavior easier to interpret on the client without publishing hidden server intent or adding new simulation rules.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the client should make nearby autonomous motion modes more interpretable
+- cues should stay local, lightweight, and compatible with the current shape, crowding, and food cues
+- the player should be able to distinguish at least food pursuit, social pursuit, and retreat more quickly
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because visible world state and positions are already available
+- build should avoid adding autonomy-specific contract fields unless one minimal readability field is clearly justified
+
+### Existing semantics
+
+- autonomy rules remain authoritative on the server
+- fight, reproduction, food, crowding, continuity, and movement rules should remain unchanged in this slice
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether autonomy readability is best shown through small directional markers, target-side emphasis, retreat cues, or another lightweight local treatment
+- how to keep the cue grounded in visible movement and current geometry rather than unverifiable hidden intent
+- how to avoid overloading the existing play-legibility layers
+
+## Risks If Ignored
+
+- the world may become more readable than the actors inside it
+- evaluation of emergence and playability will stay partly blocked by weak motion-meaning legibility
+- future autonomy changes will remain harder to assess quickly during manual play
+
+---
+
+## Change
+
 Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
 
 ## Why This Matters
