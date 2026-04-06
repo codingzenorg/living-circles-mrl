@@ -206,6 +206,18 @@ function interactionSummary(interaction) {
   return summaries[interaction.kind] ?? `Interaction: ${interaction.kind}`;
 }
 
+function hasContinuityReserve(circle) {
+  return childCount(circle) > 0;
+}
+
+function isPromotedContinuity(circle, interaction) {
+  if (!interaction || interaction.kind !== "death_promoted_child") {
+    return false;
+  }
+
+  return interaction.source_id === circle.id || interaction.target_id === circle.id;
+}
+
 function renderEventLog() {
   detailsNode.innerHTML = eventLog.map((entry) => `<li>${entry}</li>`).join("");
 }
@@ -260,6 +272,7 @@ function draw(snapshot) {
 
   drawCrowdingZones(circles, snapshot.player);
   drawFoodZones(snapshot.foods, snapshot.player);
+  drawLineageLinks(circles, snapshot.interaction);
 
   context.fillStyle = "#ff8a5b";
   for (const food of snapshot.foods) {
@@ -400,11 +413,31 @@ function drawIntentCue(circle, intent) {
   }
 }
 
+function drawLineageLinks(circles, interaction) {
+  for (const circle of circles) {
+    if (!hasContinuityReserve(circle)) {
+      continue;
+    }
+
+    const promoted = isPromotedContinuity(circle, interaction);
+    for (const child of circle.attached_children) {
+      context.strokeStyle = promoted ? "rgba(255, 236, 158, 0.95)" : "rgba(255, 220, 122, 0.5)";
+      context.lineWidth = promoted ? 2.5 : 1.5;
+      context.beginPath();
+      context.moveTo(circle.x, circle.y);
+      context.lineTo(child.x, child.y);
+      context.stroke();
+    }
+  }
+}
+
 function drawCircle(circle, isPlayer, player, circles, foods) {
   const matchesPlayerShape = !isPlayer && player && circle.shape === player.shape;
   const relationToPlayer = playerRiskState(circle, player, latestSnapshot?.interaction);
   const crowded = shouldRenderCrowdingCue(circle, circles, player);
   const intent = !isPlayer ? inferAutonomyIntent(circle, circles, foods, player) : null;
+  const continuityReserve = hasContinuityReserve(circle);
+  const promoted = isPromotedContinuity(circle, latestSnapshot?.interaction);
   const color = isPlayer ? "#ff8a5b" : circle.shape === "triangle" ? "#6fd5ff" : "#c08cff";
   context.fillStyle = color;
 
@@ -465,6 +498,14 @@ function drawCircle(circle, isPlayer, player, circles, foods) {
     context.stroke();
   }
 
+  if (continuityReserve) {
+    context.strokeStyle = promoted ? "rgba(255, 240, 170, 0.95)" : "rgba(255, 226, 140, 0.7)";
+    context.lineWidth = promoted ? 4 : 2;
+    context.beginPath();
+    context.arc(circle.x, circle.y, circle.radius + 18, 0, Math.PI * 2);
+    context.stroke();
+  }
+
   if (isPlayer) {
     context.strokeStyle = "#ffe082";
     context.lineWidth = 4;
@@ -488,8 +529,8 @@ function drawCircle(circle, isPlayer, player, circles, foods) {
   context.font = "16px Georgia";
   const children = childCount(circle);
   const label = isPlayer
-    ? `YOU ${circle.id} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}`
-    : `${circle.id} ${relationToPlayer === "danger" ? "danger" : relationToPlayer === "opportunity" ? "open" : relationToPlayer === "blocked" ? "blocked" : matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}${intent ? ` ${intent}` : ""}`;
+    ? `YOU ${circle.id} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}${continuityReserve ? " lineage" : ""}`
+    : `${circle.id} ${relationToPlayer === "danger" ? "danger" : relationToPlayer === "opportunity" ? "open" : relationToPlayer === "blocked" ? "blocked" : matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}${intent ? ` ${intent}` : ""}${continuityReserve ? " lineage" : ""}`;
   context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
 
   context.font = "12px Georgia";

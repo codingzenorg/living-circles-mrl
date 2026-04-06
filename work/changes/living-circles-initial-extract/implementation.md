@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_autonomy_intent_play_legibility.md`
+`docs/slices/initial_lineage_continuity_play_legibility.md`
 
 ## Implemented Shape
 
@@ -10,6 +10,8 @@
 - browser client under `src/client/`
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
+- browser rendering now emphasizes continuity-bearing lineage through visible parent-child connection links, reserve halos around circles with attached children, and stronger promotion emphasis when continuity survives through a child
+- lineage legibility remains grounded in existing authoritative lineage, generation, attached-child, and continuity outcome state without adding new server fields
 - browser rendering now uses short-range motion cues to distinguish nearby autonomous food pursuit, social pursuit, and retreat without adding any server-side intent fields
 - autonomy legibility is inferred only from consecutive authoritative positions plus current visible world geometry, not from hidden client rules or server-published intent
 - browser rendering now highlights nearby food-rich space with local green recovery cues and marks local scarcity around the player with a cool blue ring, grounded only in current visible food positions
