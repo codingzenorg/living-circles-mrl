@@ -3234,3 +3234,18 @@ That points to a bounded client-only slice:
 - strengthen internal hierarchy inside the existing side column
 - preserve the current information set and order
 - leave server semantics and contract shape unchanged
+## Pressure: Fullscreen Column Proportion Tuning
+
+The fullscreen layout now has a tighter header, smaller HUD, collapsed legend, lighter side column, stronger play-stage framing, and clearer internal support hierarchy. The remaining presentation pressure is the fixed proportion between the stage and the support rail, which can still feel slightly rigid rather than intentionally tuned around a dominant play surface.
+
+The new pressure is:
+
+- the play stage should feel more dominant through width allocation
+- the support rail should remain readable and usable
+- the fullscreen layout should feel less rigid on desktop
+
+That points to a bounded client-only slice:
+
+- tune fullscreen column proportions
+- preserve the current information set and hierarchy
+- leave server semantics and contract shape unchanged
