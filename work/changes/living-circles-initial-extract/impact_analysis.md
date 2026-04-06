@@ -221,6 +221,50 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make local crowding pressure more legible during ordinary play.
+
+## Why This Matters
+
+Recent slices made the world larger, increased population, introduced crowding-based energy cost, and added bounded autonomy that reacts to crowding. But that pressure still remains hard to perceive directly from the running world. A player can often see that several circles are nearby without being able to quickly tell whether the local neighborhood is one of the costly dense zones implied by the authoritative rule.
+
+The next pressure is therefore not another server mechanic. It is to make existing crowding pressure more readable on the client without inventing a second simulation.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the client should make dense local neighborhoods easier to read directly from the canvas
+- cues should stay local and restrained rather than becoming a full-map overlay
+- the current shape-risk cues and encounter log should remain compatible with any new crowding-pressure cues
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because circle positions are already available
+- build should avoid adding crowding-specific contract fields unless one minimal readability field is clearly justified
+
+### Existing semantics
+
+- crowding energy cost remains authoritative on the server
+- fight, reproduction, food, continuity, and autonomy rules should remain unchanged in this slice
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether crowding readability is best shown through nearby spatial halos, emphasized cluster rings, or another small local cue
+- how to keep the cue grounded in current visible positions rather than hidden future state
+- how to avoid visual noise now that shape-risk cues are already present
+
+## Risks If Ignored
+
+- the newest ecosystem pressure will remain mostly discoverable only through documentation or repeated trial and error
+- the player may understand shape-based risk while still missing why some spaces are energetically worse than others
+- future evaluation of emergence and playability will stay partly blocked by weak ecosystem-legibility
+
+---
+
+## Change
+
 Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
 
 ## Why This Matters
