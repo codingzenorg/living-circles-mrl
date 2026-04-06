@@ -70,10 +70,15 @@
       }
 
       .legend {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
+        display: block;
         margin: 0 0 14px;
+        padding: 8px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(126, 166, 178, 0.14);
+        background: rgba(8, 20, 26, 0.4);
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.4;
       }
 
       .demo-layout {
@@ -392,13 +397,7 @@
           <button class="control" id="reset" type="button">Restart World</button>
         </div>
         <div class="legend">
-          <div class="chip chip--danger">Red ring: same-shape danger</div>
-          <div class="chip chip--opportunity">Green ring: different-shape opportunity</div>
-          <div class="chip chip--crowding">Amber glow: costly crowding zone</div>
-          <div class="chip chip--food">Green glow: nearby food and recovery</div>
-          <div class="chip chip--intent-social">Small markers: npc intent</div>
-          <div class="chip chip--lineage">Gold links: continuity-bearing lineage</div>
-          <div class="chip chip--afterglow">Soft rings: recent world outcome</div>
+          Red danger, green opportunity, amber crowding, green food glow, small intent marks, gold lineage, soft afterglow.
         </div>
         <div class="demo-layout">
           <div class="play-stage">
