@@ -353,6 +353,50 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make the player's own authoritative movement more legible during ordinary play.
+
+## Why This Matters
+
+The recent play-legibility slices have made the world, nearby pressures, and nearby autonomous circles easier to interpret. But the player’s own immediate motion still lacks strong visual reinforcement. That leaves one of the most basic experiential questions underdeveloped: does authoritative movement feel readable and responsive enough during play?
+
+The next pressure is therefore to improve motion legibility on the client without adding prediction, interpolation, or new movement rules.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the client should make current player movement direction easier to perceive
+- cues should remain tightly local to the player and visually compatible with the existing layers
+- the cue should improve readability without pretending the client controls authoritative future motion
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because authoritative player positions already arrive each tick
+- build should avoid adding movement-specific contract fields unless one minimal readability field is clearly justified
+
+### Existing semantics
+
+- movement remains authoritative on the server
+- fight, reproduction, food, crowding, autonomy, continuity, and shape rules should remain unchanged in this slice
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether movement legibility is best shown through a small directional indicator, motion trail, short-range echo, or another tightly bounded cue
+- how to keep the cue grounded in recent authoritative positions rather than prediction
+- how to avoid visual competition with the current world-state legibility layers
+
+## Risks If Ignored
+
+- responsiveness will remain less evaluated than other aspects of the simulation
+- the player may understand the world better than their own moment-to-moment presence inside it
+- future playability review will remain partly blocked by weak motion readability
+
+---
+
+## Change
+
 Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
 
 ## Why This Matters
