@@ -3218,3 +3218,19 @@ That points to a bounded client-only slice:
 - strengthen play-stage framing
 - preserve the current layout and information hierarchy
 - leave server semantics and contract shape unchanged
+## Pressure: Side Column Internal Hierarchy In Fullscreen Layout
+
+The fullscreen demo now has a lighter side column and a better-framed play stage, but the player, NPC, and recent encounter blocks still read with fairly similar internal weight once the eye moves into that column.
+
+The new pressure is:
+
+- the player panel should read as the clearest support priority
+- NPC summaries should read as secondary
+- recent encounters should read as tertiary
+- the side column should not regain overall visual weight
+
+That points to a bounded client-only slice:
+
+- strengthen internal hierarchy inside the existing side column
+- preserve the current information set and order
+- leave server semantics and contract shape unchanged
