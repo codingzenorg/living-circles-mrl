@@ -3158,3 +3158,18 @@ That points to a bounded client-only slice:
 - reduce side-column visual weight
 - preserve current information hierarchy and readability
 - leave server semantics and contract shape unchanged
+## Pressure: Legend Collapse In Fullscreen Layout
+
+The legend has already been reduced once, and the support column is now lighter, but the fullscreen layout changed the balance of the page. The legend still occupies a full-width band above the play surface even though the canvas, side column, and encounter log already carry most of the useful meaning.
+
+The new pressure is:
+
+- the legend still interrupts the fullscreen play surface more than it needs to
+- the canvas should remain dominant
+- the strongest cue meanings should remain recoverable without a heavy explanatory strip
+
+That points to a bounded client-only slice:
+
+- reduce legend footprint or prominence in the fullscreen layout
+- preserve core cue recoverability
+- leave server semantics and contract shape unchanged
