@@ -38,6 +38,8 @@ const VIEWPORT_MIN_HEIGHT = 420;
 const VIEWPORT_BOTTOM_MARGIN = 24;
 const CAMERA_DEADZONE_X_RATIO = 0.22;
 const CAMERA_DEADZONE_Y_RATIO = 0.2;
+const OFFSCREEN_AWARENESS_DISTANCE = 260;
+const OFFSCREEN_EDGE_INSET = 18;
 const NAME_ADJECTIVES = ["brave", "calm", "eager", "gentle", "keen", "lucky", "mellow", "nimble", "quiet", "solar", "swift", "vivid"];
 const NAME_NOUNS = ["badger", "comet", "falcon", "harbor", "lantern", "meadow", "otter", "panda", "reef", "sable", "thunder", "willow"];
 
@@ -600,8 +602,47 @@ function draw(snapshot) {
   recentEffects = recentEffects
     .map((effect) => ({ ...effect, ttl: effect.ttl - 1 }))
     .filter((effect) => effect.ttl > 0);
+  drawOffscreenAwareness(snapshot, camera);
   context.restore();
   drawMinimap(snapshot, camera);
+}
+
+function drawOffscreenAwareness(snapshot, camera) {
+  if (!snapshot.player) {
+    return;
+  }
+
+  const viewportLeft = camera.x;
+  const viewportRight = camera.x + camera.width;
+  const viewportTop = camera.y;
+  const viewportBottom = camera.y + camera.height;
+  const nearby = snapshot.autonomous_circles.filter((circle) => {
+    const distance = distanceBetween(circle, snapshot.player);
+    if (distance > OFFSCREEN_AWARENESS_DISTANCE) {
+      return false;
+    }
+
+    return circle.x < viewportLeft || circle.x > viewportRight || circle.y < viewportTop || circle.y > viewportBottom;
+  }).slice(0, 6);
+
+  for (const circle of nearby) {
+    const relation = playerRiskState(circle, snapshot.player, snapshot.interaction);
+    const relativeX = clamp(circle.x, viewportLeft + OFFSCREEN_EDGE_INSET, viewportRight - OFFSCREEN_EDGE_INSET) - camera.x;
+    const relativeY = clamp(circle.y, viewportTop + OFFSCREEN_EDGE_INSET, viewportBottom - OFFSCREEN_EDGE_INSET) - camera.y;
+
+    context.save();
+    context.translate(camera.x, camera.y);
+    context.strokeStyle = relation === "danger"
+      ? "rgba(255, 95, 109, 0.92)"
+      : relation === "blocked"
+        ? "rgba(255, 201, 92, 0.92)"
+        : "rgba(117, 229, 149, 0.9)";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.arc(relativeX, relativeY, 8, 0, Math.PI * 2);
+    context.stroke();
+    context.restore();
+  }
 }
 
 function drawMinimap(snapshot, camera) {
