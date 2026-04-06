@@ -345,6 +345,64 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Replace the authored startup state mix of the additional expanded autonomous circles with deterministic seeded startup state.
+
+## Why This Matters
+
+The startup world is now less authored in geometry:
+
+- expanded food uses deterministic seeded layout
+- expanded autonomous placement uses deterministic seeded positions
+
+But the extra expanded autonomous circles still carry authored per-ID startup state:
+
+- fixed shape assignment
+- fixed starting energy
+- fixed "who looks stronger or weaker" at tick zero
+
+That means the world is spatially less staged but semantically still arranged. The next pressure is to reduce that remaining authored startup bias without giving up determinism.
+
+## Impacted Areas
+
+### Simulation model
+
+- additional expanded autonomous circles should derive startup shape and energy from deterministic seeded rules
+- player state and the first explicitly-configurable circles can remain fixed anchors
+- runtime rules should remain unchanged after initialization
+
+### Reset behavior
+
+- reset must still rebuild the exact same expanded startup state mix
+- deterministic tests must remain able to assert startup/reset equality
+
+### Browser rendering
+
+- the viewport and minimap should naturally benefit from a startup world that feels less pre-scripted
+- no contract change is required if the same snapshot fields remain in use
+
+### Existing semantics
+
+- fights, reproduction, continuity, food, regeneration, and autonomy remain unchanged after startup
+- narrow custom worlds should continue to support explicit targeted startup states
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- the deterministic seeded rule for extra-circle startup shape selection
+- the deterministic seeded rule for startup energy values
+- the acceptable state range so startup variety does not silently redefine runtime behavior
+
+## Risks If Ignored
+
+- the startup world will still feel partially authored even after seeded placement work
+- early interaction pressure will remain more scripted than the larger world presentation suggests
+- later evaluation of ecosystem startup diversity will stay constrained by a fixed authored extra-circle mix
+
+---
+
+## Change
+
 Remove grown derived radius from attached-child orbit distance.
 
 ## Why This Matters
