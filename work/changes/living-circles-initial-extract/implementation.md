@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_food_pressure_play_legibility.md`
+`docs/slices/initial_autonomy_intent_play_legibility.md`
 
 ## Implemented Shape
 
@@ -10,6 +10,8 @@
 - browser client under `src/client/`
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
+- browser rendering now uses short-range motion cues to distinguish nearby autonomous food pursuit, social pursuit, and retreat without adding any server-side intent fields
+- autonomy legibility is inferred only from consecutive authoritative positions plus current visible world geometry, not from hidden client rules or server-published intent
 - browser rendering now highlights nearby food-rich space with local green recovery cues and marks local scarcity around the player with a cool blue ring, grounded only in current visible food positions
 - the player HUD now surfaces nearby food opportunity or scarcity without introducing any server-side food legibility fields
 - browser rendering now highlights costly nearby crowding zones with local amber halos and circle-level crowding rings grounded only in visible circle positions

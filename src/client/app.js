@@ -10,6 +10,7 @@ const resetButton = document.getElementById("reset");
 
 let latestSnapshot = null;
 let eventLog = ["Awaiting first world snapshot..."];
+let previousAutonomousById = new Map();
 const pressedKeys = new Set();
 let activeSocket = null;
 let senderIntervalId = null;
@@ -21,6 +22,8 @@ const CROWDING_CUE_DISTANCE = 260;
 const FOOD_OPPORTUNITY_RADIUS = 170;
 const FOOD_CUE_DISTANCE = 260;
 const SCARCITY_THRESHOLD = 1;
+const INTENT_CUE_DISTANCE = 260;
+const MIN_MOVEMENT_FOR_INTENT = 1.5;
 
 function normalizeKey(key) {
   return key.toLowerCase();
@@ -32,6 +35,19 @@ function childCount(circle) {
 
 function distanceBetween(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function normalizedVector(x, y) {
+  const magnitude = Math.hypot(x, y);
+  if (magnitude === 0) {
+    return null;
+  }
+
+  return { x: x / magnitude, y: y / magnitude, magnitude };
+}
+
+function dot(a, b) {
+  return a.x * b.x + a.y * b.y;
 }
 
 function nearbyCircles(circle, circles, radius) {
@@ -73,6 +89,67 @@ function shouldRenderFoodOpportunityCue(anchor, foods, player) {
   }
 
   return distanceBetween(anchor, player) <= FOOD_CUE_DISTANCE && foodPressureAt(anchor, foods).opportunity;
+}
+
+function nearestByDistance(origin, items) {
+  let nearest = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  for (const item of items) {
+    const currentDistance = distanceBetween(origin, item);
+    if (currentDistance < nearestDistance) {
+      nearest = item;
+      nearestDistance = currentDistance;
+    }
+  }
+
+  return nearest;
+}
+
+function inferAutonomyIntent(circle, circles, foods, player) {
+  if (!player || distanceBetween(circle, player) > INTENT_CUE_DISTANCE) {
+    return null;
+  }
+
+  const previous = previousAutonomousById.get(circle.id);
+  if (!previous) {
+    return null;
+  }
+
+  const movement = normalizedVector(circle.x - previous.x, circle.y - previous.y);
+  if (!movement || movement.magnitude < MIN_MOVEMENT_FOR_INTENT) {
+    return null;
+  }
+
+  const visibleFoods = foods.filter((food) => distanceBetween(circle, food) <= FOOD_OPPORTUNITY_RADIUS);
+  const nearestFood = nearestByDistance(circle, visibleFoods);
+  if (nearestFood) {
+    const toFood = normalizedVector(nearestFood.x - circle.x, nearestFood.y - circle.y);
+    if (toFood && dot(movement, toFood) >= 0.7) {
+      return "food";
+    }
+  }
+
+  const candidateCircles = circles.filter((other) => other.id !== circle.id && distanceBetween(circle, other) <= FOOD_CUE_DISTANCE);
+  const nearestCircle = nearestByDistance(circle, candidateCircles);
+  if (!nearestCircle) {
+    return null;
+  }
+
+  const toCircle = normalizedVector(nearestCircle.x - circle.x, nearestCircle.y - circle.y);
+  if (!toCircle) {
+    return null;
+  }
+
+  const alignment = dot(movement, toCircle);
+  if (nearestCircle.shape === circle.shape && alignment <= -0.55) {
+    return "retreat";
+  }
+  if (alignment >= 0.7) {
+    return "social";
+  }
+
+  return null;
 }
 
 function playerRiskState(circle, player, interaction) {
@@ -204,11 +281,11 @@ function draw(snapshot) {
   }
 
   for (const circle of snapshot.autonomous_circles) {
-    drawCircle(circle, false, snapshot.player, circles);
+    drawCircle(circle, false, snapshot.player, circles, snapshot.foods);
   }
 
   if (snapshot.player) {
-    drawCircle(snapshot.player, true, snapshot.player, circles);
+    drawCircle(snapshot.player, true, snapshot.player, circles, snapshot.foods);
     const pressure = isCrowded(snapshot.player, circles) ? " · pressure" : "";
     const foodState = playerFoodPressure?.scarcity ? " · scarce" : playerFoodPressure?.opportunity ? " · food" : "";
     energyNode.textContent = `E ${snapshot.player.energy.toFixed(0)} · C ${childCount(snapshot.player)} · G ${snapshot.player.generation}${pressure}${foodState}`;
@@ -218,6 +295,7 @@ function draw(snapshot) {
 
   tickNode.textContent = `T ${snapshot.tick} · F ${snapshot.foods.length} · O ${snapshot.autonomous_circles.length}`;
   pushEventLog(interactionSummary(snapshot.interaction));
+  previousAutonomousById = new Map(snapshot.autonomous_circles.map((circle) => [circle.id, { x: circle.x, y: circle.y }]));
 }
 
 function drawCrowdingZones(circles, player) {
@@ -278,10 +356,55 @@ function drawFoodZones(foods, player) {
   }
 }
 
-function drawCircle(circle, isPlayer, player, circles) {
+function drawIntentCue(circle, intent) {
+  const previous = previousAutonomousById.get(circle.id);
+  if (!previous) {
+    return;
+  }
+
+  const movement = normalizedVector(circle.x - previous.x, circle.y - previous.y);
+  if (!movement || movement.magnitude < MIN_MOVEMENT_FOR_INTENT) {
+    return;
+  }
+
+  const cueX = circle.x + movement.x * (circle.radius + 18);
+  const cueY = circle.y + movement.y * (circle.radius + 18);
+
+  if (intent === "food") {
+    context.fillStyle = "rgba(94, 224, 138, 0.95)";
+    context.beginPath();
+    context.arc(cueX, cueY, 5, 0, Math.PI * 2);
+    context.fill();
+    return;
+  }
+
+  if (intent === "social") {
+    context.strokeStyle = "rgba(111, 213, 255, 0.95)";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.moveTo(circle.x, circle.y);
+    context.lineTo(cueX, cueY);
+    context.stroke();
+    return;
+  }
+
+  if (intent === "retreat") {
+    context.strokeStyle = "rgba(255, 130, 130, 0.95)";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.moveTo(cueX, cueY);
+    context.lineTo(cueX - movement.x * 8 + movement.y * 5, cueY - movement.y * 8 - movement.x * 5);
+    context.moveTo(cueX, cueY);
+    context.lineTo(cueX - movement.x * 8 - movement.y * 5, cueY - movement.y * 8 + movement.x * 5);
+    context.stroke();
+  }
+}
+
+function drawCircle(circle, isPlayer, player, circles, foods) {
   const matchesPlayerShape = !isPlayer && player && circle.shape === player.shape;
   const relationToPlayer = playerRiskState(circle, player, latestSnapshot?.interaction);
   const crowded = shouldRenderCrowdingCue(circle, circles, player);
+  const intent = !isPlayer ? inferAutonomyIntent(circle, circles, foods, player) : null;
   const color = isPlayer ? "#ff8a5b" : circle.shape === "triangle" ? "#6fd5ff" : "#c08cff";
   context.fillStyle = color;
 
@@ -355,6 +478,10 @@ function drawCircle(circle, isPlayer, player, circles) {
     context.fill();
   }
 
+  if (intent) {
+    drawIntentCue(circle, intent);
+  }
+
   drawAttachedChildren(circle, color);
 
   context.fillStyle = "#e4f3f8";
@@ -362,7 +489,7 @@ function drawCircle(circle, isPlayer, player, circles) {
   const children = childCount(circle);
   const label = isPlayer
     ? `YOU ${circle.id} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}`
-    : `${circle.id} ${relationToPlayer === "danger" ? "danger" : relationToPlayer === "opportunity" ? "open" : relationToPlayer === "blocked" ? "blocked" : matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}`;
+    : `${circle.id} ${relationToPlayer === "danger" ? "danger" : relationToPlayer === "opportunity" ? "open" : relationToPlayer === "blocked" ? "blocked" : matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}${crowded ? " crowded" : ""}${intent ? ` ${intent}` : ""}`;
   context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
 
   context.font = "12px Georgia";
