@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_camera_deadzone_follow.md`
+`docs/slices/initial_minimap_orientation_in_viewport_mode.md`
 
 ## Implemented Shape
 
@@ -25,6 +25,7 @@
 - the fullscreen desktop split now gives the play stage a slightly larger share while keeping the support rail readable and secondary
 - the browser now renders a bounded player-following viewport into the authoritative world instead of shrinking the full world to fit the stage, with the camera clamped at world bounds
 - the player-follow camera now uses a centered deadzone so small movements do not constantly recenter the viewport while world-edge clamping remains intact
+- viewport mode now includes a small passive minimap overlay that shows world position and the current viewport window without competing with the main play surface
 - the legend is now reduced to the strongest cue families so the canvas and external panels carry more of the explanatory load during ordinary play
 - browser rendering now keeps a very short-lived client-local afterglow for recent resolved fights, reproductions, and continuity-preserving promotion so important outcomes remain briefly visible in-world
 - recent event afterglow remains grounded in current authoritative interaction outcomes and current entity positions without introducing server-side event history

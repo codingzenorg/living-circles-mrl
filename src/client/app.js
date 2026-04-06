@@ -2,6 +2,8 @@ import { CONTRACT_VERSION, createMovementIntent, MESSAGE_TYPES } from "/shared_c
 
 const canvas = document.getElementById("world");
 const context = canvas.getContext("2d");
+const minimapCanvas = document.getElementById("minimap");
+const minimapContext = minimapCanvas.getContext("2d");
 const playStageNode = document.querySelector(".play-stage");
 const statusNode = document.getElementById("status");
 const energyNode = document.getElementById("energy");
@@ -599,6 +601,55 @@ function draw(snapshot) {
     .map((effect) => ({ ...effect, ttl: effect.ttl - 1 }))
     .filter((effect) => effect.ttl > 0);
   context.restore();
+  drawMinimap(snapshot, camera);
+}
+
+function drawMinimap(snapshot, camera) {
+  const width = minimapCanvas.width;
+  const height = minimapCanvas.height;
+  const scaleX = width / snapshot.world.width;
+  const scaleY = height / snapshot.world.height;
+
+  minimapContext.clearRect(0, 0, width, height);
+  minimapContext.fillStyle = "rgba(6, 18, 24, 0.96)";
+  minimapContext.fillRect(0, 0, width, height);
+
+  minimapContext.strokeStyle = "rgba(126, 166, 178, 0.32)";
+  minimapContext.lineWidth = 1;
+  minimapContext.strokeRect(0.5, 0.5, width - 1, height - 1);
+
+  minimapContext.fillStyle = "rgba(255, 138, 91, 0.82)";
+  for (const food of snapshot.foods) {
+    minimapContext.fillRect(
+      Math.round(food.x * scaleX) - 1,
+      Math.round(food.y * scaleY) - 1,
+      2,
+      2,
+    );
+  }
+
+  for (const circle of snapshot.autonomous_circles) {
+    minimapContext.fillStyle = circle.shape === "triangle" ? "#6fd5ff" : "#c08cff";
+    minimapContext.beginPath();
+    minimapContext.arc(circle.x * scaleX, circle.y * scaleY, 2.5, 0, Math.PI * 2);
+    minimapContext.fill();
+  }
+
+  if (snapshot.player) {
+    minimapContext.fillStyle = "#ff8a5b";
+    minimapContext.beginPath();
+    minimapContext.arc(snapshot.player.x * scaleX, snapshot.player.y * scaleY, 3, 0, Math.PI * 2);
+    minimapContext.fill();
+  }
+
+  minimapContext.strokeStyle = "rgba(255, 240, 170, 0.92)";
+  minimapContext.lineWidth = 1.5;
+  minimapContext.strokeRect(
+    Math.round(camera.x * scaleX) + 0.5,
+    Math.round(camera.y * scaleY) + 0.5,
+    Math.max(1, Math.round(camera.width * scaleX) - 1),
+    Math.max(1, Math.round(camera.height * scaleY) - 1),
+  );
 }
 
 function drawRecentEffects() {
