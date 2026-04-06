@@ -3188,3 +3188,18 @@ That points to a bounded client-only slice:
 - reduce header footprint
 - preserve clear project identity
 - leave server semantics and contract shape unchanged
+## Pressure: HUD Footprint Reduction In Fullscreen Layout
+
+The fullscreen demo has already reduced the legend, header, and side-column weight. That leaves the top HUD row as the most obvious remaining high-footprint UI band above the play surface. It still occupies a full-width control strip even though the key needs are relatively small: connection/state signal, a compact identity/status summary, tick/world summary, and reset.
+
+The new pressure is:
+
+- the HUD still claims more space and attention than it needs
+- the canvas should feel more immediate in the fullscreen layout
+- core status and reset must remain easy to use
+
+That points to a bounded client-only slice:
+
+- reduce HUD footprint
+- preserve readable status and reset access
+- leave server semantics and contract shape unchanged
