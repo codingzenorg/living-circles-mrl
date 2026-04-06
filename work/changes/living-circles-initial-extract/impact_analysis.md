@@ -334,6 +334,64 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make the initial food-capacity baseline derive from starting population scale instead of remaining a fixed authored count.
+
+## Why This Matters
+
+The world is now larger and food regeneration already responds to depletion pressure, but the initial abundance is still effectively a remembered hand-tuned number. That weakens the ecosystem baseline because world startup still depends on curated slot count rather than on an explicit relation between population scale and resource abundance.
+
+The next pressure is to make initial world composition more model-shaped:
+
+- larger starting populations should imply richer initial food support
+- smaller focused worlds should remain narrow and deterministic
+- reset should recreate a rule-based baseline instead of a magic count
+
+## Impacted Areas
+
+### Simulation model
+
+- initial food slot construction should derive from initial population scale through one simple deterministic rule
+- fixed food identity and position should remain intact
+- runtime regeneration behavior should remain unchanged in this slice
+
+### Runtime contract
+
+- the current snapshot shape is likely still sufficient because food arrays and world size are already explicit
+- build should avoid adding new summary metadata unless the derivation becomes too opaque without it
+
+### Browser rendering
+
+- the client may not need any change because the effect is visible in the starting snapshot itself
+- this should remain a simulation-baseline slice, not a UI slice
+
+### Evaluation expectations
+
+- EGD after this slice should be able to assess whether startup abundance now feels more coherent with the larger world and population scale
+- the larger world should read less like a staged demonstrator and more like a repeatable living baseline
+
+### Existing semantics
+
+- regeneration timing, movement, energy, fight, reproduction, continuity, child ownership, and steering should remain unchanged
+- custom narrow worlds should remain viable for focused deterministic tests
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- one deterministic derivation rule from starting population to starting food capacity
+- whether the rule is based on active-circle count alone or another single initial-world signal
+- how custom narrow worlds stay intentionally smaller without forking the whole initialization path
+
+## Risks If Ignored
+
+- initial abundance will remain partly arbitrary even as the rest of the ecosystem becomes more rule-shaped
+- larger-world behavior will still start from a curated baseline rather than a model-expressing one
+- future balancing work will keep carrying unnecessary startup constants
+
+---
+
+## Change
+
 Expose which side failed the capacity check when reproduction is blocked.
 
 ## Why This Matters
