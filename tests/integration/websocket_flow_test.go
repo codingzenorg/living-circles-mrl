@@ -2002,13 +2002,76 @@ func TestClientReceivesRegeneratedFoodAfterDeterministicDelay(t *testing.T) {
 			t.Fatalf("expected full food set after regeneration, got %d foods", len(snapshot.Foods))
 		}
 		food, _ := foodByID(snapshot.Foods, "food-1")
-		if food.X != 432 || food.Y != 300 {
+		initialFood, _ := foodByID(initial.Foods, "food-1")
+		if food.X != initialFood.X || food.Y != initialFood.Y {
 			t.Fatalf("expected regenerated food-1 to return to its original slot, got %+v", food)
 		}
 		return
 	}
 
 	t.Fatal("expected regenerated food after deterministic delay")
+}
+
+func TestClientSeesPressureScaledFoodRegenDelayInExpandedWorld(t *testing.T) {
+	server := transport.NewServer()
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	message := map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 1,
+			"y": 0,
+		},
+	}
+	if err := connection.WriteJSON(message); err != nil {
+		t.Fatalf("write movement intent: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(5 * time.Second))
+
+	sawTwoMissing := false
+	for range simulation.DefaultFoodRegenDelay + 20 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+
+		if len(snapshot.Foods) <= len(initial.Foods)-2 {
+			sawTwoMissing = true
+			continue
+		}
+
+		if sawTwoMissing && snapshot.Tick <= simulation.DefaultFoodRegenDelay+4 && len(snapshot.Foods) == len(initial.Foods) {
+			t.Fatalf("expected expanded world to stay partially depleted longer than the base regen delay, tick=%d foods=%d", snapshot.Tick, len(snapshot.Foods))
+		}
+	}
+
+	if !sawTwoMissing {
+		t.Fatal("expected expanded world to consume at least two food slots during the observation window")
+	}
 }
 
 func TestClientReceivesFoodCollectionThroughAttachedChild(t *testing.T) {

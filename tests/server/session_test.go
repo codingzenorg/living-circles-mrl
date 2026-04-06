@@ -501,6 +501,36 @@ func TestConsumedFoodDoesNotRegenerateBeforeDelayBoundary(t *testing.T) {
 	}
 }
 
+func TestMultipleMissingFoodSlotsIncreaseRegenDelayDeterministically(t *testing.T) {
+	session := simulation.NewSession()
+	before := session.Snapshot()
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	_ = session.Advance()
+	snapshot := session.Advance()
+
+	consumedExtra := false
+	for range 20 {
+		snapshot = session.Advance()
+		if len(snapshot.Foods) <= len(before.Foods)-2 {
+			consumedExtra = true
+			break
+		}
+	}
+
+	if !consumedExtra {
+		t.Fatal("expected expanded world to consume at least two food slots")
+	}
+
+	for range simulation.DefaultFoodRegenDelay {
+		snapshot = session.Advance()
+	}
+
+	if len(snapshot.Foods) >= len(before.Foods) {
+		t.Fatalf("expected at least one slot to remain missing under pressure-scaled regeneration, before=%d after=%d", len(before.Foods), len(snapshot.Foods))
+	}
+}
+
 func TestFoodRegenerationDoesNotDuplicateActiveSlots(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:               "triangle",

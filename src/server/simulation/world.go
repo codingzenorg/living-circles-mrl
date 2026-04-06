@@ -500,13 +500,22 @@ func (w *World) regenerateFood(tick int64) {
 		}
 
 		missingSince, tracked := w.missingFoodSince[slot.ID]
-		if !tracked || tick-missingSince < DefaultFoodRegenDelay {
+		if !tracked || tick-missingSince < w.foodRegenDelay() {
 			continue
 		}
 
 		w.foods = append(w.foods, slot)
 		delete(w.missingFoodSince, slot.ID)
 	}
+}
+
+func (w *World) foodRegenDelay() int64 {
+	missingCount := len(w.missingFoodSince)
+	if missingCount <= 1 {
+		return DefaultFoodRegenDelay
+	}
+
+	return DefaultFoodRegenDelay + int64(missingCount-1)*2
 }
 
 func (w *World) advanceCircle(circle *PlayerCircle, intent Vector) *PlayerCircle {

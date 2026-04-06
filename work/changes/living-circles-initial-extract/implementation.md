@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_population_scale_world_expansion.md`
+`docs/slices/initial_population_scaled_food_regeneration_pressure.md`
 
 ## Implemented Shape
 
@@ -11,6 +11,7 @@
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
 - authoritative food initialization and consumption inside the Go world model
+- food-slot regeneration delay now scales deterministically with current missing-slot count rather than remaining one unconditional global timer
 - expanded default world baseline with a larger bounded map, five deterministic autonomous circles, and eight deterministic food slots
 - explicit shape identity and current interaction classification in snapshots
 - deterministic same-shape fight resolution with loser removal
@@ -177,6 +178,7 @@
 - deterministic shape assignment in the default demo world: player `triangle`, same-shape autonomous `triangle`, different-shape autonomous `square`
 - deterministic fixed food placement scaled to the expanded default world
 - deterministic food regeneration returns consumed slots to their original positions after a fixed delay
+- deterministic food regeneration returns consumed slots to their original positions, with delay now increasing under deeper current depletion
 - attached children remain the source of truth for fight power, replacement continuity, and child-payment rules, and are embodied as attached orbiting children
 - attached-child positions now extend a parent's effective food collection reach
 - different-shape reproduction resolves through deterministic child redistribution across the participating parents when both participants satisfy the energy rule
@@ -194,7 +196,7 @@ The slice needed these implementation choices not fully specified in the refined
 
 - when player energy reaches zero, movement stops and energy clamps at zero
 - food grants a fixed energy recovery amount of `10`
-- each consumed food slot regenerates exactly `12` ticks after consumption
+- each consumed food slot regenerates after `12` ticks when it is the only missing slot, with the delay increasing by `2` ticks for each additional currently missing slot
 - attached-child food collection gives the same parent energy gain as parent-body food collection
 - attached-child body contact against another parent body now counts as authoritative pair contact for interaction triggering
 - attached-child-to-attached-child overlap also counts as authoritative pair contact for interaction triggering
