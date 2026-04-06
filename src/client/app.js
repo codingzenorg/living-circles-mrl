@@ -476,16 +476,16 @@ function draw(snapshot) {
     drawCircle(snapshot.player, true, snapshot.player, circles, snapshot.foods);
     const pressure = isCrowded(snapshot.player, circles) ? "pressure" : "";
     const foodState = playerFoodPressure?.scarcity ? "scarce" : playerFoodPressure?.opportunity ? "food-rich" : "";
-    energyNode.textContent = `You: ${displayName(snapshot.player.id)}`;
+    energyNode.textContent = `${displayName(snapshot.player.id)}`;
     renderPlayerCard(snapshot.player, pressure, foodState);
   } else {
-    energyNode.textContent = "You: defeated";
+    energyNode.textContent = "defeated";
     renderPlayerCard(null, "", "");
   }
 
   renderNpcCard(snapshot.autonomous_circles);
 
-  tickNode.textContent = `T ${snapshot.tick} · F ${snapshot.foods.length} · O ${snapshot.autonomous_circles.length}`;
+  tickNode.textContent = `${snapshot.tick} · ${snapshot.foods.length}f · ${snapshot.autonomous_circles.length}o`;
   pushEventLog(interactionSummary(snapshot.interaction));
   previousAutonomousById = new Map(snapshot.autonomous_circles.map((circle) => [circle.id, { x: circle.x, y: circle.y }]));
   recentEffects = recentEffects
