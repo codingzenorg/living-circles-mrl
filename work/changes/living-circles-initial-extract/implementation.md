@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_hud_footprint_reduction_in_fullscreen_layout.md`
+`docs/slices/initial_play_stage_framing_in_fullscreen_layout.md`
 
 ## Implemented Shape
 
@@ -20,6 +20,7 @@
 - the fullscreen legend now uses a single compact explanatory line instead of a full chip band so it interrupts the play surface less
 - the fullscreen header now uses a tighter title and shorter intro copy so the play surface begins higher without losing the page identity
 - the fullscreen HUD now uses smaller chips, a tighter control row, and shorter status text so the play surface feels more immediate while reset stays visible
+- the fullscreen play surface now sits inside a lighter framed stage container so the canvas reads more clearly as the main staged area within the page
 - the legend is now reduced to the strongest cue families so the canvas and external panels carry more of the explanatory load during ordinary play
 - browser rendering now keeps a very short-lived client-local afterglow for recent resolved fights, reproductions, and continuity-preserving promotion so important outcomes remain briefly visible in-world
 - recent event afterglow remains grounded in current authoritative interaction outcomes and current entity positions without introducing server-side event history
