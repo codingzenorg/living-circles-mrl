@@ -286,6 +286,65 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Replace the expanded default autonomous startup pattern with deterministic seeded placement.
+
+## Why This Matters
+
+The last slice removed the most obvious authored feeling from food placement, but autonomous startup is still arranged by hand:
+
+- a fixed set of offsets around the center
+- a clearly human-authored cluster pattern
+- startup space that still reads as staged rather than ecological
+
+That means the world is currently mixed:
+
+- seeded food
+- authored autonomous placement
+- explicit player spawn
+
+The next pressure is to make the expanded startup state more uniformly world-like without losing deterministic reset behavior.
+
+## Impacted Areas
+
+### Simulation model
+
+- expanded autonomous startup placement should move from fixed offsets to deterministic seeded generation
+- player startup can remain explicit and stable
+- expanded shape, energy, and child-count semantics can stay as they are
+
+### Reset behavior
+
+- reset must still rebuild the exact same autonomous startup arrangement
+- deterministic tests must remain able to assert startup and reset equality
+
+### Browser rendering
+
+- viewport and minimap should naturally benefit from a less staged startup arrangement
+- no contract change is required if the same circle coordinates are still exposed
+
+### Existing semantics
+
+- food initialization, regeneration, crowding, autonomy, fights, reproduction, and continuity should remain unchanged after startup
+- narrow custom worlds should continue to support explicit hand-set placements for focused tests
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- the deterministic seeded rule for expanded autonomous startup placement
+- the minimum safe spacing from the player, world edges, and other initial circles
+- whether the current deterministic shape ordering remains fixed while only placement changes
+
+## Risks If Ignored
+
+- the larger seeded-food world will still feel visibly staged because autonomous startup remains authored
+- startup spatial variety will lag behind the newer viewport presentation
+- later ecosystem evaluation will continue to begin from a partially artificial arrangement
+
+---
+
+## Change
+
 Remove grown derived radius from attached-child orbit distance.
 
 ## Why This Matters
