@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_offscreen_food_awareness_in_viewport_mode.md`
+`docs/slices/initial_camera_lookahead_follow.md`
 
 ## Implemented Shape
 
@@ -29,6 +29,7 @@
 - viewport mode now adds lightweight edge cues for nearby offscreen circles so local danger or opportunity just outside the camera window is easier to notice
 - viewport mode now adds a small local heading cue near the player derived from recent authoritative motion so movement direction is easier to read inside the camera window
 - viewport mode now adds lightweight edge cues for nearby offscreen food so local recovery opportunity just outside the camera window is easier to notice
+- viewport mode now applies a small camera lookahead in the player's recent authoritative direction of travel while preserving deadzone follow and world-edge clamping
 - the legend is now reduced to the strongest cue families so the canvas and external panels carry more of the explanatory load during ordinary play
 - browser rendering now keeps a very short-lived client-local afterglow for recent resolved fights, reproductions, and continuity-preserving promotion so important outcomes remain briefly visible in-world
 - recent event afterglow remains grounded in current authoritative interaction outcomes and current entity positions without introducing server-side event history

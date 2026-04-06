@@ -39,6 +39,8 @@ const VIEWPORT_MIN_HEIGHT = 420;
 const VIEWPORT_BOTTOM_MARGIN = 24;
 const CAMERA_DEADZONE_X_RATIO = 0.22;
 const CAMERA_DEADZONE_Y_RATIO = 0.2;
+const CAMERA_LOOKAHEAD_X_RATIO = 0.1;
+const CAMERA_LOOKAHEAD_Y_RATIO = 0.08;
 const OFFSCREEN_AWARENESS_DISTANCE = 260;
 const OFFSCREEN_EDGE_INSET = 18;
 const NAME_ADJECTIVES = ["brave", "calm", "eager", "gentle", "keen", "lucky", "mellow", "nimble", "quiet", "solar", "swift", "vivid"];
@@ -467,6 +469,20 @@ function viewportSize(world) {
 }
 
 function cameraFocus(snapshot) {
+  if (snapshot.player && previousPlayerPosition) {
+    const movement = normalizedVector(
+      snapshot.player.x - previousPlayerPosition.x,
+      snapshot.player.y - previousPlayerPosition.y,
+    );
+    if (movement && movement.magnitude >= MIN_MOVEMENT_FOR_INTENT) {
+      const viewport = viewportSize(snapshot.world);
+      return {
+        x: snapshot.player.x + movement.x * Math.floor(viewport.width * CAMERA_LOOKAHEAD_X_RATIO),
+        y: snapshot.player.y + movement.y * Math.floor(viewport.height * CAMERA_LOOKAHEAD_Y_RATIO),
+      };
+    }
+  }
+
   if (snapshot.player) {
     return { x: snapshot.player.x, y: snapshot.player.y };
   }
