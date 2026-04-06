@@ -397,6 +397,50 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make lineage continuity more legible during ordinary play.
+
+## Why This Matters
+
+The recent play-legibility slices have made the world, nearby actors, and the player’s own movement easier to read. But one of the project’s differentiating ideas still remains comparatively weak in live play: continuity. Attached children, lineage IDs, generations, and promoted-child survival all exist, yet they still read more like explicit data than like a visible continuity structure in the running world.
+
+The next pressure is therefore to make lineage persistence and continuity-bearing children easier to perceive on the client without adding new lineage mechanics or history tooling.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the client should make parent-child continuity relationships more visible
+- continuity persistence should become easier to notice when it happens
+- cues should remain compatible with the current danger, crowding, food, autonomy, and motion layers
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because lineage IDs, generations, attached children, and recent continuity outcomes are already available
+- build should avoid adding lineage-specific contract fields unless one minimal readability field is clearly justified
+
+### Existing semantics
+
+- lineage and continuity remain authoritative on the server
+- fight, reproduction, food, crowding, autonomy, and movement rules should remain unchanged in this slice
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether continuity is best shown through stronger parent-child connection cues, lineage-group treatment, recent-promotion emphasis, or another lightweight local approach
+- how to keep the cue grounded in current authoritative state rather than broad history reconstruction
+- how to avoid visual overload now that several other play-legibility layers already exist
+
+## Risks If Ignored
+
+- one of Living Circles’ most distinctive semantics will remain under-read during ordinary play
+- lineage will continue to feel more inspectable than experientially meaningful
+- future evaluation of the game’s identity will remain partly blocked by weak continuity legibility
+
+---
+
+## Change
+
 Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
 
 ## Why This Matters
