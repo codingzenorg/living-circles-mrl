@@ -225,6 +225,67 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Increase the default world scale and startup population while replacing hand-authored expanded food placement with deterministic seeded layout generation.
+
+## Why This Matters
+
+The current expanded world baseline improved the old tiny demo, but it still starts from a visibly curated setup:
+
+- `1200x900` space
+- `5` autonomous circles
+- food drawn from a fixed ordered slot list around the center
+
+That remains test-friendly, but it limits the sense of scale now that the client uses a player-following viewport. The world can appear larger on screen, yet startup conditions still feel arranged and sparse.
+
+The next pressure is to increase ecological breadth without giving up determinism:
+
+- larger default world
+- more default autonomous circles
+- more random-looking food layout at startup
+- identical reset behavior for the same seed/rule
+
+## Impacted Areas
+
+### Simulation model
+
+- expanded default dimensions may increase again
+- expanded default autonomous baseline may increase
+- initial food slot generation should move from a hand-authored list to deterministic seeded generation
+
+### Reset behavior
+
+- reset must still rebuild the exact same authoritative startup world
+- deterministic tests must remain able to assert startup shape and content
+
+### Browser rendering
+
+- viewport mode and minimap should naturally benefit from the larger space and denser startup world
+- no contract change is required if coordinates remain the same kind of state
+
+### Existing semantics
+
+- food regeneration, crowding pressure, autonomy, fights, reproduction, and continuity should remain unchanged
+- narrow custom worlds should remain small and explicit for focused tests
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- the new expanded default world dimensions
+- the new expanded autonomous baseline
+- the deterministic seeded rule for initial food slot generation
+- how generated food avoids unreadable overlap with edges or initial entities
+
+## Risks If Ignored
+
+- the viewport presentation will continue to outgrow the ecological scale of the startup world
+- default startup conditions will keep feeling hand-authored rather than world-like
+- future evaluation of population-scale behavior will stay constrained by sparse, arranged initial conditions
+
+---
+
+## Change
+
 Remove grown derived radius from attached-child orbit distance.
 
 ## Why This Matters
