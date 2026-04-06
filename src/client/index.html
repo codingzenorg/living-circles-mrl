@@ -146,6 +146,23 @@
         min-height: 52px;
       }
 
+      .details-title {
+        margin: 0 0 8px;
+        color: var(--ink);
+        font-size: 0.82rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .details-log {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      .details-log li + li {
+        margin-top: 6px;
+      }
+
       @media (max-width: 860px) {
         .hud {
           grid-template-columns: 1fr;
@@ -173,7 +190,12 @@
           <div class="chip chip--blocked">Amber dashed ring: blocked reproduction</div>
         </div>
         <canvas id="world" width="800" height="600"></canvas>
-        <div class="details" id="details">Awaiting first world snapshot...</div>
+        <div class="details">
+          <div class="details-title">Recent Encounters</div>
+          <ol class="details-log" id="details">
+            <li>Awaiting first world snapshot...</li>
+          </ol>
+        </div>
       </section>
     </main>
     <script type="module" src="/app.js"></script>

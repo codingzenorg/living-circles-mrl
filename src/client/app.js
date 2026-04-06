@@ -9,6 +9,7 @@ const detailsNode = document.getElementById("details");
 const resetButton = document.getElementById("reset");
 
 let latestSnapshot = null;
+let eventLog = ["Awaiting first world snapshot..."];
 const pressedKeys = new Set();
 let activeSocket = null;
 let senderIntervalId = null;
@@ -64,7 +65,7 @@ function playerRiskState(circle, player, interaction) {
 
 function interactionSummary(interaction) {
   if (!interaction) {
-    return "No immediate collision or reproduction event.";
+    return null;
   }
 
   const summaries = {
@@ -79,6 +80,23 @@ function interactionSummary(interaction) {
   };
 
   return summaries[interaction.kind] ?? `Interaction: ${interaction.kind}`;
+}
+
+function renderEventLog() {
+  detailsNode.innerHTML = eventLog.map((entry) => `<li>${entry}</li>`).join("");
+}
+
+function pushEventLog(message) {
+  if (!message) {
+    return;
+  }
+
+  if (eventLog[0] === message) {
+    return;
+  }
+
+  eventLog = [message, ...eventLog].slice(0, 5);
+  renderEventLog();
 }
 
 function currentDirection() {
@@ -132,7 +150,7 @@ function draw(snapshot) {
   }
 
   tickNode.textContent = `T ${snapshot.tick} · F ${snapshot.foods.length} · O ${snapshot.autonomous_circles.length}`;
-  detailsNode.textContent = interactionSummary(snapshot.interaction);
+  pushEventLog(interactionSummary(snapshot.interaction));
 }
 
 function drawCircle(circle, isPlayer, player) {
@@ -258,6 +276,8 @@ async function resetWorld() {
     }
 
     const snapshot = await response.json();
+    eventLog = ["World restarted."];
+    renderEventLog();
     latestSnapshot = snapshot;
     draw(snapshot);
     setStatus("Connected");
@@ -349,6 +369,7 @@ resetButton.addEventListener("click", () => {
 
 setStatus("Connecting");
 connect();
+renderEventLog();
 
 if (!latestSnapshot) {
   context.fillStyle = "#e4f3f8";
