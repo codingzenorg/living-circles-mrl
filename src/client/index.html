@@ -109,6 +109,16 @@
         border-color: rgba(255, 167, 61, 0.28);
       }
 
+      .chip--food {
+        background: rgba(103, 221, 129, 0.12);
+        border-color: rgba(103, 221, 129, 0.26);
+      }
+
+      .chip--scarcity {
+        background: rgba(106, 196, 226, 0.11);
+        border-color: rgba(106, 196, 226, 0.24);
+      }
+
       .control {
         appearance: none;
         padding: 8px 14px;
@@ -194,6 +204,8 @@
           <div class="chip chip--opportunity">Green ring: different-shape opportunity</div>
           <div class="chip chip--blocked">Amber dashed ring: blocked reproduction</div>
           <div class="chip chip--crowding">Amber glow: costly crowding zone</div>
+          <div class="chip chip--food">Green glow: nearby food recovery zone</div>
+          <div class="chip chip--scarcity">Blue ring: nearby food is scarce</div>
         </div>
         <canvas id="world" width="800" height="600"></canvas>
         <div class="details">

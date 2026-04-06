@@ -18,6 +18,9 @@ const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown",
 const CROWDING_RADIUS = 120;
 const CROWDING_THRESHOLD = 2;
 const CROWDING_CUE_DISTANCE = 260;
+const FOOD_OPPORTUNITY_RADIUS = 170;
+const FOOD_CUE_DISTANCE = 260;
+const SCARCITY_THRESHOLD = 1;
 
 function normalizeKey(key) {
   return key.toLowerCase();
@@ -49,6 +52,27 @@ function shouldRenderCrowdingCue(circle, circles, player) {
   }
 
   return isCrowded(circle, circles) && distanceBetween(circle, player) <= CROWDING_CUE_DISTANCE;
+}
+
+function nearbyFoods(anchor, foods, radius) {
+  return foods.filter((food) => distanceBetween(anchor, food) <= radius);
+}
+
+function foodPressureAt(anchor, foods) {
+  const nearby = nearbyFoods(anchor, foods, FOOD_OPPORTUNITY_RADIUS);
+  return {
+    nearbyCount: nearby.length,
+    scarcity: nearby.length <= SCARCITY_THRESHOLD,
+    opportunity: nearby.length >= 2,
+  };
+}
+
+function shouldRenderFoodOpportunityCue(anchor, foods, player) {
+  if (!player) {
+    return false;
+  }
+
+  return distanceBetween(anchor, player) <= FOOD_CUE_DISTANCE && foodPressureAt(anchor, foods).opportunity;
 }
 
 function playerRiskState(circle, player, interaction) {
@@ -143,6 +167,7 @@ function currentDirection() {
 
 function draw(snapshot) {
   const circles = snapshot.player ? [snapshot.player, ...snapshot.autonomous_circles] : [...snapshot.autonomous_circles];
+  const playerFoodPressure = snapshot.player ? foodPressureAt(snapshot.player, snapshot.foods) : null;
 
   canvas.width = snapshot.world.width;
   canvas.height = snapshot.world.height;
@@ -157,9 +182,22 @@ function draw(snapshot) {
   context.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
 
   drawCrowdingZones(circles, snapshot.player);
+  drawFoodZones(snapshot.foods, snapshot.player);
 
   context.fillStyle = "#ff8a5b";
   for (const food of snapshot.foods) {
+    const nearbyOpportunity = snapshot.player && distanceBetween(food, snapshot.player) <= FOOD_CUE_DISTANCE;
+    if (nearbyOpportunity) {
+      const gradient = context.createRadialGradient(food.x, food.y, food.radius, food.x, food.y, 28);
+      gradient.addColorStop(0, "rgba(103, 221, 129, 0.28)");
+      gradient.addColorStop(1, "rgba(103, 221, 129, 0)");
+      context.fillStyle = gradient;
+      context.beginPath();
+      context.arc(food.x, food.y, 28, 0, Math.PI * 2);
+      context.fill();
+    }
+
+    context.fillStyle = "#ff8a5b";
     context.beginPath();
     context.arc(food.x, food.y, food.radius, 0, Math.PI * 2);
     context.fill();
@@ -172,7 +210,8 @@ function draw(snapshot) {
   if (snapshot.player) {
     drawCircle(snapshot.player, true, snapshot.player, circles);
     const pressure = isCrowded(snapshot.player, circles) ? " · pressure" : "";
-    energyNode.textContent = `E ${snapshot.player.energy.toFixed(0)} · C ${childCount(snapshot.player)} · G ${snapshot.player.generation}${pressure}`;
+    const foodState = playerFoodPressure?.scarcity ? " · scarce" : playerFoodPressure?.opportunity ? " · food" : "";
+    energyNode.textContent = `E ${snapshot.player.energy.toFixed(0)} · C ${childCount(snapshot.player)} · G ${snapshot.player.generation}${pressure}${foodState}`;
   } else {
     energyNode.textContent = "E defeated";
   }
@@ -194,6 +233,47 @@ function drawCrowdingZones(circles, player) {
     context.fillStyle = gradient;
     context.beginPath();
     context.arc(circle.x, circle.y, 92, 0, Math.PI * 2);
+    context.fill();
+  }
+}
+
+function drawFoodZones(foods, player) {
+  if (!player) {
+    return;
+  }
+
+  const playerFoodPressure = foodPressureAt(player, foods);
+
+  if (playerFoodPressure.opportunity) {
+    const gradient = context.createRadialGradient(player.x, player.y, 16, player.x, player.y, 120);
+    gradient.addColorStop(0, "rgba(103, 221, 129, 0.12)");
+    gradient.addColorStop(0.7, "rgba(103, 221, 129, 0.06)");
+    gradient.addColorStop(1, "rgba(103, 221, 129, 0)");
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(player.x, player.y, 120, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  if (playerFoodPressure.scarcity) {
+    context.strokeStyle = "rgba(106, 196, 226, 0.85)";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.arc(player.x, player.y, 72, 0, Math.PI * 2);
+    context.stroke();
+  }
+
+  for (const food of foods) {
+    if (!shouldRenderFoodOpportunityCue(food, foods, player)) {
+      continue;
+    }
+
+    const gradient = context.createRadialGradient(food.x, food.y, food.radius + 4, food.x, food.y, 46);
+    gradient.addColorStop(0, "rgba(103, 221, 129, 0.18)");
+    gradient.addColorStop(1, "rgba(103, 221, 129, 0)");
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(food.x, food.y, 46, 0, Math.PI * 2);
     context.fill();
   }
 }
