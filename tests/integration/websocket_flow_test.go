@@ -1363,8 +1363,14 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.Player == nil {
 		t.Fatal("expected player in initial snapshot")
 	}
-	if len(initial.AutonomousCircles) != 2 {
-		t.Fatalf("expected two autonomous circles, got %d", len(initial.AutonomousCircles))
+	if initial.World.Width != simulation.DefaultExpandedWorldWidth || initial.World.Height != simulation.DefaultExpandedWorldHeight {
+		t.Fatalf("expected expanded world %vx%v, got %vx%v", simulation.DefaultExpandedWorldWidth, simulation.DefaultExpandedWorldHeight, initial.World.Width, initial.World.Height)
+	}
+	if len(initial.AutonomousCircles) != simulation.DefaultExpandedAutonomousCount {
+		t.Fatalf("expected %d autonomous circles, got %d", simulation.DefaultExpandedAutonomousCount, len(initial.AutonomousCircles))
+	}
+	if len(initial.Foods) != simulation.DefaultExpandedFoodCount {
+		t.Fatalf("expected %d food slots, got %d", simulation.DefaultExpandedFoodCount, len(initial.Foods))
 	}
 	if initial.AutonomousCircles[0].Shape != initial.Player.Shape {
 		t.Fatalf("expected first autonomous circle to match player shape %q, got %q", initial.Player.Shape, initial.AutonomousCircles[0].Shape)
@@ -1398,6 +1404,9 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	}
 	if initial.AutonomousCircles[1].LineageID != "lineage-circle-3" || initial.AutonomousCircles[1].Generation != 0 {
 		t.Fatalf("expected second autonomous lineage state, got lineage=%q generation=%d", initial.AutonomousCircles[1].LineageID, initial.AutonomousCircles[1].Generation)
+	}
+	if initial.AutonomousCircles[2].ID != simulation.DefaultTertiaryID || initial.AutonomousCircles[3].ID != simulation.DefaultQuaternaryID || initial.AutonomousCircles[4].ID != simulation.DefaultQuinaryID {
+		t.Fatalf("expected deterministic expanded autonomous ids, got %+v", initial.AutonomousCircles)
 	}
 	if initial.Player.Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected fixed player radius %v, got %v", simulation.DefaultPlayerRadius, initial.Player.Radius)

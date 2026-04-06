@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_reproduction_capacity_component_identity.md`
+`docs/slices/initial_population_scale_world_expansion.md`
 
 ## Implemented Shape
 
@@ -11,7 +11,7 @@
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
 - authoritative food initialization and consumption inside the Go world model
-- two deterministic autonomous circles participating under the same movement and energy rules in the default demo world
+- expanded default world baseline with a larger bounded map, five deterministic autonomous circles, and eight deterministic food slots
 - explicit shape identity and current interaction classification in snapshots
 - deterministic same-shape fight resolution with loser removal
 - default demo visibility for both same-shape and different-shape interaction paths
@@ -95,26 +95,25 @@
   "type": "world_snapshot",
   "tick": 1,
   "world": {
-    "width": 800,
-    "height": 600
+    "width": 1200,
+    "height": 900
   },
   "player": {
     "id": "player-1",
     "lineage_id": "lineage-player-1",
     "generation": 1,
     "shape": "triangle",
-    "x": 408,
-    "y": 300,
-    "radius": 16,
+    "x": 608,
+    "y": 450,
+    "radius": 12,
     "energy": 99,
-    "children_count": 1,
     "attached_children": [
       {
         "id": "child-2",
         "owner_id": "player-1",
         "orbit_slot": 0,
-        "x": 429.2,
-        "y": 304.8,
+        "x": 629.2,
+        "y": 454.8,
         "radius": 4
       }
     ]
@@ -125,11 +124,10 @@
       "lineage_id": "lineage-circle-2",
       "generation": 1,
       "shape": "triangle",
-      "x": 268,
-      "y": 300,
+      "x": 468,
+      "y": 450,
       "radius": 12,
       "energy": 100,
-      "children_count": 0,
       "attached_children": []
     },
     {
@@ -137,18 +135,17 @@
       "lineage_id": "lineage-circle-3",
       "generation": 0,
       "shape": "square",
-      "x": 532,
-      "y": 300,
-      "radius": 16,
+      "x": 740,
+      "y": 410,
+      "radius": 12,
       "energy": 99,
-      "children_count": 1,
       "attached_children": [
         {
           "id": "child-1",
           "owner_id": "circle-3",
           "orbit_slot": 0,
-          "x": 553.2,
-          "y": 304.8,
+          "x": 761.2,
+          "y": 414.8,
           "radius": 4
         }
       ]
@@ -164,8 +161,8 @@
   "foods": [
     {
       "id": "food-1",
-      "x": 432,
-      "y": 300,
+      "x": 632,
+      "y": 450,
       "radius": 6
     }
   ]
@@ -175,10 +172,10 @@
 ## Deliberate Simplifications
 
 - one player-controlled circle only
-- exactly two autonomous circles in the default demo world
+- five autonomous circles in the default demo world
 - autonomous circles prefer the nearest active food target and fall back to deterministic baseline drift when no food target is available
 - deterministic shape assignment in the default demo world: player `triangle`, same-shape autonomous `triangle`, different-shape autonomous `square`
-- deterministic fixed food placement
+- deterministic fixed food placement scaled to the expanded default world
 - deterministic food regeneration returns consumed slots to their original positions after a fixed delay
 - attached children remain the source of truth for fight power, replacement continuity, and child-payment rules, and are embodied as attached orbiting children
 - attached-child positions now extend a parent's effective food collection reach
@@ -189,7 +186,7 @@
 - demo reset recreates the initial world state without restarting the server process
 - no local prediction or interpolation
 - one shared movement intent for the connected client
-- static world size and player radius
+- default world size now uses an expanded bounded map while custom config worlds can remain smaller and deterministic
 
 ## Surfaced Provisional Rules
 

@@ -8,12 +8,17 @@ import (
 const (
 	DefaultWorldWidth                           = 800.0
 	DefaultWorldHeight                          = 600.0
+	DefaultExpandedWorldWidth                   = 1200.0
+	DefaultExpandedWorldHeight                  = 900.0
 	DefaultPlayerRadius                         = 12.0
 	DefaultAttachedChildRadius                  = 4.0
 	DefaultAttachedChildOrbitGap                = 8.0
 	DefaultChildOrbitSpeed                      = 0.12
 	DefaultAutonomousID                         = "circle-2"
 	DefaultSecondaryID                          = "circle-3"
+	DefaultTertiaryID                           = "circle-4"
+	DefaultQuaternaryID                         = "circle-5"
+	DefaultQuinaryID                            = "circle-6"
 	DefaultPlayerEnergy                         = 100.0
 	DefaultReplacementEnergy                    = 100.0
 	DefaultMaxEnergy                            = 100.0
@@ -30,6 +35,8 @@ const (
 	DefaultReproductionCost                     = 10.0
 	DefaultPlayerShape                          = "triangle"
 	DefaultAutoShape                            = "square"
+	DefaultExpandedAutonomousCount              = 5
+	DefaultExpandedFoodCount                    = 8
 )
 
 type Bounds struct {
@@ -207,6 +214,9 @@ type World struct {
 }
 
 type Config struct {
+	WorldWidth                          float64
+	WorldHeight                         float64
+	UseExpandedPopulation               bool
 	PlayerShape                         string
 	AutonomousShape                     string
 	SecondaryAutonomousShape            string
@@ -236,6 +246,9 @@ type ContactDetails struct {
 
 func NewWorld() *World {
 	return NewWorldWithConfig(Config{
+		WorldWidth:                DefaultExpandedWorldWidth,
+		WorldHeight:               DefaultExpandedWorldHeight,
+		UseExpandedPopulation:     true,
 		PlayerShape:               DefaultPlayerShape,
 		AutonomousShape:           DefaultPlayerShape,
 		SecondaryAutonomousShape:  DefaultAutoShape,
@@ -258,10 +271,12 @@ func NewWorldWithShapes(playerShape, autonomousShape string) *World {
 
 func NewWorldWithConfig(config Config) *World {
 	playerID := "player-1"
-	playerX := configuredOrDefault(config.PlayerX, DefaultWorldWidth/2)
-	playerY := configuredOrDefault(config.PlayerY, DefaultWorldHeight/2)
-	autonomousX := configuredOrDefault(config.AutonomousX, DefaultWorldWidth/2-140)
-	autonomousY := configuredOrDefault(config.AutonomousY, DefaultWorldHeight/2)
+	worldWidth := configuredOrDefault(config.WorldWidth, DefaultWorldWidth)
+	worldHeight := configuredOrDefault(config.WorldHeight, DefaultWorldHeight)
+	playerX := configuredOrDefault(config.PlayerX, worldWidth/2)
+	playerY := configuredOrDefault(config.PlayerY, worldHeight/2)
+	autonomousX := configuredOrDefault(config.AutonomousX, worldWidth/2-140)
+	autonomousY := configuredOrDefault(config.AutonomousY, worldHeight/2)
 	autonomousCircles := []AutonomousCircle{
 		{
 			ID:               DefaultAutonomousID,
@@ -276,8 +291,8 @@ func NewWorldWithConfig(config Config) *World {
 		},
 	}
 	if config.SecondaryAutonomousShape != "" {
-		secondaryX := configuredOrDefault(config.SecondaryAutonomousX, DefaultWorldWidth/2+140)
-		secondaryY := configuredOrDefault(config.SecondaryAutonomousY, DefaultWorldHeight/2)
+		secondaryX := configuredOrDefault(config.SecondaryAutonomousX, worldWidth/2+140)
+		secondaryY := configuredOrDefault(config.SecondaryAutonomousY, worldHeight/2)
 		autonomousCircles = append(autonomousCircles, AutonomousCircle{
 			ID:               DefaultSecondaryID,
 			LineageID:        lineageIDFor(DefaultSecondaryID),
@@ -290,32 +305,32 @@ func NewWorldWithConfig(config Config) *World {
 			AttachedChildren: initialAttachedChildren(DefaultSecondaryID, config.SecondaryChildrenCount),
 		})
 	}
+	if config.UseExpandedPopulation {
+		autonomousCircles = append(autonomousCircles, defaultExpandedAutonomousCircles(worldWidth, worldHeight)...)
+	}
 
-	foodSlots := []Food{
-		{ID: "food-1", X: DefaultWorldWidth/2 + 32, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
-		{ID: "food-2", X: DefaultWorldWidth/2 - 108, Y: DefaultWorldHeight / 2, Radius: DefaultFoodRadius},
-		{ID: "food-3", X: DefaultWorldWidth/2 + 120, Y: DefaultWorldHeight/2 + 84, Radius: DefaultFoodRadius},
+	foodSlots := defaultFoodSlots(worldWidth, worldHeight, config.UseExpandedPopulation)
+	player := &PlayerCircle{
+		ID:               playerID,
+		LineageID:        lineageIDFor(playerID),
+		Generation:       0,
+		Shape:            config.PlayerShape,
+		X:                playerX,
+		Y:                playerY,
+		Radius:           DefaultPlayerRadius,
+		Energy:           config.PlayerEnergy,
+		AttachedChildren: initialAttachedChildren(playerID, config.PlayerChildrenCount),
 	}
 
 	return &World{
 		bounds: Bounds{
-			Width:  DefaultWorldWidth,
-			Height: DefaultWorldHeight,
+			Width:  worldWidth,
+			Height: worldHeight,
 		},
-		player: &PlayerCircle{
-			ID:               playerID,
-			LineageID:        lineageIDFor(playerID),
-			Generation:       0,
-			Shape:            config.PlayerShape,
-			X:                playerX,
-			Y:                playerY,
-			Radius:           DefaultPlayerRadius,
-			Energy:           config.PlayerEnergy,
-			AttachedChildren: initialAttachedChildren(playerID, config.PlayerChildrenCount),
-		},
+		player:                              player,
 		autonomousCircles:                   autonomousCircles,
 		autonomousDirections:                initialAutonomousDirections(len(autonomousCircles)),
-		nextChildID:                         totalInitialChildren(config) + 1,
+		nextChildID:                         totalInitialChildren(player, autonomousCircles) + 1,
 		disableFoodSeeking:                  config.DisableFoodSeeking,
 		disableThreatAvoidance:              config.DisableThreatAvoidance,
 		disableBlockedReproductionAvoidance: config.DisableBlockedReproductionAvoidance,
@@ -336,6 +351,69 @@ func configuredOrDefault(value, fallback float64) float64 {
 	}
 
 	return value
+}
+
+func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64) []AutonomousCircle {
+	centerX := worldWidth / 2
+	centerY := worldHeight / 2
+
+	return []AutonomousCircle{
+		{
+			ID:               DefaultTertiaryID,
+			LineageID:        lineageIDFor(DefaultTertiaryID),
+			Generation:       0,
+			Shape:            DefaultPlayerShape,
+			X:                centerX - 320,
+			Y:                centerY + 160,
+			Radius:           DefaultPlayerRadius,
+			Energy:           90,
+			AttachedChildren: initialAttachedChildren(DefaultTertiaryID, 0),
+		},
+		{
+			ID:               DefaultQuaternaryID,
+			LineageID:        lineageIDFor(DefaultQuaternaryID),
+			Generation:       0,
+			Shape:            DefaultAutoShape,
+			X:                centerX + 280,
+			Y:                centerY + 140,
+			Radius:           DefaultPlayerRadius,
+			Energy:           85,
+			AttachedChildren: initialAttachedChildren(DefaultQuaternaryID, 0),
+		},
+		{
+			ID:               DefaultQuinaryID,
+			LineageID:        lineageIDFor(DefaultQuinaryID),
+			Generation:       0,
+			Shape:            DefaultPlayerShape,
+			X:                centerX,
+			Y:                centerY - 220,
+			Radius:           DefaultPlayerRadius,
+			Energy:           95,
+			AttachedChildren: initialAttachedChildren(DefaultQuinaryID, 0),
+		},
+	}
+}
+
+func defaultFoodSlots(worldWidth, worldHeight float64, expanded bool) []Food {
+	centerX := worldWidth / 2
+	centerY := worldHeight / 2
+
+	foodSlots := []Food{
+		{ID: "food-1", X: centerX + 32, Y: centerY, Radius: DefaultFoodRadius},
+		{ID: "food-2", X: centerX - 108, Y: centerY, Radius: DefaultFoodRadius},
+		{ID: "food-3", X: centerX + 120, Y: centerY + 84, Radius: DefaultFoodRadius},
+	}
+	if !expanded {
+		return foodSlots
+	}
+
+	return append(foodSlots,
+		Food{ID: "food-4", X: centerX - 280, Y: centerY + 120, Radius: DefaultFoodRadius},
+		Food{ID: "food-5", X: centerX + 300, Y: centerY + 150, Radius: DefaultFoodRadius},
+		Food{ID: "food-6", X: centerX, Y: centerY - 180, Radius: DefaultFoodRadius},
+		Food{ID: "food-7", X: centerX - 220, Y: centerY - 160, Radius: DefaultFoodRadius},
+		Food{ID: "food-8", X: centerX + 220, Y: centerY - 140, Radius: DefaultFoodRadius},
+	)
 }
 
 func (w *World) Advance(tick int64, intent Vector) Snapshot {
@@ -1524,8 +1602,16 @@ func initialAttachedChildren(ownerID string, count int) []AttachedChild {
 	return children
 }
 
-func totalInitialChildren(config Config) int {
-	return config.PlayerChildrenCount + config.AutonomousChildrenCount + config.SecondaryChildrenCount
+func totalInitialChildren(player *PlayerCircle, autonomousCircles []AutonomousCircle) int {
+	total := 0
+	if player != nil {
+		total += len(player.AttachedChildren)
+	}
+	for _, circle := range autonomousCircles {
+		total += len(circle.AttachedChildren)
+	}
+
+	return total
 }
 
 func snapshotPlayerCircle(circle PlayerCircle, tick int64) PlayerCircle {

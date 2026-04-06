@@ -12,6 +12,9 @@ type Session struct {
 
 func NewSession() *Session {
 	return NewSessionWithConfig(Config{
+		WorldWidth:                DefaultExpandedWorldWidth,
+		WorldHeight:               DefaultExpandedWorldHeight,
+		UseExpandedPopulation:     true,
 		PlayerShape:               DefaultPlayerShape,
 		AutonomousShape:           DefaultPlayerShape,
 		SecondaryAutonomousShape:  DefaultAutoShape,

@@ -285,20 +285,20 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	world := simulation.NewWorld()
 	snapshot := world.Snapshot(0)
 
-	if len(snapshot.Foods) != 3 {
-		t.Fatalf("expected three deterministic food items, got %d", len(snapshot.Foods))
+	if snapshot.World.Width != simulation.DefaultExpandedWorldWidth || snapshot.World.Height != simulation.DefaultExpandedWorldHeight {
+		t.Fatalf("expected expanded default world %vx%v, got %vx%v", simulation.DefaultExpandedWorldWidth, simulation.DefaultExpandedWorldHeight, snapshot.World.Width, snapshot.World.Height)
 	}
-
-	if snapshot.Foods[0].ID != "food-1" || snapshot.Foods[0].X != 432 || snapshot.Foods[0].Y != 300 {
+	if len(snapshot.Foods) != simulation.DefaultExpandedFoodCount {
+		t.Fatalf("expected %d deterministic food items, got %d", simulation.DefaultExpandedFoodCount, len(snapshot.Foods))
+	}
+	if snapshot.Foods[0].ID != "food-1" || snapshot.Foods[0].X != simulation.DefaultExpandedWorldWidth/2+32 || snapshot.Foods[0].Y != simulation.DefaultExpandedWorldHeight/2 {
 		t.Fatalf("unexpected first food placement: %+v", snapshot.Foods[0])
 	}
-
-	if snapshot.Foods[1].ID != "food-2" || snapshot.Foods[1].X != 292 || snapshot.Foods[1].Y != 300 {
+	if snapshot.Foods[1].ID != "food-2" || snapshot.Foods[1].X != simulation.DefaultExpandedWorldWidth/2-108 || snapshot.Foods[1].Y != simulation.DefaultExpandedWorldHeight/2 {
 		t.Fatalf("unexpected second food placement: %+v", snapshot.Foods[1])
 	}
-
-	if len(snapshot.AutonomousCircles) != 2 {
-		t.Fatalf("expected two autonomous circles, got %d", len(snapshot.AutonomousCircles))
+	if len(snapshot.AutonomousCircles) != simulation.DefaultExpandedAutonomousCount {
+		t.Fatalf("expected %d autonomous circles, got %d", simulation.DefaultExpandedAutonomousCount, len(snapshot.AutonomousCircles))
 	}
 
 	if snapshot.Player.Shape != simulation.DefaultPlayerShape {
@@ -356,6 +356,52 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	}
 	if snapshot.AutonomousCircles[1].Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected base autonomous radius %v, got %v", simulation.DefaultPlayerRadius, snapshot.AutonomousCircles[1].Radius)
+	}
+	if snapshot.AutonomousCircles[2].ID != simulation.DefaultTertiaryID || snapshot.AutonomousCircles[3].ID != simulation.DefaultQuaternaryID || snapshot.AutonomousCircles[4].ID != simulation.DefaultQuinaryID {
+		t.Fatalf("expected deterministic expanded autonomous ids, got %+v", snapshot.AutonomousCircles)
+	}
+}
+
+func TestDefaultSessionResetRestoresExpandedPopulationDeterministically(t *testing.T) {
+	session := simulation.NewSession()
+	before := session.Snapshot()
+
+	session.Advance()
+	reset := session.Reset()
+
+	if reset.World != before.World {
+		t.Fatalf("expected reset world bounds %+v, got %+v", before.World, reset.World)
+	}
+	if len(reset.AutonomousCircles) != len(before.AutonomousCircles) {
+		t.Fatalf("expected reset autonomous count %d, got %d", len(before.AutonomousCircles), len(reset.AutonomousCircles))
+	}
+	if len(reset.Foods) != len(before.Foods) {
+		t.Fatalf("expected reset food count %d, got %d", len(before.Foods), len(reset.Foods))
+	}
+	if reset.Player == nil || before.Player == nil {
+		t.Fatal("expected player before and after reset")
+	}
+	if reset.Player.X != before.Player.X || reset.Player.Y != before.Player.Y {
+		t.Fatalf("expected reset player position (%v,%v), got (%v,%v)", before.Player.X, before.Player.Y, reset.Player.X, reset.Player.Y)
+	}
+}
+
+func TestExpandedDefaultWorldKeepsInitialEntitiesInsideBounds(t *testing.T) {
+	snapshot := simulation.NewWorld().Snapshot(0)
+
+	assertInsideBounds := func(x, y, radius float64, label string) {
+		t.Helper()
+		if x < radius || x > snapshot.World.Width-radius || y < radius || y > snapshot.World.Height-radius {
+			t.Fatalf("expected %s inside bounds, got x=%v y=%v radius=%v world=%+v", label, x, y, radius, snapshot.World)
+		}
+	}
+
+	assertInsideBounds(snapshot.Player.X, snapshot.Player.Y, snapshot.Player.Radius, "player")
+	for _, circle := range snapshot.AutonomousCircles {
+		assertInsideBounds(circle.X, circle.Y, circle.Radius, circle.ID)
+	}
+	for _, food := range snapshot.Foods {
+		assertInsideBounds(food.X, food.Y, food.Radius, food.ID)
 	}
 }
 
@@ -697,12 +743,13 @@ func TestAutonomousAttachedChildCanCollectFoodForParent(t *testing.T) {
 
 func TestAutonomousFoodSeekingCanCollectOffLaneFood(t *testing.T) {
 	session := simulation.NewSession()
+	before := session.Snapshot()
 
 	var snapshot simulation.Snapshot
 	collected := false
 	for range 20 {
 		snapshot = session.Advance()
-		if len(snapshot.Foods) < 3 {
+		if len(snapshot.Foods) < len(before.Foods) {
 			collected = true
 			break
 		}
@@ -711,8 +758,8 @@ func TestAutonomousFoodSeekingCanCollectOffLaneFood(t *testing.T) {
 	if !collected {
 		t.Fatal("expected autonomous food seeking to collect food within the first steering window")
 	}
-	if snapshot.AutonomousCircles[1].Y <= 300 {
-		t.Fatalf("expected second autonomous circle to steer off its original horizontal lane, got y=%v", snapshot.AutonomousCircles[1].Y)
+	if snapshot.AutonomousCircles[1].Y <= before.AutonomousCircles[1].Y {
+		t.Fatalf("expected second autonomous circle to steer off its original horizontal lane, before=%v after=%v", before.AutonomousCircles[1].Y, snapshot.AutonomousCircles[1].Y)
 	}
 }
 
