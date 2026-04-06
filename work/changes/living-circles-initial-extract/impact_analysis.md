@@ -3249,3 +3249,19 @@ That points to a bounded client-only slice:
 - tune fullscreen column proportions
 - preserve the current information set and hierarchy
 - leave server semantics and contract shape unchanged
+## Pressure: Player Follow Camera Viewport
+
+The fullscreen demo now uses the viewport more effectively, but the browser still renders the entire authoritative world by scaling it down to fit the play stage. That keeps the whole world visible, but it weakens visual density and undercuts the sense of scale.
+
+The new pressure is:
+
+- the world should feel large rather than shrunk
+- rendering should stay visually dense and eye-catching
+- the browser needs a bounded camera model instead of whole-world scaling
+
+That points to a bounded client-only slice:
+
+- introduce a player-following viewport
+- keep authoritative world coordinates unchanged
+- clamp the camera to world bounds
+- leave server semantics and contract shape unchanged
