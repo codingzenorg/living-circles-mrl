@@ -357,37 +357,29 @@ function renderPlayerCard(player, pressure, foodState) {
   if (!player) {
     playerCardNode.innerHTML = `
       <div class="player-stat">
-        <span class="player-stat-label">Status</span>
-        <span class="player-stat-value">Defeated</span>
+        <div class="player-identity">
+          <span class="player-name">Defeated</span>
+          <span class="player-state">offline</span>
+        </div>
       </div>
     `;
     return;
   }
 
+  const state = pressure || foodState ? `${pressure}${pressure && foodState ? " · " : ""}${foodState}` : "stable";
+
   playerCardNode.innerHTML = `
     <div class="player-stat">
-      <span class="player-stat-label">Name</span>
-      <span class="player-stat-value">${displayName(player.id)}</span>
-    </div>
-    <div class="player-stat">
-      <span class="player-stat-label">Shape</span>
-      <span class="player-stat-value">${player.shape}</span>
-    </div>
-    <div class="player-stat">
-      <span class="player-stat-label">Energy</span>
-      <span class="player-stat-value">${player.energy.toFixed(0)}</span>
-    </div>
-    <div class="player-stat">
-      <span class="player-stat-label">Children</span>
-      <span class="player-stat-value">${childCount(player)}</span>
-    </div>
-    <div class="player-stat">
-      <span class="player-stat-label">Generation</span>
-      <span class="player-stat-value">${player.generation}</span>
-    </div>
-    <div class="player-stat">
-      <span class="player-stat-label">State</span>
-      <span class="player-stat-value">${pressure || foodState ? `${pressure}${pressure && foodState ? " · " : ""}${foodState}` : "stable"}</span>
+      <div class="player-identity">
+        <span class="player-name">${displayName(player.id)}</span>
+        <span class="player-state">${state}</span>
+      </div>
+      <div class="player-meta">
+        <span class="player-meta-item"><strong>${player.shape}</strong> shape</span>
+        <span class="player-meta-item">E <strong>${player.energy.toFixed(0)}</strong></span>
+        <span class="player-meta-item">C <strong>${childCount(player)}</strong></span>
+        <span class="player-meta-item">G <strong>${player.generation}</strong></span>
+      </div>
     </div>
   `;
 }
@@ -399,7 +391,7 @@ function renderNpcCard(circles) {
   }
 
   npcCardNode.innerHTML = circles.map((circle) => `
-    <li>${displayName(circle.id)}: ${circle.shape} - e:${circle.energy.toFixed(0)} c:${childCount(circle)} g:${circle.generation}</li>
+    <li>${displayName(circle.id)} · ${circle.shape} · e:${circle.energy.toFixed(0)} c:${childCount(circle)} g:${circle.generation}</li>
   `).join("");
 }
 

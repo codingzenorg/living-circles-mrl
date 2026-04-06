@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_legend_collapse_in_fullscreen_layout.md`
+`docs/slices/initial_header_footprint_reduction_in_fullscreen_layout.md`
 
 ## Implemented Shape
 
@@ -18,6 +18,7 @@
 - the demo now uses a fullscreen desktop layout with the canvas taking the main viewport area and the support column docked to the side while preserving a narrow-screen collapse
 - the side support column now uses lighter panel chrome, tighter spacing, and softer internal surfaces so it reads more clearly as secondary to the canvas
 - the fullscreen legend now uses a single compact explanatory line instead of a full chip band so it interrupts the play surface less
+- the fullscreen header now uses a tighter title and shorter intro copy so the play surface begins higher without losing the page identity
 - the legend is now reduced to the strongest cue families so the canvas and external panels carry more of the explanatory load during ordinary play
 - browser rendering now keeps a very short-lived client-local afterglow for recent resolved fights, reproductions, and continuity-preserving promotion so important outcomes remain briefly visible in-world
 - recent event afterglow remains grounded in current authoritative interaction outcomes and current entity positions without introducing server-side event history

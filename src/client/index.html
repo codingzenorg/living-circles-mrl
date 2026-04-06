@@ -43,22 +43,24 @@
         background: var(--panel);
         border: 1px solid var(--line);
         border-radius: 18px;
-        padding: 20px;
+        padding: 16px 18px 18px;
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
         backdrop-filter: blur(10px);
         min-height: calc(100vh - 32px);
       }
 
       h1 {
-        margin: 0 0 8px;
-        font-size: clamp(2rem, 6vw, 3.5rem);
-        line-height: 0.95;
+        margin: 0 0 4px;
+        font-size: clamp(1.6rem, 4vw, 2.6rem);
+        line-height: 1;
       }
 
       p {
-        margin: 0 0 18px;
-        max-width: 62ch;
+        margin: 0 0 12px;
+        max-width: 56ch;
         color: var(--muted);
+        font-size: 0.96rem;
+        line-height: 1.4;
       }
 
       .hud {
@@ -223,7 +225,7 @@
 
       .support-stack {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-columns: 1fr;
         gap: 12px;
       }
 
@@ -386,10 +388,7 @@
     <main>
       <section class="panel">
         <h1>Living Circles</h1>
-        <p>
-          One circle, one authoritative server, one bounded world. Use the arrow keys or WASD
-          to move and watch energy drain from server-approved movement.
-        </p>
+        <p>Authoritative circles, bounded world. Move with arrow keys or WASD.</p>
         <div class="hud">
           <div class="chip" id="status">Connecting...</div>
           <div class="chip" id="energy">Energy: --</div>
