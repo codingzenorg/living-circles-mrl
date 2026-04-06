@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_crowding_aware_autonomy.md`
+`docs/slices/initial_shape_and_risk_play_legibility.md`
 
 ## Implemented Shape
 
@@ -10,6 +10,8 @@
 - browser client under `src/client/`
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
+- browser rendering now uses stronger on-canvas cues for same-shape danger, different-shape opportunity, and blocked reproduction near the player instead of relying mainly on dense HUD text
+- the live HUD now summarizes interaction meaning in more readable language while preserving detailed authoritative identifiers for inspection
 - authoritative food initialization and consumption inside the Go world model
 - expanded default-world food capacity now derives from the initial active-circle count rather than remaining a purely hand-picked slot count
 - food-slot regeneration delay now scales deterministically with current missing-slot count rather than remaining one unconditional global timer

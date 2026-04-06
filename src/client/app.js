@@ -5,6 +5,7 @@ const context = canvas.getContext("2d");
 const statusNode = document.getElementById("status");
 const energyNode = document.getElementById("energy");
 const tickNode = document.getElementById("tick");
+const detailsNode = document.getElementById("details");
 const resetButton = document.getElementById("reset");
 
 let latestSnapshot = null;
@@ -20,6 +21,64 @@ function normalizeKey(key) {
 
 function childCount(circle) {
   return circle.attached_children.length;
+}
+
+function distanceBetween(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function playerRiskState(circle, player, interaction) {
+  if (!player || circle.id === player.id) {
+    return "neutral";
+  }
+
+  const nearPlayer = distanceBetween(circle, player) <= 220;
+  if (!nearPlayer) {
+    return "neutral";
+  }
+
+  if (circle.shape === player.shape) {
+    return "danger";
+  }
+
+  if (!interaction) {
+    return "opportunity";
+  }
+
+  const involvesCircle = interaction.source_id === circle.id || interaction.target_id === circle.id;
+  const involvesPlayer = interaction.source_id === player.id || interaction.target_id === player.id;
+  if (!involvesCircle || !involvesPlayer) {
+    return "opportunity";
+  }
+
+  if (interaction.kind === "reproduce_blocked_energy") {
+    return "blocked";
+  }
+
+  if (interaction.kind.startsWith("reproduce")) {
+    return "opportunity";
+  }
+
+  return "danger";
+}
+
+function interactionSummary(interaction) {
+  if (!interaction) {
+    return "No immediate collision or reproduction event.";
+  }
+
+  const summaries = {
+    fight_candidate: "Same-shape collision: contest is active.",
+    fight_absorbed_child: "Same-shape collision: one attached child absorbed the loss.",
+    fight_resolved: "Same-shape collision: the fight resolved.",
+    reproduce_candidate: "Different-shape collision: reproduction is possible.",
+    reproduce_resolved: "Different-shape collision: reproduction resolved.",
+    reproduce_paid_child: "Different-shape collision: reproduction used child reserve.",
+    reproduce_blocked_energy: "Different-shape collision: reproduction is blocked by current capacity.",
+    death_promoted_child: "Collapse continuity: a promoted child preserved the lineage.",
+  };
+
+  return summaries[interaction.kind] ?? `Interaction: ${interaction.kind}`;
 }
 
 function currentDirection() {
@@ -67,54 +126,18 @@ function draw(snapshot) {
 
   if (snapshot.player) {
     drawCircle(snapshot.player, true, snapshot.player);
-    energyNode.textContent = `Energy: ${snapshot.player.energy.toFixed(0)} · Children: ${childCount(snapshot.player)} · Generation: ${snapshot.player.generation}`;
+    energyNode.textContent = `E ${snapshot.player.energy.toFixed(0)} · C ${childCount(snapshot.player)} · G ${snapshot.player.generation}`;
   } else {
-    energyNode.textContent = "Energy: defeated";
+    energyNode.textContent = "E defeated";
   }
 
-  const interaction = snapshot.interaction ? snapshot.interaction.kind : "none";
-  const promotedChild = snapshot.interaction?.promoted_child_id ? ` · Promoted: ${snapshot.interaction.promoted_child_id}` : "";
-  const absorbedChild = snapshot.interaction?.absorbed_child_id ? ` · Absorbed: ${snapshot.interaction.absorbed_child_id}` : "";
-  const childPayment = snapshot.interaction?.source_paid_child || snapshot.interaction?.target_paid_child
-    ? ` · Paid: ${snapshot.interaction?.source_paid_child ? "source" : ""}${snapshot.interaction?.source_paid_child && snapshot.interaction?.target_paid_child ? "+" : ""}${snapshot.interaction?.target_paid_child ? "target" : ""}`
-    : "";
-  const paidSourceChild = snapshot.interaction?.source_paid_child_id ? ` · Paid source child: ${snapshot.interaction.source_paid_child_id}` : "";
-  const paidTargetChild = snapshot.interaction?.target_paid_child_id ? ` · Paid target child: ${snapshot.interaction.target_paid_child_id}` : "";
-  const createdChildren = snapshot.interaction?.created_child_ids?.length
-    ? ` · Created: ${snapshot.interaction.created_child_ids.join(",")}`
-    : "";
-  const sourceCreatedChildren = snapshot.interaction?.source_created_child_ids?.length
-    ? ` · Source created: ${snapshot.interaction.source_created_child_ids.join(",")}`
-    : "";
-  const targetCreatedChildren = snapshot.interaction?.target_created_child_ids?.length
-    ? ` · Target created: ${snapshot.interaction.target_created_child_ids.join(",")}`
-    : "";
-  const blockedCapacity = snapshot.interaction?.source_blocked_capacity || snapshot.interaction?.target_blocked_capacity
-    ? ` · Blocked: ${snapshot.interaction?.source_blocked_capacity ? "source" : ""}${snapshot.interaction?.source_blocked_capacity && snapshot.interaction?.target_blocked_capacity ? "+" : ""}${snapshot.interaction?.target_blocked_capacity ? "target" : ""}`
-    : "";
-  const capacityValues = snapshot.interaction && (snapshot.interaction.source_capacity_value !== undefined || snapshot.interaction.target_capacity_value !== undefined)
-    ? ` · Capacity: ${snapshot.interaction.source_capacity_value ?? "-"}->${snapshot.interaction.target_capacity_value ?? "-"}`
-    : "";
-  const capacityComponents = snapshot.interaction && (
-    snapshot.interaction.source_energy_component !== undefined ||
-    snapshot.interaction.target_energy_component !== undefined ||
-    snapshot.interaction.source_reserve_component !== undefined ||
-    snapshot.interaction.target_reserve_component !== undefined
-  )
-    ? ` · Components: e=${snapshot.interaction.source_energy_component ?? "-"}+${snapshot.interaction.source_reserve_component ?? "-"} -> e=${snapshot.interaction.target_energy_component ?? "-"}+${snapshot.interaction.target_reserve_component ?? "-"}`
-    : "";
-  const ruleConstants = snapshot.interaction && (snapshot.interaction.reproduction_threshold !== undefined || snapshot.interaction.reproduction_cost !== undefined)
-    ? ` · Rule: min=${snapshot.interaction.reproduction_threshold ?? "-"} cost=${snapshot.interaction.reproduction_cost ?? "-"}`
-    : "";
-  const contactPathKind = snapshot.interaction?.contact_path_kind ? ` · Contact path: ${snapshot.interaction.contact_path_kind}` : "";
-  const distributionKind = snapshot.interaction?.distribution_kind ? ` · Distribution: ${snapshot.interaction.distribution_kind}` : "";
-  const sourceChild = snapshot.interaction?.source_child_id ? ` · Source child: ${snapshot.interaction.source_child_id}` : "";
-  const targetChild = snapshot.interaction?.target_child_id ? ` · Target child: ${snapshot.interaction.target_child_id}` : "";
-  tickNode.textContent = `Tick: ${snapshot.tick} · Food: ${snapshot.foods.length} · Others: ${snapshot.autonomous_circles.length} · Interaction: ${interaction}${promotedChild}${absorbedChild}${childPayment}${paidSourceChild}${paidTargetChild}${createdChildren}${sourceCreatedChildren}${targetCreatedChildren}${blockedCapacity}${capacityValues}${capacityComponents}${ruleConstants}${contactPathKind}${distributionKind}${sourceChild}${targetChild}`;
+  tickNode.textContent = `T ${snapshot.tick} · F ${snapshot.foods.length} · O ${snapshot.autonomous_circles.length}`;
+  detailsNode.textContent = interactionSummary(snapshot.interaction);
 }
 
 function drawCircle(circle, isPlayer, player) {
   const matchesPlayerShape = !isPlayer && player && circle.shape === player.shape;
+  const relationToPlayer = playerRiskState(circle, player, latestSnapshot?.interaction);
   const color = isPlayer ? "#ff8a5b" : circle.shape === "triangle" ? "#6fd5ff" : "#c08cff";
   context.fillStyle = color;
 
@@ -134,11 +157,37 @@ function drawCircle(circle, isPlayer, player) {
   }
 
   if (matchesPlayerShape) {
-    context.strokeStyle = "#ffad8c";
+    context.strokeStyle = "#ff6f7f";
     context.lineWidth = 3;
     context.beginPath();
     context.arc(circle.x, circle.y, circle.radius + 5, 0, Math.PI * 2);
     context.stroke();
+  }
+
+  if (!isPlayer && relationToPlayer === "danger") {
+    context.strokeStyle = "rgba(255, 95, 109, 0.9)";
+    context.lineWidth = 6;
+    context.beginPath();
+    context.arc(circle.x, circle.y, circle.radius + 10, 0, Math.PI * 2);
+    context.stroke();
+  }
+
+  if (!isPlayer && relationToPlayer === "opportunity") {
+    context.strokeStyle = "rgba(117, 229, 149, 0.9)";
+    context.lineWidth = 5;
+    context.beginPath();
+    context.arc(circle.x, circle.y, circle.radius + 9, 0, Math.PI * 2);
+    context.stroke();
+  }
+
+  if (!isPlayer && relationToPlayer === "blocked") {
+    context.setLineDash([8, 6]);
+    context.strokeStyle = "rgba(255, 201, 92, 0.95)";
+    context.lineWidth = 5;
+    context.beginPath();
+    context.arc(circle.x, circle.y, circle.radius + 9, 0, Math.PI * 2);
+    context.stroke();
+    context.setLineDash([]);
   }
 
   if (isPlayer) {
@@ -161,7 +210,7 @@ function drawCircle(circle, isPlayer, player) {
   const children = childCount(circle);
   const label = isPlayer
     ? `YOU ${circle.id} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}`
-    : `${circle.id} ${matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}`;
+    : `${circle.id} ${relationToPlayer === "danger" ? "danger" : relationToPlayer === "opportunity" ? "open" : relationToPlayer === "blocked" ? "blocked" : matchesPlayerShape ? "match" : "other"} (${circle.shape}) c:${children} o:${circle.attached_children.length} g:${circle.generation}`;
   context.fillText(label, circle.x - 40, circle.y - circle.radius - 10);
 
   context.font = "12px Georgia";
