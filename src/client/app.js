@@ -605,6 +605,7 @@ function draw(snapshot) {
   recentEffects = recentEffects
     .map((effect) => ({ ...effect, ttl: effect.ttl - 1 }))
     .filter((effect) => effect.ttl > 0);
+  drawOffscreenFoodAwareness(snapshot, camera);
   drawOffscreenAwareness(snapshot, camera);
   context.restore();
   drawMinimap(snapshot, camera);
@@ -671,6 +672,38 @@ function drawOffscreenAwareness(snapshot, camera) {
     context.beginPath();
     context.arc(relativeX, relativeY, 8, 0, Math.PI * 2);
     context.stroke();
+    context.restore();
+  }
+}
+
+function drawOffscreenFoodAwareness(snapshot, camera) {
+  if (!snapshot.player) {
+    return;
+  }
+
+  const viewportLeft = camera.x;
+  const viewportRight = camera.x + camera.width;
+  const viewportTop = camera.y;
+  const viewportBottom = camera.y + camera.height;
+  const nearbyFoods = snapshot.foods.filter((food) => {
+    const distance = distanceBetween(food, snapshot.player);
+    if (distance > OFFSCREEN_AWARENESS_DISTANCE) {
+      return false;
+    }
+
+    return food.x < viewportLeft || food.x > viewportRight || food.y < viewportTop || food.y > viewportBottom;
+  }).slice(0, 6);
+
+  for (const food of nearbyFoods) {
+    const relativeX = clamp(food.x, viewportLeft + OFFSCREEN_EDGE_INSET, viewportRight - OFFSCREEN_EDGE_INSET) - camera.x;
+    const relativeY = clamp(food.y, viewportTop + OFFSCREEN_EDGE_INSET, viewportBottom - OFFSCREEN_EDGE_INSET) - camera.y;
+
+    context.save();
+    context.translate(camera.x, camera.y);
+    context.fillStyle = "rgba(255, 138, 91, 0.88)";
+    context.beginPath();
+    context.arc(relativeX, relativeY, 4, 0, Math.PI * 2);
+    context.fill();
     context.restore();
   }
 }

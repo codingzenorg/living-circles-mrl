@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_player_heading_cue_in_viewport_mode.md`
+`docs/slices/initial_offscreen_food_awareness_in_viewport_mode.md`
 
 ## Implemented Shape
 
@@ -28,6 +28,7 @@
 - viewport mode now includes a small passive minimap overlay that shows world position and the current viewport window without competing with the main play surface
 - viewport mode now adds lightweight edge cues for nearby offscreen circles so local danger or opportunity just outside the camera window is easier to notice
 - viewport mode now adds a small local heading cue near the player derived from recent authoritative motion so movement direction is easier to read inside the camera window
+- viewport mode now adds lightweight edge cues for nearby offscreen food so local recovery opportunity just outside the camera window is easier to notice
 - the legend is now reduced to the strongest cue families so the canvas and external panels carry more of the explanatory load during ordinary play
 - browser rendering now keeps a very short-lived client-local afterglow for recent resolved fights, reproductions, and continuity-preserving promotion so important outcomes remain briefly visible in-world
 - recent event afterglow remains grounded in current authoritative interaction outcomes and current entity positions without introducing server-side event history
