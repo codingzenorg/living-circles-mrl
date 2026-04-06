@@ -529,6 +529,49 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Reduce legend density now that multiple supporting panels and cue systems are already present.
+
+## Why This Matters
+
+The interface has steadily become more capable: the canvas carries richer cues, the player card externalizes player state, the NPC panel externalizes non-player state, and the encounter log externalizes recent outcomes. The legend still reflects many incremental additions, so it is starting to act more like a glossary than a quick play aid.
+
+The next pressure is therefore to reduce explanatory density and let the stronger layout carry more of the understanding.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the legend row should become shorter and easier to scan
+- the simplified layout should still preserve the main cue families
+- the canvas and side panels should remain the primary source of meaning
+
+### Runtime contract
+
+- no contract change should be necessary
+
+### Existing semantics
+
+- all world rules remain authoritative and unchanged
+- this is a presentation simplification only
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- which cue families are essential enough to remain in the legend
+- which cues are already sufficiently explained by the world view or supporting panels
+- how to reduce density without making the interface cryptic
+
+## Risks If Ignored
+
+- the UI may continue to gain meaning while losing scanability
+- supporting explanation may start competing with the actual play surface
+- future legibility work may add clutter faster than clarity
+
+---
+
+## Change
+
 Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
 
 ## Why This Matters
