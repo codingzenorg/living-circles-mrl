@@ -11,6 +11,8 @@ const resetButton = document.getElementById("reset");
 let latestSnapshot = null;
 let eventLog = ["Awaiting first world snapshot..."];
 let previousAutonomousById = new Map();
+let recentEffects = [];
+let lastInteractionSignature = null;
 const pressedKeys = new Set();
 let activeSocket = null;
 let senderIntervalId = null;
@@ -24,6 +26,7 @@ const FOOD_CUE_DISTANCE = 260;
 const SCARCITY_THRESHOLD = 1;
 const INTENT_CUE_DISTANCE = 260;
 const MIN_MOVEMENT_FOR_INTENT = 1.5;
+const AFTERGLOW_TTL = 10;
 
 function normalizeKey(key) {
   return key.toLowerCase();
@@ -206,6 +209,114 @@ function interactionSummary(interaction) {
   return summaries[interaction.kind] ?? `Interaction: ${interaction.kind}`;
 }
 
+function effectStyle(kind) {
+  if (kind === "death_promoted_child") {
+    return {
+      stroke: "rgba(255, 238, 163, 0.95)",
+      glow: "rgba(255, 238, 163, 0.22)",
+    };
+  }
+
+  if (kind.startsWith("reproduce")) {
+    return {
+      stroke: "rgba(117, 229, 149, 0.9)",
+      glow: "rgba(117, 229, 149, 0.2)",
+    };
+  }
+
+  return {
+    stroke: "rgba(255, 132, 132, 0.92)",
+    glow: "rgba(255, 132, 132, 0.18)",
+  };
+}
+
+function entityPositionById(snapshot, id) {
+  if (!id) {
+    return null;
+  }
+
+  if (snapshot.player?.id === id) {
+    return { x: snapshot.player.x, y: snapshot.player.y };
+  }
+
+  const autonomous = snapshot.autonomous_circles.find((circle) => circle.id === id);
+  if (autonomous) {
+    return { x: autonomous.x, y: autonomous.y };
+  }
+
+  return null;
+}
+
+function interactionAnchor(snapshot, interaction) {
+  const source = entityPositionById(snapshot, interaction.source_id);
+  const target = entityPositionById(snapshot, interaction.target_id);
+
+  if (source && target) {
+    return {
+      x: (source.x + target.x) / 2,
+      y: (source.y + target.y) / 2,
+    };
+  }
+
+  return source || target;
+}
+
+function interactionSignature(interaction) {
+  if (!interaction) {
+    return null;
+  }
+
+  return [
+    interaction.kind,
+    interaction.source_id ?? "",
+    interaction.target_id ?? "",
+    interaction.promoted_child_id ?? "",
+    interaction.absorbed_child_id ?? "",
+  ].join("|");
+}
+
+function trackRecentInteraction(snapshot) {
+  const interaction = snapshot.interaction;
+  const signature = interactionSignature(interaction);
+
+  if (!interaction || !interaction.kind || signature === lastInteractionSignature) {
+    lastInteractionSignature = signature;
+    return;
+  }
+
+  const anchoredKinds = new Set([
+    "fight_absorbed_child",
+    "fight_resolved",
+    "reproduce_resolved",
+    "reproduce_paid_child",
+    "death_promoted_child",
+  ]);
+
+  if (!anchoredKinds.has(interaction.kind)) {
+    lastInteractionSignature = signature;
+    return;
+  }
+
+  const anchor = interactionAnchor(snapshot, interaction);
+  if (!anchor) {
+    lastInteractionSignature = signature;
+    return;
+  }
+
+  recentEffects = [
+    {
+      ...effectStyle(interaction.kind),
+      x: anchor.x,
+      y: anchor.y,
+      ttl: AFTERGLOW_TTL,
+      kind: interaction.kind,
+    },
+    ...recentEffects,
+  ].slice(0, 6);
+
+  lastInteractionSignature = signature;
+}
+
 function hasContinuityReserve(circle) {
   return childCount(circle) > 0;
 }
@@ -257,6 +368,7 @@ function currentDirection() {
 function draw(snapshot) {
   const circles = snapshot.player ? [snapshot.player, ...snapshot.autonomous_circles] : [...snapshot.autonomous_circles];
   const playerFoodPressure = snapshot.player ? foodPressureAt(snapshot.player, snapshot.foods) : null;
+  trackRecentInteraction(snapshot);
 
   canvas.width = snapshot.world.width;
   canvas.height = snapshot.world.height;
@@ -270,6 +382,7 @@ function draw(snapshot) {
   context.lineWidth = 2;
   context.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
 
+  drawRecentEffects();
   drawCrowdingZones(circles, snapshot.player);
   drawFoodZones(snapshot.foods, snapshot.player);
   drawLineageLinks(circles, snapshot.interaction);
@@ -309,6 +422,31 @@ function draw(snapshot) {
   tickNode.textContent = `T ${snapshot.tick} · F ${snapshot.foods.length} · O ${snapshot.autonomous_circles.length}`;
   pushEventLog(interactionSummary(snapshot.interaction));
   previousAutonomousById = new Map(snapshot.autonomous_circles.map((circle) => [circle.id, { x: circle.x, y: circle.y }]));
+  recentEffects = recentEffects
+    .map((effect) => ({ ...effect, ttl: effect.ttl - 1 }))
+    .filter((effect) => effect.ttl > 0);
+}
+
+function drawRecentEffects() {
+  for (const effect of recentEffects) {
+    const progress = effect.ttl / AFTERGLOW_TTL;
+    const radius = 24 + (1 - progress) * 18;
+    const gradient = context.createRadialGradient(effect.x, effect.y, 6, effect.x, effect.y, radius);
+    gradient.addColorStop(0, effect.glow);
+    gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
+    context.fill();
+
+    context.strokeStyle = effect.stroke;
+    context.globalAlpha = progress;
+    context.lineWidth = 2.5;
+    context.beginPath();
+    context.arc(effect.x, effect.y, radius - 6, 0, Math.PI * 2);
+    context.stroke();
+    context.globalAlpha = 1;
+  }
 }
 
 function drawCrowdingZones(circles, player) {

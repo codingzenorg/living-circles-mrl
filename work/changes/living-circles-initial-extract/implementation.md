@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_lineage_continuity_play_legibility.md`
+`docs/slices/initial_recent_event_world_afterglow_legibility.md`
 
 ## Implemented Shape
 
@@ -10,6 +10,8 @@
 - browser client under `src/client/`
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
+- browser rendering now keeps a very short-lived client-local afterglow for recent resolved fights, reproductions, and continuity-preserving promotion so important outcomes remain briefly visible in-world
+- recent event afterglow remains grounded in current authoritative interaction outcomes and current entity positions without introducing server-side event history
 - browser rendering now emphasizes continuity-bearing lineage through visible parent-child connection links, reserve halos around circles with attached children, and stronger promotion emphasis when continuity survives through a child
 - lineage legibility remains grounded in existing authoritative lineage, generation, attached-child, and continuity outcome state without adding new server fields
 - browser rendering now uses short-range motion cues to distinguish nearby autonomous food pursuit, social pursuit, and retreat without adding any server-side intent fields
