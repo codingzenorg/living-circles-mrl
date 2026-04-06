@@ -45,6 +45,7 @@ const (
 	DefaultExpandedAutonomousCount              = 8
 	DefaultExpandedFoodCount                    = DefaultExpandedAutonomousCount + 3
 	DefaultExpandedFoodSeed               int64 = 73
+	DefaultExpandedAutonomousSeed         int64 = 131
 )
 
 type Bounds struct {
@@ -314,7 +315,17 @@ func NewWorldWithConfig(config Config) *World {
 		})
 	}
 	if config.UseExpandedPopulation {
-		autonomousCircles = append(autonomousCircles, defaultExpandedAutonomousCircles(worldWidth, worldHeight)...)
+		reserved := []Vector{
+			{X: playerX, Y: playerY},
+			{X: autonomousX, Y: autonomousY},
+		}
+		if config.SecondaryAutonomousShape != "" {
+			reserved = append(reserved, Vector{
+				X: configuredOrDefault(config.SecondaryAutonomousX, worldWidth/2+140),
+				Y: configuredOrDefault(config.SecondaryAutonomousY, worldHeight/2),
+			})
+		}
+		autonomousCircles = append(autonomousCircles, defaultExpandedAutonomousCircles(worldWidth, worldHeight, reserved)...)
 	}
 
 	activeCircleCount := len(autonomousCircles)
@@ -365,78 +376,92 @@ func configuredOrDefault(value, fallback float64) float64 {
 	return value
 }
 
-func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64) []AutonomousCircle {
-	centerX := worldWidth / 2
-	centerY := worldHeight / 2
-
-	return []AutonomousCircle{
-		{
-			ID:               DefaultTertiaryID,
-			LineageID:        lineageIDFor(DefaultTertiaryID),
-			Generation:       0,
-			Shape:            DefaultPlayerShape,
-			X:                centerX - 320,
-			Y:                centerY + 160,
-			Radius:           DefaultPlayerRadius,
-			Energy:           90,
-			AttachedChildren: initialAttachedChildren(DefaultTertiaryID, 0),
-		},
-		{
-			ID:               DefaultQuaternaryID,
-			LineageID:        lineageIDFor(DefaultQuaternaryID),
-			Generation:       0,
-			Shape:            DefaultAutoShape,
-			X:                centerX + 280,
-			Y:                centerY + 140,
-			Radius:           DefaultPlayerRadius,
-			Energy:           85,
-			AttachedChildren: initialAttachedChildren(DefaultQuaternaryID, 0),
-		},
-		{
-			ID:               DefaultQuinaryID,
-			LineageID:        lineageIDFor(DefaultQuinaryID),
-			Generation:       0,
-			Shape:            DefaultPlayerShape,
-			X:                centerX,
-			Y:                centerY - 220,
-			Radius:           DefaultPlayerRadius,
-			Energy:           95,
-			AttachedChildren: initialAttachedChildren(DefaultQuinaryID, 0),
-		},
-		{
-			ID:               DefaultSenaryID,
-			LineageID:        lineageIDFor(DefaultSenaryID),
-			Generation:       0,
-			Shape:            DefaultAutoShape,
-			X:                centerX + 420,
-			Y:                centerY - 110,
-			Radius:           DefaultPlayerRadius,
-			Energy:           88,
-			AttachedChildren: initialAttachedChildren(DefaultSenaryID, 0),
-		},
-		{
-			ID:               DefaultSeptenaryID,
-			LineageID:        lineageIDFor(DefaultSeptenaryID),
-			Generation:       0,
-			Shape:            DefaultPlayerShape,
-			X:                centerX - 430,
-			Y:                centerY - 150,
-			Radius:           DefaultPlayerRadius,
-			Energy:           92,
-			AttachedChildren: initialAttachedChildren(DefaultSeptenaryID, 0),
-		},
-		{
-			ID:               DefaultOctonaryID,
-			LineageID:        lineageIDFor(DefaultOctonaryID),
-			Generation:       0,
-			Shape:            DefaultAutoShape,
-			X:                centerX + 80,
-			Y:                centerY + 300,
-			Radius:           DefaultPlayerRadius,
-			Energy:           86,
-			AttachedChildren: initialAttachedChildren(DefaultOctonaryID, 0),
-		},
+func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64, reserved []Vector) []AutonomousCircle {
+	specs := []struct {
+		id     string
+		shape  string
+		energy float64
+	}{
+		{id: DefaultTertiaryID, shape: DefaultPlayerShape, energy: 90},
+		{id: DefaultQuaternaryID, shape: DefaultAutoShape, energy: 85},
+		{id: DefaultQuinaryID, shape: DefaultPlayerShape, energy: 95},
+		{id: DefaultSenaryID, shape: DefaultAutoShape, energy: 88},
+		{id: DefaultSeptenaryID, shape: DefaultPlayerShape, energy: 92},
+		{id: DefaultOctonaryID, shape: DefaultAutoShape, energy: 86},
 	}
+
+	positions := seededExpandedAutonomousPositions(worldWidth, worldHeight, len(specs), reserved)
+	circles := make([]AutonomousCircle, 0, len(specs))
+	for index, spec := range specs {
+		circles = append(circles, AutonomousCircle{
+			ID:               spec.id,
+			LineageID:        lineageIDFor(spec.id),
+			Generation:       0,
+			Shape:            spec.shape,
+			X:                positions[index].X,
+			Y:                positions[index].Y,
+			Radius:           DefaultPlayerRadius,
+			Energy:           spec.energy,
+			AttachedChildren: initialAttachedChildren(spec.id, 0),
+		})
+	}
+
+	return circles
+}
+
+func seededExpandedAutonomousPositions(worldWidth, worldHeight float64, count int, reserved []Vector) []Vector {
+	seed := DefaultExpandedAutonomousSeed
+	margin := 120.0
+	minDistance := 180.0
+	positions := make([]Vector, 0, count)
+	occupied := append([]Vector(nil), reserved...)
+
+	advanceSeed := func() int64 {
+		seed = (seed*1103515245 + 12345) & 0x7fffffff
+		return seed
+	}
+
+	nextCoordinate := func(size float64) float64 {
+		usable := math.Max(1, size-margin*2)
+		return margin + math.Mod(float64(advanceSeed()), usable)
+	}
+
+	for index := 0; index < count; index++ {
+		var candidate Vector
+		found := false
+		for attempt := 0; attempt < 400; attempt++ {
+			candidate = Vector{
+				X: math.Round(nextCoordinate(worldWidth)),
+				Y: math.Round(nextCoordinate(worldHeight)),
+			}
+
+			tooClose := false
+			for _, other := range occupied {
+				if math.Hypot(candidate.X-other.X, candidate.Y-other.Y) < minDistance {
+					tooClose = true
+					break
+				}
+			}
+			if tooClose {
+				continue
+			}
+
+			found = true
+			break
+		}
+
+		if !found {
+			candidate = Vector{
+				X: margin + float64((index*173)%int(math.Max(1, worldWidth-margin*2))),
+				Y: margin + float64((index*257)%int(math.Max(1, worldHeight-margin*2))),
+			}
+		}
+
+		positions = append(positions, candidate)
+		occupied = append(occupied, candidate)
+	}
+
+	return positions
 }
 
 func defaultFoodSlots(worldWidth, worldHeight float64, expanded bool, activeCircleCount int) []Food {

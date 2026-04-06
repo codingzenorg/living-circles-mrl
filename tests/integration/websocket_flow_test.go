@@ -1546,7 +1546,17 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.AutonomousCircles[1].LineageID != "lineage-circle-3" || initial.AutonomousCircles[1].Generation != 0 {
 		t.Fatalf("expected second autonomous lineage state, got lineage=%q generation=%d", initial.AutonomousCircles[1].LineageID, initial.AutonomousCircles[1].Generation)
 	}
-	if initial.AutonomousCircles[2].ID != simulation.DefaultTertiaryID || initial.AutonomousCircles[3].ID != simulation.DefaultQuaternaryID || initial.AutonomousCircles[4].ID != simulation.DefaultQuinaryID {
+	for _, circle := range initial.AutonomousCircles {
+		if circle.X == initial.World.Width/2 && circle.Y == initial.World.Height/2 {
+			t.Fatalf("expected seeded autonomous layout to avoid exact center, got %+v", circle)
+		}
+	}
+	if initial.AutonomousCircles[2].ID != simulation.DefaultTertiaryID ||
+		initial.AutonomousCircles[3].ID != simulation.DefaultQuaternaryID ||
+		initial.AutonomousCircles[4].ID != simulation.DefaultQuinaryID ||
+		initial.AutonomousCircles[5].ID != simulation.DefaultSenaryID ||
+		initial.AutonomousCircles[6].ID != simulation.DefaultSeptenaryID ||
+		initial.AutonomousCircles[7].ID != simulation.DefaultOctonaryID {
 		t.Fatalf("expected deterministic expanded autonomous ids, got %+v", initial.AutonomousCircles)
 	}
 	if initial.Player.Radius != simulation.DefaultPlayerRadius {

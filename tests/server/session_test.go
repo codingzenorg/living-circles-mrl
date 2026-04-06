@@ -439,6 +439,18 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 		snapshot.AutonomousCircles[7].ID != simulation.DefaultOctonaryID {
 		t.Fatalf("expected deterministic expanded autonomous ids, got %+v", snapshot.AutonomousCircles)
 	}
+	for index, circle := range snapshot.AutonomousCircles {
+		if recreated.AutonomousCircles[index].X != circle.X || recreated.AutonomousCircles[index].Y != circle.Y {
+			t.Fatalf(
+				"expected recreated world to keep deterministic autonomous placement at %d, before=(%v,%v) after=(%v,%v)",
+				index,
+				circle.X,
+				circle.Y,
+				recreated.AutonomousCircles[index].X,
+				recreated.AutonomousCircles[index].Y,
+			)
+		}
+	}
 	expectedFoodCount := len(snapshot.AutonomousCircles) + 3
 	if len(snapshot.Foods) != expectedFoodCount {
 		t.Fatalf("expected expanded food baseline to derive from active population, expected %d got %d", expectedFoodCount, len(snapshot.Foods))
@@ -483,6 +495,18 @@ func TestDefaultSessionResetRestoresExpandedPopulationDeterministically(t *testi
 	}
 	if reset.Player.X != before.Player.X || reset.Player.Y != before.Player.Y {
 		t.Fatalf("expected reset player position (%v,%v), got (%v,%v)", before.Player.X, before.Player.Y, reset.Player.X, reset.Player.Y)
+	}
+	for index, circle := range before.AutonomousCircles {
+		if reset.AutonomousCircles[index].X != circle.X || reset.AutonomousCircles[index].Y != circle.Y {
+			t.Fatalf(
+				"expected reset autonomous %d to match initial position, before=(%v,%v) after=(%v,%v)",
+				index,
+				circle.X,
+				circle.Y,
+				reset.AutonomousCircles[index].X,
+				reset.AutonomousCircles[index].Y,
+			)
+		}
 	}
 	for index, food := range before.Foods {
 		if reset.Foods[index] != food {
