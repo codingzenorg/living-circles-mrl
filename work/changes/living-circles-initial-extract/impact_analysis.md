@@ -3203,3 +3203,18 @@ That points to a bounded client-only slice:
 - reduce HUD footprint
 - preserve readable status and reset access
 - leave server semantics and contract shape unchanged
+## Pressure: Play Stage Framing In Fullscreen Layout
+
+The fullscreen demo has already reduced header, legend, HUD, and side-column weight. That means the canvas now has room to dominate, but it still reads mostly as a plain rectangle placed inside the page rather than as a clearly framed main stage.
+
+The new pressure is:
+
+- the play surface should feel more intentionally staged
+- the canvas should remain dominant without heavier surrounding chrome
+- support UI should stay secondary
+
+That points to a bounded client-only slice:
+
+- strengthen play-stage framing
+- preserve the current layout and information hierarchy
+- leave server semantics and contract shape unchanged
