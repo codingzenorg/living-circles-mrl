@@ -3265,3 +3265,18 @@ That points to a bounded client-only slice:
 - keep authoritative world coordinates unchanged
 - clamp the camera to world bounds
 - leave server semantics and contract shape unchanged
+## Pressure: Camera Deadzone Follow
+
+The viewport slice corrected the presentation model by switching from scaled whole-world overview to a bounded player-following camera. That improved scale and density, but it also exposed a new presentation pressure: the current follow rule keeps the player centered whenever possible, which can make the camera feel mechanically locked and visually busy during small movements.
+
+The new pressure is:
+
+- the viewport should remain clearly player-following
+- the camera should feel more comfortable during small movements
+- world-edge clamping should remain intact
+
+That points to a bounded client-only slice:
+
+- add a simple camera deadzone
+- keep the viewport deterministic and easy to reason about
+- leave server semantics and contract shape unchanged
