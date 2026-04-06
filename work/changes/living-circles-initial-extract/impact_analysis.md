@@ -485,6 +485,50 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make nearby actionable world space more visually primary than distant background activity.
+
+## Why This Matters
+
+The recent play-legibility slices have made many individual semantics easier to read, and the latest UI cleanup moved a good amount of textual detail out of the canvas. But the expanded world still carries a lot of simultaneous visible activity. Without a stronger sense of nearby focus, the player can still spend unnecessary effort separating immediately relevant space from distant background motion.
+
+The next pressure is therefore to improve player-centered spatial focus without hiding world state or introducing camera/gameplay changes.
+
+## Impacted Areas
+
+### Browser rendering
+
+- the client should subtly emphasize nearby space around the player
+- distant entities and food should remain visible but feel less dominant
+- the treatment should support the current danger, food, crowding, motion, lineage, and afterglow cues rather than competing with them
+
+### Runtime contract
+
+- the current snapshot shape is likely sufficient because the client already has the player position and the world geometry
+- build should avoid adding focus-specific contract fields unless one minimal readability field is clearly justified
+
+### Existing semantics
+
+- all world rules remain authoritative on the server
+- fight, reproduction, food, crowding, autonomy, continuity, and movement rules should remain unchanged in this slice
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether nearby focus is best shown through a player-centered falloff, nearby contrast lift, restrained background dimming, or another subtle treatment
+- how to preserve full-world visibility while still improving local scanability
+- how to prevent the focus treatment from weakening the existing cue system
+
+## Risks If Ignored
+
+- the expanded world will remain more informative but not proportionally easier to read
+- adding more local cues later may increase clutter instead of clarity
+- future playability evaluation will remain partly blocked by weak spatial focus
+
+---
+
+## Change
+
 Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
 
 ## Why This Matters
