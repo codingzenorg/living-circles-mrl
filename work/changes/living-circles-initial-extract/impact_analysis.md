@@ -3111,3 +3111,19 @@ The next implementation-facing slice should explicitly choose:
 - the decision context for reproduction will remain partially hidden even after the recent inspectability slices
 - the client and tests will still need inference to recover pre-payment child availability
 - future reproduction refinement will keep relying on implicit pre-decision child state instead of explicit outcome metadata
+## Pressure: Support Panel Growth Bounds
+
+Recent UI work improved support hierarchy, reduced legend density, reduced support text density, and stabilized the player card above the lower support row. That clarified where information belongs, but it did not yet constrain how much vertical space the lower support panels can claim as NPC summaries and recent encounter history grow.
+
+This creates a clear presentation pressure:
+
+- the canvas is supposed to remain the dominant play surface
+- the player summary is now stable and should remain visually anchored
+- lower support growth should not drag the whole support area into page-dominant status
+
+That pressure points to a bounded client-only slice:
+
+- keep the player card stable above the lower row
+- bound NPC and encounter panel growth
+- preserve readable access within those bounds
+- leave server semantics and contract shape unchanged
