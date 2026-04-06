@@ -221,6 +221,65 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Increase the default world size, autonomous population, and food capacity so the simulation can operate as a small ecosystem baseline rather than only a tightly curated mechanics demo.
+
+## Why This Matters
+
+The latest EGD result identified the strongest remaining expectation gap: the rules now exist, but the world is still too small and too curated to validate emergence. The current baseline of one player, two autonomous circles, and a tiny deterministic food set makes the game readable as a rule demonstrator, but weak as a `system-driven ecosystem`.
+
+The next pressure is therefore not another local mechanic. It is to let the existing mechanics coexist at a scale where:
+
+- more than one interaction path can be active at once
+- recovery, depletion, pursuit, and avoidance can happen in parallel
+- the player enters a living world rather than a staged pairwise example
+
+## Impacted Areas
+
+### Simulation model
+
+- world initialization should produce a larger bounded map
+- initial autonomous-circle count should increase beyond the current two-circle default
+- initial food capacity should scale alongside the expanded population
+- reset behavior should recreate the same expanded world deterministically
+
+### Runtime contract
+
+- the existing snapshot shape may already be sufficient because world size, autonomous circles, and food arrays are already explicit
+- build should avoid adding summary metadata unless inspection becomes meaningfully harder without it
+
+### Browser rendering
+
+- the client must remain readable with a larger world and more simultaneous circles
+- this slice should avoid introducing camera or zoom systems unless the larger baseline is unusable without them
+
+### Evaluation expectations
+
+- this slice should make ecosystem-level review more meaningful than the current pairwise demo
+- EGD after this slice should be able to assess encounter density, depletion/recovery interplay, and whether the world feels less staged
+
+### Existing semantics
+
+- movement, energy, fight, reproduction, continuity, child ownership, and steering rules should remain unchanged
+- this slice should scale the baseline, not redesign the rule set
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- a modest deterministic world-size increase rather than an unbounded scale jump
+- a modest deterministic autonomous-population increase that keeps tests and live review practical
+- a food-capacity increase that supports the larger baseline without introducing a separate balancing subsystem
+
+## Risks If Ignored
+
+- the simulation may keep drifting toward metadata completeness without proving ecosystem validity
+- EGD will keep reporting the world as a small curated demo rather than a living system
+- future semantic discussion about emergence will stay underconstrained because the world baseline is too thin to generate meaningful patterns
+
+---
+
+## Change
+
 Expose which side failed the capacity check when reproduction is blocked.
 
 ## Why This Matters
