@@ -309,7 +309,11 @@ func NewWorldWithConfig(config Config) *World {
 		autonomousCircles = append(autonomousCircles, defaultExpandedAutonomousCircles(worldWidth, worldHeight)...)
 	}
 
-	foodSlots := defaultFoodSlots(worldWidth, worldHeight, config.UseExpandedPopulation)
+	activeCircleCount := len(autonomousCircles)
+	if config.PlayerEnergy > 0 {
+		activeCircleCount++
+	}
+	foodSlots := defaultFoodSlots(worldWidth, worldHeight, config.UseExpandedPopulation, activeCircleCount)
 	player := &PlayerCircle{
 		ID:               playerID,
 		LineageID:        lineageIDFor(playerID),
@@ -394,26 +398,33 @@ func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64) []Autonom
 	}
 }
 
-func defaultFoodSlots(worldWidth, worldHeight float64, expanded bool) []Food {
+func defaultFoodSlots(worldWidth, worldHeight float64, expanded bool, activeCircleCount int) []Food {
 	centerX := worldWidth / 2
 	centerY := worldHeight / 2
 
-	foodSlots := []Food{
+	allSlots := []Food{
 		{ID: "food-1", X: centerX + 32, Y: centerY, Radius: DefaultFoodRadius},
 		{ID: "food-2", X: centerX - 108, Y: centerY, Radius: DefaultFoodRadius},
 		{ID: "food-3", X: centerX + 120, Y: centerY + 84, Radius: DefaultFoodRadius},
-	}
-	if !expanded {
-		return foodSlots
-	}
-
-	return append(foodSlots,
 		Food{ID: "food-4", X: centerX - 280, Y: centerY + 120, Radius: DefaultFoodRadius},
 		Food{ID: "food-5", X: centerX + 300, Y: centerY + 150, Radius: DefaultFoodRadius},
 		Food{ID: "food-6", X: centerX, Y: centerY - 180, Radius: DefaultFoodRadius},
 		Food{ID: "food-7", X: centerX - 220, Y: centerY - 160, Radius: DefaultFoodRadius},
 		Food{ID: "food-8", X: centerX + 220, Y: centerY - 140, Radius: DefaultFoodRadius},
-	)
+	}
+	if !expanded {
+		return append([]Food(nil), allSlots[:3]...)
+	}
+
+	slotCount := activeCircleCount + 2
+	if slotCount < 3 {
+		slotCount = 3
+	}
+	if slotCount > len(allSlots) {
+		slotCount = len(allSlots)
+	}
+
+	return append([]Food(nil), allSlots[:slotCount]...)
 }
 
 func (w *World) Advance(tick int64, intent Vector) Snapshot {

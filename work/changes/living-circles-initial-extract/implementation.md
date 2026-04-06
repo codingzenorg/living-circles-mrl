@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_population_scaled_food_regeneration_pressure.md`
+`docs/slices/initial_population_scaled_food_capacity_baseline.md`
 
 ## Implemented Shape
 
@@ -11,6 +11,7 @@
 - explicit shared contract files under `src/shared_contracts/`
 - deterministic server and integration tests under `tests/`
 - authoritative food initialization and consumption inside the Go world model
+- expanded default-world food capacity now derives from the initial active-circle count rather than remaining a purely hand-picked slot count
 - food-slot regeneration delay now scales deterministically with current missing-slot count rather than remaining one unconditional global timer
 - expanded default world baseline with a larger bounded map, five deterministic autonomous circles, and eight deterministic food slots
 - explicit shape identity and current interaction classification in snapshots
@@ -177,6 +178,7 @@
 - autonomous circles prefer the nearest active food target and fall back to deterministic baseline drift when no food target is available
 - deterministic shape assignment in the default demo world: player `triangle`, same-shape autonomous `triangle`, different-shape autonomous `square`
 - deterministic fixed food placement scaled to the expanded default world
+- the expanded default world now derives its starting food count as active circles plus two, capped by the available deterministic slot set, while narrow custom worlds keep the smaller three-slot baseline
 - deterministic food regeneration returns consumed slots to their original positions after a fixed delay
 - deterministic food regeneration returns consumed slots to their original positions, with delay now increasing under deeper current depletion
 - attached children remain the source of truth for fight power, replacement continuity, and child-payment rules, and are embodied as attached orbiting children

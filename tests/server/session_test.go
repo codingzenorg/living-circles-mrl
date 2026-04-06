@@ -360,6 +360,10 @@ func TestNewWorldContainsDeterministicFoodItems(t *testing.T) {
 	if snapshot.AutonomousCircles[2].ID != simulation.DefaultTertiaryID || snapshot.AutonomousCircles[3].ID != simulation.DefaultQuaternaryID || snapshot.AutonomousCircles[4].ID != simulation.DefaultQuinaryID {
 		t.Fatalf("expected deterministic expanded autonomous ids, got %+v", snapshot.AutonomousCircles)
 	}
+	expectedFoodCount := len(snapshot.AutonomousCircles) + 3
+	if len(snapshot.Foods) != expectedFoodCount {
+		t.Fatalf("expected expanded food baseline to derive from active population, expected %d got %d", expectedFoodCount, len(snapshot.Foods))
+	}
 }
 
 func TestDefaultSessionResetRestoresExpandedPopulationDeterministically(t *testing.T) {
@@ -383,6 +387,27 @@ func TestDefaultSessionResetRestoresExpandedPopulationDeterministically(t *testi
 	}
 	if reset.Player.X != before.Player.X || reset.Player.Y != before.Player.Y {
 		t.Fatalf("expected reset player position (%v,%v), got (%v,%v)", before.Player.X, before.Player.Y, reset.Player.X, reset.Player.Y)
+	}
+}
+
+func TestCustomNarrowWorldKeepsSmallerDeterministicFoodBaseline(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		PlayerShape:              simulation.DefaultPlayerShape,
+		AutonomousShape:          simulation.DefaultAutoShape,
+		SecondaryAutonomousShape: "",
+		PlayerEnergy:             simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:         simulation.DefaultPlayerEnergy,
+		UseExpandedPopulation:    false,
+		WorldWidth:               simulation.DefaultWorldWidth,
+		WorldHeight:              simulation.DefaultWorldHeight,
+	})
+	snapshot := session.Snapshot()
+
+	if len(snapshot.AutonomousCircles) != 1 {
+		t.Fatalf("expected one autonomous circle in narrow custom world, got %d", len(snapshot.AutonomousCircles))
+	}
+	if len(snapshot.Foods) != 3 {
+		t.Fatalf("expected narrow custom world to keep 3 deterministic food slots, got %d", len(snapshot.Foods))
 	}
 }
 
