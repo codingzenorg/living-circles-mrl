@@ -130,6 +130,10 @@ Findings should be treated as:
 - suspicions
 - prompts for refinement discussion
 
+When a slice does not yet have a dedicated deterministic scenario runner and machine-readable evidence packet, a lightweight EGD pass is still valid. In that lighter mode, Codex reviews semantic artifacts, implementation artifacts, and fresh test evidence directly and records the result in `egd.md` without pretending that a fuller scenario-evaluation run occurred.
+
+Use the Ollama-backed scenario-evaluation flow once the slice has enough infrastructure to produce a deterministic evidence packet worth reviewing.
+
 ---
 
 ## Recommended Evaluation Architecture
@@ -797,4 +801,3 @@ The local Ollama reviewer should therefore be treated as:
 - a detector of possible omissions
 
 Its findings must be reviewed by humans and/or Codex before changing the model.
-

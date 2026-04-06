@@ -125,6 +125,8 @@ Notes:
 - `extract` should usually produce or update both semantic reference docs, not only one.
 - `refine` is where slice design becomes explicit; `extract` should stop earlier.
 - `egd` may use a smaller local model such as `llama3` for first-pass review, but interpretation and loop decisions should remain explicit.
+- `egd` defaults to a lightweight artifact-led review when the current slice does not yet have a dedicated deterministic scenario runner and evidence packet.
+- once a slice has a deterministic scenario packet, prefer the fuller Ollama-backed evaluation flow described in `docs/evaluation/scenario_evaluation.md`.
 - `release` should end with a decision, not only a diff artifact.
 
 ---
