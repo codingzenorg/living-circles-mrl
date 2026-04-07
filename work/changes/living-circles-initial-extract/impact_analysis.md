@@ -403,6 +403,64 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Make food regeneration pressure regional rather than only global.
+
+## Why This Matters
+
+The current world now starts from a much less authored state:
+
+- larger map
+- more autonomous circles
+- seeded food layout
+- seeded expanded autonomous placement
+- seeded expanded autonomous startup state mix
+
+That improves startup plausibility, but EGD now says the bigger gap is medium-term ecological consequence. The current food-recovery rule still applies pressure mostly at the whole-world level: missing-slot count changes the delay, but one depleted local area is not strongly distinct from another if the same total number of slots is missing.
+
+The next pressure is to make different parts of the larger world recover differently over time.
+
+## Impacted Areas
+
+### Simulation model
+
+- food regeneration timing should depend partly on local missing-slot pressure
+- slot identity and return-to-origin behavior should remain unchanged
+- determinism should remain intact
+
+### Population dynamics
+
+- heavily stripped neighborhoods should recover more slowly
+- lightly depleted neighborhoods should rebound sooner
+- larger world scale should begin to produce region-level divergence
+
+### Browser rendering
+
+- no contract change is required if the rule remains observable through ordinary food presence/absence over time
+- current viewport and minimap should naturally expose the resulting divergence without new UI in this slice
+
+### Existing semantics
+
+- feeding, autonomy, fight, reproduction, continuity, and startup seeding should remain unchanged
+- narrow custom worlds should remain useful for deterministic focused tests
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- the local radius used to measure regional food pressure
+- how local missing slots add to regeneration delay
+- how to keep the rule understandable and deterministic in tests
+
+## Risks If Ignored
+
+- the larger world may still feel more varied at startup than during ongoing simulation
+- region-level collapse and recovery will remain weak
+- later ecology slices may need to add stronger systems to compensate for missing local resource consequence
+
+---
+
+## Change
+
 Remove grown derived radius from attached-child orbit distance.
 
 ## Why This Matters
