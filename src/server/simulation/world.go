@@ -31,6 +31,7 @@ const (
 	DefaultFoodRadius                           = 6.0
 	DefaultFoodEnergy                           = 10.0
 	DefaultFoodRegenDelay                       = int64(12)
+	DefaultRegionalFoodPressureDistance         = 180.0
 	DefaultFoodPriorityDistance                 = 140.0
 	DefaultLowEnergyFoodThreshold               = 40.0
 	DefaultThreatAvoidanceDistance              = 120.0
@@ -669,7 +670,7 @@ func (w *World) regenerateFood(tick int64) {
 		}
 
 		missingSince, tracked := w.missingFoodSince[slot.ID]
-		if !tracked || tick-missingSince < w.foodRegenDelay() {
+		if !tracked || tick-missingSince < w.foodRegenDelay(slot) {
 			continue
 		}
 
@@ -678,13 +679,48 @@ func (w *World) regenerateFood(tick int64) {
 	}
 }
 
-func (w *World) foodRegenDelay() int64 {
+func (w *World) foodRegenDelay(slot Food) int64 {
 	missingCount := len(w.missingFoodSince)
+	delay := DefaultFoodRegenDelay
 	if missingCount <= 1 {
-		return DefaultFoodRegenDelay
+		return delay
 	}
 
-	return DefaultFoodRegenDelay + int64(missingCount-1)*2
+	delay += int64(missingCount-1) * 2
+	delay += int64(w.localMissingFoodCount(slot.ID)) * 2
+	return delay
+}
+
+func (w *World) localMissingFoodCount(slotID string) int {
+	slot, found := w.foodSlotByID(slotID)
+	if !found {
+		return 0
+	}
+
+	nearbyMissing := 0
+	for missingID := range w.missingFoodSince {
+		if missingID == slotID {
+			continue
+		}
+		other, ok := w.foodSlotByID(missingID)
+		if !ok {
+			continue
+		}
+		if distanceBetween(slot.X, slot.Y, other.X, other.Y) <= DefaultRegionalFoodPressureDistance {
+			nearbyMissing++
+		}
+	}
+
+	return nearbyMissing
+}
+
+func (w *World) foodSlotByID(id string) (Food, bool) {
+	for _, slot := range w.foodSlots {
+		if slot.ID == id {
+			return slot, true
+		}
+	}
+	return Food{}, false
 }
 
 func (w *World) advanceCircle(circle *PlayerCircle, intent Vector) *PlayerCircle {

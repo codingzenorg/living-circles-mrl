@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_seeded_expanded_autonomous_state_mix.md`
+`docs/slices/initial_regional_food_regeneration_pressure.md`
 
 ## Implemented Shape
 
@@ -33,6 +33,7 @@
 - the default expanded world baseline now uses a larger bounded space, more autonomous circles, and deterministic seeded food slots instead of a hand-authored expanded food layout
 - the expanded default autonomous startup pattern now uses deterministic seeded placement for the additional expanded circles instead of fixed authored offsets
 - the additional expanded autonomous circles now also use a deterministic seeded startup shape and energy mix instead of fixed authored per-ID state
+- food regeneration pressure now includes a deterministic local component, so slots in more heavily depleted neighborhoods return later than equally old isolated missing slots
 - the legend is now reduced to the strongest cue families so the canvas and external panels carry more of the explanatory load during ordinary play
 - browser rendering now keeps a very short-lived client-local afterglow for recent resolved fights, reproductions, and continuity-preserving promotion so important outcomes remain briefly visible in-world
 - recent event afterglow remains grounded in current authoritative interaction outcomes and current entity positions without introducing server-side event history
