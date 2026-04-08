@@ -2,6 +2,63 @@
 
 ## Change
 
+Introduce the first transport-thinning slice by aligning snapshot detail with the existing player-follow viewport model.
+
+## Why This Matters
+
+The latest measurement slice established that current transport cost is no longer hypothetical:
+
+- the default expanded world sends about `6487` bytes per snapshot
+- a larger deterministic scenario sends about `12539` bytes per snapshot
+- both are broadcast at `10` snapshots/sec
+
+That cost is not yet catastrophic, but it is high enough to matter, and it scales with world growth. The key mismatch is now structural:
+
+- the client already renders a local viewport
+- the server still sends the entire world in full detail every tick
+
+The next pressure is therefore not generic optimization. It is to make transport detail match the already accepted viewport interaction model.
+
+## Impacted Areas
+
+### Transport boundary
+
+- snapshot assembly at the server/client boundary will likely need a local-detail versus distant-summary split
+- payload measurement should remain available to compare the thinned transport shape against the current baseline
+
+### Runtime contract
+
+- the shared transport contract will likely need to distinguish full nearby entity data from lighter distant-world orientation data
+- this is a bounded contract evolution, not a general protocol redesign
+
+### Browser client
+
+- the main viewport should continue consuming full authoritative local detail
+- the minimap should shift to using lighter distant-world data where appropriate
+
+### Simulation model
+
+- the authoritative world state in simulation should remain unchanged
+- the optimization should happen at the transport shaping layer rather than by mutating simulation state
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- how viewport relevance is computed from the current player-follow camera window
+- what distant-world information is still necessary to preserve minimap usefulness
+- whether the thinned transport shape replaces the current snapshot directly or is introduced as a transport-specific variant
+
+## Risks If Ignored
+
+- transport cost will continue scaling linearly with world breadth and entity count
+- later optimization work may jump prematurely to compression or deltas without first exploiting the simpler viewport-locality opportunity
+- the repo will keep carrying a mismatch between a local play surface and a globally chatty protocol
+
+---
+
+## Change
+
 Define the first build slice for Living Circles around the intended client/server runtime shape rather than the starter repository's example Python monolith shape.
 
 ## Why This Matters
