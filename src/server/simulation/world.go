@@ -43,6 +43,7 @@ const (
 	DefaultRegionalCrowdingDistance                   = 260.0
 	DefaultRegionalCrowdingThreshold                  = 4
 	DefaultRegionalCrowdingMoveCost                   = 1.0
+	DefaultMaxRegionalReproductionPenalty             = 2.0
 	DefaultReproductionMinEnergy                      = 15.0
 	DefaultReproductionCost                           = 10.0
 	DefaultPlayerShape                                = "triangle"
@@ -701,6 +702,11 @@ func (w *World) foodGainForSlot(slotID string) float64 {
 	return math.Max(DefaultMinimumRegionalFoodYield, w.foodGain-penalty)
 }
 
+func (w *World) reproductionCostAt(x, y float64) float64 {
+	penalty := math.Min(DefaultMaxRegionalReproductionPenalty, float64(w.missingFoodCountNearPosition(x, y)))
+	return DefaultReproductionCost + penalty
+}
+
 func (w *World) localMissingFoodCount(slotID string) int {
 	slot, found := w.foodSlotByID(slotID)
 	if !found {
@@ -717,6 +723,21 @@ func (w *World) localMissingFoodCount(slotID string) int {
 			continue
 		}
 		if distanceBetween(slot.X, slot.Y, other.X, other.Y) <= DefaultRegionalFoodPressureDistance {
+			nearbyMissing++
+		}
+	}
+
+	return nearbyMissing
+}
+
+func (w *World) missingFoodCountNearPosition(x, y float64) int {
+	nearbyMissing := 0
+	for missingID := range w.missingFoodSince {
+		other, ok := w.foodSlotByID(missingID)
+		if !ok {
+			continue
+		}
+		if distanceBetween(x, y, other.X, other.Y) <= DefaultRegionalFoodPressureDistance {
 			nearbyMissing++
 		}
 	}
@@ -1518,6 +1539,9 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 
 	distribution := reproductionDistributionCase(tick, *w.player, opponent)
 	createdChildIDs, sourceCreatedChildIDs, targetCreatedChildIDs := w.assignReproductionChildren(&opponent, distribution)
+	reproductionCost := w.reproductionCostAt((w.player.X+opponent.X)/2, (w.player.Y+opponent.Y)/2)
+	w.player.Energy = math.Max(0, w.player.Energy-(reproductionCost-DefaultReproductionCost))
+	opponent.Energy = math.Max(0, opponent.Energy-(reproductionCost-DefaultReproductionCost))
 	w.autonomousCircles[opponentIndex] = opponent
 
 	kind := "reproduce_resolved"
@@ -1543,7 +1567,7 @@ func (w *World) resolveReproduction(opponentID string, tick int64, contactDetail
 		SourceReserveComponent: playerReserveComponent,
 		TargetReserveComponent: opponentReserveComponent,
 		ReproductionThreshold:  DefaultReproductionMinEnergy,
-		ReproductionCost:       DefaultReproductionCost,
+		ReproductionCost:       reproductionCost,
 		SourcePaidChild:        playerUsedChild,
 		TargetPaidChild:        opponentUsedChild,
 		SourcePaidChildID:      playerPaidChildID,
@@ -1662,6 +1686,9 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 
 	distribution := autonomousReproductionDistributionCase(tick, leftCircle, rightCircle)
 	createdChildIDs, sourceCreatedChildIDs, targetCreatedChildIDs := w.assignAutonomousPairReproductionChildren(&leftCircle, &rightCircle, distribution)
+	reproductionCost := w.reproductionCostAt((leftCircle.X+rightCircle.X)/2, (leftCircle.Y+rightCircle.Y)/2)
+	leftCircle.Energy = math.Max(0, leftCircle.Energy-(reproductionCost-DefaultReproductionCost))
+	rightCircle.Energy = math.Max(0, rightCircle.Energy-(reproductionCost-DefaultReproductionCost))
 	w.autonomousCircles[leftIndex] = leftCircle
 	w.autonomousCircles[rightIndex] = rightCircle
 
@@ -1688,7 +1715,7 @@ func (w *World) resolveAutonomousReproduction(leftIndex int, rightIndex int, tic
 		SourceReserveComponent: leftReserveComponent,
 		TargetReserveComponent: rightReserveComponent,
 		ReproductionThreshold:  DefaultReproductionMinEnergy,
-		ReproductionCost:       DefaultReproductionCost,
+		ReproductionCost:       reproductionCost,
 		SourcePaidChild:        leftUsedChild,
 		TargetPaidChild:        rightUsedChild,
 		SourcePaidChildID:      leftPaidChildID,

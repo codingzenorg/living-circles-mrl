@@ -2075,6 +2075,87 @@ func TestClientReceivesOrdinaryResolvedReproductionWhenNoChildPaymentIsUsed(t *t
 	t.Fatal("expected ordinary resolved reproduction snapshot")
 }
 
+func TestClientReceivesHigherReproductionCostInDepletedRegion(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                          1000,
+		WorldHeight:                         800,
+		UseExpandedPopulation:               false,
+		PlayerShape:                         "triangle",
+		PlayerX:                             524,
+		PlayerY:                             400,
+		PlayerEnergy:                        80,
+		AutonomousShape:                     "square",
+		AutonomousX:                         384,
+		AutonomousY:                         400,
+		AutonomousEnergy:                    80,
+		SecondaryAutonomousShape:            "square",
+		SecondaryAutonomousX:                564,
+		SecondaryAutonomousY:                400,
+		SecondaryAutonomousEnergy:           80,
+		DisableFoodSeeking:                  true,
+		DisableBlockedReproductionAvoidance: true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var firstTick simulation.Snapshot
+	for range 40 {
+		if err := connection.ReadJSON(&firstTick); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+		if firstTick.Tick != 0 {
+			break
+		}
+	}
+
+	if len(firstTick.Foods) != 1 {
+		t.Fatalf("expected two foods to be consumed before depleted-region reproduction, got %d remaining", len(firstTick.Foods))
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for range 40 {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Interaction == nil {
+			continue
+		}
+		if snapshot.Interaction.Kind != "reproduce_resolved" {
+			t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+		}
+		assertFloatEqual(t, snapshot.Interaction.ReproductionCost, simulation.DefaultReproductionCost+2)
+		if snapshot.Player.Energy != 78 {
+			t.Fatalf("expected player energy 78 after higher depleted-region reproduction cost, got %v", snapshot.Player.Energy)
+		}
+		target, found := autonomousByID(snapshot.AutonomousCircles, simulation.DefaultSecondaryID)
+		if !found {
+			t.Fatalf("expected autonomous reproduction target %q", simulation.DefaultSecondaryID)
+		}
+		if target.Energy != 66 {
+			t.Fatalf("expected depleted-region reproduction target energy 66, got %v", target.Energy)
+		}
+		return
+	}
+
+	t.Fatal("expected depleted-region reproduction snapshot")
+}
+
 func TestResetEndpointReturnsAndBroadcastsInitialSnapshot(t *testing.T) {
 	server := transport.NewServer()
 	httpServer := httptest.NewServer(server.Handler())
@@ -2539,4 +2620,14 @@ func foodByID(foods []simulation.Food, id string) (simulation.Food, bool) {
 	}
 
 	return simulation.Food{}, false
+}
+
+func autonomousByID(circles []simulation.AutonomousCircle, id string) (simulation.AutonomousCircle, bool) {
+	for _, circle := range circles {
+		if circle.ID == id {
+			return circle, true
+		}
+	}
+
+	return simulation.AutonomousCircle{}, false
 }

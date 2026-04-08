@@ -78,3 +78,27 @@ func TestRegionalFoodYieldDropsInLocallyDepletedSlot(t *testing.T) {
 		t.Fatalf("expected regionally depleted slot to yield %v, got %v", expectedReducedGain, gain)
 	}
 }
+
+func TestRegionalReproductionCostIncreasesNearMissingFood(t *testing.T) {
+	world := &World{
+		foodSlots: []Food{
+			{ID: "food-1", X: 100, Y: 100, Radius: DefaultFoodRadius},
+			{ID: "food-2", X: 220, Y: 100, Radius: DefaultFoodRadius},
+			{ID: "food-3", X: 340, Y: 100, Radius: DefaultFoodRadius},
+			{ID: "food-4", X: 900, Y: 100, Radius: DefaultFoodRadius},
+		},
+		missingFoodSince: map[string]int64{
+			"food-1": 0,
+			"food-2": 0,
+		},
+	}
+
+	if cost := world.reproductionCostAt(900, 100); cost != DefaultReproductionCost {
+		t.Fatalf("expected isolated reproduction cost %v, got %v", DefaultReproductionCost, cost)
+	}
+
+	expectedRaisedCost := DefaultReproductionCost + 2
+	if cost := world.reproductionCostAt(280, 100); cost != expectedRaisedCost {
+		t.Fatalf("expected depleted-region reproduction cost %v, got %v", expectedRaisedCost, cost)
+	}
+}

@@ -2611,6 +2611,52 @@ func TestDifferentShapeOverlapProducesResolvedReproduction(t *testing.T) {
 	}
 }
 
+func TestDifferentShapeOverlapPaysHigherReproductionCostInDepletedRegion(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                          1000,
+		WorldHeight:                         800,
+		UseExpandedPopulation:               false,
+		PlayerShape:                         "triangle",
+		PlayerX:                             524,
+		PlayerY:                             400,
+		PlayerEnergy:                        80,
+		AutonomousShape:                     "square",
+		AutonomousX:                         384,
+		AutonomousY:                         400,
+		AutonomousEnergy:                    80,
+		SecondaryAutonomousShape:            "square",
+		SecondaryAutonomousX:                564,
+		SecondaryAutonomousY:                400,
+		SecondaryAutonomousEnergy:           80,
+		DisableFoodSeeking:                  true,
+		DisableBlockedReproductionAvoidance: true,
+	})
+
+	firstTick := session.Advance()
+	if len(firstTick.Foods) != 1 {
+		t.Fatalf("expected two foods to be consumed before depleted-region reproduction, got %d remaining", len(firstTick.Foods))
+	}
+
+	snapshot := session.Advance()
+	if snapshot.Interaction == nil {
+		t.Fatal("expected reproduction interaction after regional depletion setup")
+	}
+	if snapshot.Interaction.Kind != "reproduce_resolved" {
+		t.Fatalf("expected reproduce_resolved, got %q", snapshot.Interaction.Kind)
+	}
+	assertFloatEqual(t, snapshot.Interaction.ReproductionCost, simulation.DefaultReproductionCost+2)
+	if snapshot.Player.Energy != 78 {
+		t.Fatalf("expected player energy 78 after higher depleted-region reproduction cost, got %v", snapshot.Player.Energy)
+	}
+	target, found := autonomousByID(snapshot.AutonomousCircles, simulation.DefaultSecondaryID)
+	if !found {
+		t.Fatalf("expected autonomous reproduction target %q", simulation.DefaultSecondaryID)
+	}
+	if target.Energy != 66 {
+		t.Fatalf("expected depleted-region reproduction target energy 66, got %v", target.Energy)
+	}
+}
+
 func TestDifferentShapeOverlapBlocksReproductionWhenEnergyIsInsufficient(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:                         "triangle",

@@ -322,6 +322,7 @@ The slice needed these implementation choices not fully specified in the refined
 - `POST /reset` rebuilds the session from its initial config, resets tick to `0`, clears intent, and broadcasts the fresh snapshot
 - autonomous steering now reacts to regional density in a bounded way by reversing a chosen direction when the next step would enter a clearly denser nearby region and the opposite step is less regionally crowded
 - food collection now applies a bounded regional yield penalty based on nearby missing food slots around the collected slot, so depleted regions recover less energy even when food reappears
+- successful reproduction now applies a bounded regional surcharge based on nearby missing food slots around the reproduction location, while keeping threshold checks and child-payment semantics on the existing baseline path
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
 
