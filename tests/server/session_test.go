@@ -927,6 +927,42 @@ func TestAttachedChildCanCollectFoodForPlayer(t *testing.T) {
 	}
 }
 
+func TestPlayerCollectsLowerYieldFoodInLocallyDepletedRegion(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                1000,
+		WorldHeight:               800,
+		UseExpandedPopulation:     false,
+		PlayerShape:               "triangle",
+		PlayerX:                   524,
+		PlayerY:                   400,
+		PlayerEnergy:              80,
+		AutonomousShape:           "square",
+		AutonomousX:               384,
+		AutonomousY:               400,
+		AutonomousEnergy:          80,
+		SecondaryAutonomousShape:  "square",
+		SecondaryAutonomousX:      647,
+		SecondaryAutonomousY:      484,
+		SecondaryAutonomousEnergy: 80,
+		DisableFoodSeeking:        true,
+	})
+
+	firstTick := session.Advance()
+	if len(firstTick.Foods) != 1 {
+		t.Fatalf("expected two foods to be consumed on the first tick, got %d remaining", len(firstTick.Foods))
+	}
+
+	secondTick := session.Advance()
+	if len(secondTick.Foods) != 0 {
+		t.Fatalf("expected third food to be consumed on the second tick, got %d remaining", len(secondTick.Foods))
+	}
+
+	expectedEnergy := firstTick.AutonomousCircles[1].Energy - simulation.DefaultMoveCost + (simulation.DefaultFoodEnergy - 1)
+	if secondTick.AutonomousCircles[1].Energy != expectedEnergy {
+		t.Fatalf("expected depleted-region food yield to produce energy %v, got %v", expectedEnergy, secondTick.AutonomousCircles[1].Energy)
+	}
+}
+
 func TestAutonomousCircleMovesWithoutPlayerInput(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:                         simulation.DefaultPlayerShape,

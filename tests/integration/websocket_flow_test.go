@@ -2452,6 +2452,85 @@ func TestClientReceivesFoodCollectionThroughAttachedChild(t *testing.T) {
 	t.Fatal("expected food collection through attached child")
 }
 
+func TestClientReceivesReducedFoodYieldInLocallyDepletedRegion(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                1000,
+		WorldHeight:               800,
+		UseExpandedPopulation:     false,
+		PlayerShape:               "triangle",
+		PlayerX:                   524,
+		PlayerY:                   400,
+		PlayerEnergy:              80,
+		AutonomousShape:           "square",
+		AutonomousX:               384,
+		AutonomousY:               400,
+		AutonomousEnergy:          80,
+		SecondaryAutonomousShape:  "square",
+		SecondaryAutonomousX:      647,
+		SecondaryAutonomousY:      484,
+		SecondaryAutonomousEnergy: 80,
+		DisableFoodSeeking:        true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	var firstTick simulation.Snapshot
+	for {
+		if err := connection.ReadJSON(&firstTick); err != nil {
+			t.Fatalf("read first tick snapshot: %v", err)
+		}
+		if firstTick.Tick != 0 {
+			break
+		}
+	}
+
+	if len(firstTick.Foods) != 1 {
+		t.Fatalf("expected two foods consumed on first tick, got %d remaining", len(firstTick.Foods))
+	}
+
+	for {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read second tick snapshot: %v", err)
+		}
+		if snapshot.Tick <= firstTick.Tick {
+			continue
+		}
+		if len(snapshot.Foods) != 0 {
+			continue
+		}
+
+		expectedEnergy := firstTick.AutonomousCircles[1].Energy - simulation.DefaultMoveCost + (simulation.DefaultFoodEnergy - 1)
+		if snapshot.AutonomousCircles[1].Energy != expectedEnergy {
+			t.Fatalf("expected depleted-region food yield energy %v, got %v", expectedEnergy, snapshot.AutonomousCircles[1].Energy)
+		}
+		if initial.AutonomousCircles[1].Energy >= snapshot.AutonomousCircles[1].Energy {
+			t.Fatalf("expected second autonomous circle to recover energy after reduced-yield food, before=%v after=%v", initial.AutonomousCircles[1].Energy, snapshot.AutonomousCircles[1].Energy)
+		}
+		return
+	}
+}
+
 func foodByID(foods []simulation.Food, id string) (simulation.Food, bool) {
 	for _, food := range foods {
 		if food.ID == id {

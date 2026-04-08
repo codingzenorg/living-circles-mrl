@@ -7,50 +7,51 @@ import (
 )
 
 const (
-	DefaultWorldWidth                           = 800.0
-	DefaultWorldHeight                          = 600.0
-	DefaultExpandedWorldWidth                   = 1600.0
-	DefaultExpandedWorldHeight                  = 1200.0
-	DefaultPlayerRadius                         = 12.0
-	DefaultAttachedChildRadius                  = 4.0
-	DefaultAttachedChildOrbitGap                = 8.0
-	DefaultChildOrbitSpeed                      = 0.12
-	DefaultAutonomousID                         = "circle-2"
-	DefaultSecondaryID                          = "circle-3"
-	DefaultTertiaryID                           = "circle-4"
-	DefaultQuaternaryID                         = "circle-5"
-	DefaultQuinaryID                            = "circle-6"
-	DefaultSenaryID                             = "circle-7"
-	DefaultSeptenaryID                          = "circle-8"
-	DefaultOctonaryID                           = "circle-9"
-	DefaultPlayerEnergy                         = 100.0
-	DefaultReplacementEnergy                    = 100.0
-	DefaultMaxEnergy                            = 100.0
-	DefaultMoveSpeed                            = 8.0
-	DefaultMoveCost                             = 1.0
-	DefaultFoodRadius                           = 6.0
-	DefaultFoodEnergy                           = 10.0
-	DefaultFoodRegenDelay                       = int64(12)
-	DefaultRegionalFoodPressureDistance         = 180.0
-	DefaultFoodPriorityDistance                 = 140.0
-	DefaultLowEnergyFoodThreshold               = 40.0
-	DefaultThreatAvoidanceDistance              = 120.0
-	DefaultBlockedReproductionAvoidanceDistance = 120.0
-	DefaultCrowdingDistance                     = 120.0
-	DefaultCrowdingThreshold                    = 2
-	DefaultCrowdingMoveCost                     = 1.0
-	DefaultRegionalCrowdingDistance             = 260.0
-	DefaultRegionalCrowdingThreshold            = 4
-	DefaultRegionalCrowdingMoveCost             = 1.0
-	DefaultReproductionMinEnergy                = 15.0
-	DefaultReproductionCost                     = 10.0
-	DefaultPlayerShape                          = "triangle"
-	DefaultAutoShape                            = "square"
-	DefaultExpandedAutonomousCount              = 8
-	DefaultExpandedFoodCount                    = DefaultExpandedAutonomousCount + 3
-	DefaultExpandedFoodSeed               int64 = 73
-	DefaultExpandedAutonomousSeed         int64 = 131
-	DefaultExpandedAutonomousStateSeed    int64 = 211
+	DefaultWorldWidth                                 = 800.0
+	DefaultWorldHeight                                = 600.0
+	DefaultExpandedWorldWidth                         = 1600.0
+	DefaultExpandedWorldHeight                        = 1200.0
+	DefaultPlayerRadius                               = 12.0
+	DefaultAttachedChildRadius                        = 4.0
+	DefaultAttachedChildOrbitGap                      = 8.0
+	DefaultChildOrbitSpeed                            = 0.12
+	DefaultAutonomousID                               = "circle-2"
+	DefaultSecondaryID                                = "circle-3"
+	DefaultTertiaryID                                 = "circle-4"
+	DefaultQuaternaryID                               = "circle-5"
+	DefaultQuinaryID                                  = "circle-6"
+	DefaultSenaryID                                   = "circle-7"
+	DefaultSeptenaryID                                = "circle-8"
+	DefaultOctonaryID                                 = "circle-9"
+	DefaultPlayerEnergy                               = 100.0
+	DefaultReplacementEnergy                          = 100.0
+	DefaultMaxEnergy                                  = 100.0
+	DefaultMoveSpeed                                  = 8.0
+	DefaultMoveCost                                   = 1.0
+	DefaultFoodRadius                                 = 6.0
+	DefaultFoodEnergy                                 = 10.0
+	DefaultMinimumRegionalFoodYield                   = 6.0
+	DefaultFoodRegenDelay                             = int64(12)
+	DefaultRegionalFoodPressureDistance               = 180.0
+	DefaultFoodPriorityDistance                       = 140.0
+	DefaultLowEnergyFoodThreshold                     = 40.0
+	DefaultThreatAvoidanceDistance                    = 120.0
+	DefaultBlockedReproductionAvoidanceDistance       = 120.0
+	DefaultCrowdingDistance                           = 120.0
+	DefaultCrowdingThreshold                          = 2
+	DefaultCrowdingMoveCost                           = 1.0
+	DefaultRegionalCrowdingDistance                   = 260.0
+	DefaultRegionalCrowdingThreshold                  = 4
+	DefaultRegionalCrowdingMoveCost                   = 1.0
+	DefaultReproductionMinEnergy                      = 15.0
+	DefaultReproductionCost                           = 10.0
+	DefaultPlayerShape                                = "triangle"
+	DefaultAutoShape                                  = "square"
+	DefaultExpandedAutonomousCount                    = 8
+	DefaultExpandedFoodCount                          = DefaultExpandedAutonomousCount + 3
+	DefaultExpandedFoodSeed                     int64 = 73
+	DefaultExpandedAutonomousSeed               int64 = 131
+	DefaultExpandedAutonomousStateSeed          int64 = 211
 )
 
 type Bounds struct {
@@ -634,8 +635,9 @@ func (w *World) Snapshot(tick int64) Snapshot {
 func (w *World) consumeOverlappingFood(tick int64) {
 	remaining := make([]Food, 0, len(w.foods))
 	for _, food := range w.foods {
+		foodGain := w.foodGainForSlot(food.ID)
 		if w.player != nil && playerCollectsFood(*w.player, food, tick) {
-			w.player.Energy = math.Min(w.maxEnergy, w.player.Energy+w.foodGain)
+			w.player.Energy = math.Min(w.maxEnergy, w.player.Energy+foodGain)
 			w.missingFoodSince[food.ID] = tick
 			continue
 		}
@@ -643,7 +645,7 @@ func (w *World) consumeOverlappingFood(tick int64) {
 		consumed := false
 		for index, circle := range w.autonomousCircles {
 			if autonomousCollectsFood(circle, food, tick) {
-				circle.Energy = math.Min(w.maxEnergy, circle.Energy+w.foodGain)
+				circle.Energy = math.Min(w.maxEnergy, circle.Energy+foodGain)
 				w.autonomousCircles[index] = circle
 				w.missingFoodSince[food.ID] = tick
 				consumed = true
@@ -692,6 +694,11 @@ func (w *World) foodRegenDelay(slot Food) int64 {
 	delay += int64(missingCount-1) * 2
 	delay += int64(w.localMissingFoodCount(slot.ID)) * 2
 	return delay
+}
+
+func (w *World) foodGainForSlot(slotID string) float64 {
+	penalty := float64(w.localMissingFoodCount(slotID))
+	return math.Max(DefaultMinimumRegionalFoodYield, w.foodGain-penalty)
 }
 
 func (w *World) localMissingFoodCount(slotID string) int {
