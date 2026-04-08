@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_viewport_interest_culling_transport.md`
+`docs/slices/initial_dual_cadence_transport_snapshots.md`
 
 ## Implemented Shape
 
@@ -36,6 +36,9 @@
 - websocket and reset transport now send local full-detail autonomous circles and foods for the current viewport neighborhood instead of the full world at equal detail
 - transport snapshots now also carry lightweight whole-world minimap summaries and total world counts so the client keeps orientation while the main play surface consumes less payload
 - the viewport-thinned transport path now measures at `3907` bytes per snapshot, or about `39070` bytes/sec per client at `10` snapshots/sec, down from the prior `6487` byte / `64870` bytes-sec full-snapshot baseline
+- transport snapshots now keep local viewport detail on every tick while refreshing minimap-orientation summaries only every `5` ticks, with the client reusing the last valid orientation summary between refreshes
+- the current single-cadence viewport-culling payload measures at `3932` bytes per snapshot, or about `39320` bytes/sec per client at `10` snapshots/sec
+- the current dual-cadence transport averages about `1710` bytes per message, or about `17096` bytes/sec per client over the same `10` snapshots/sec cadence window
 - the default expanded world baseline now uses a larger bounded space, more autonomous circles, and deterministic seeded food slots instead of a hand-authored expanded food layout
 - the expanded default autonomous startup pattern now uses deterministic seeded placement for the additional expanded circles instead of fixed authored offsets
 - the additional expanded autonomous circles now also use a deterministic seeded startup shape and energy mix instead of fixed authored per-ID state

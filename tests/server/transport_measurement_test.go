@@ -69,7 +69,7 @@ func TestLargerWorldScenarioTransportMeasurementExceedsDefaultExpandedBaseline(t
 
 func TestViewportTransportSnapshotKeepsMinimapOrientationWhileCullingLocalDetail(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
-	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot)
+	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot, true)
 
 	if transportSnapshot.Player == nil {
 		t.Fatal("expected player to remain present in transport snapshot")
@@ -96,7 +96,7 @@ func TestViewportTransportSnapshotKeepsMinimapOrientationWhileCullingLocalDetail
 
 func TestViewportTransportSnapshotReducesMeasuredPayloadBelowFullSnapshotBaseline(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
-	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot)
+	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot, true)
 
 	fullMeasurement, err := transport.MeasureSnapshotTransport(fullSnapshot, transport.DefaultTickEvery)
 	if err != nil {
@@ -112,5 +112,60 @@ func TestViewportTransportSnapshotReducesMeasuredPayloadBelowFullSnapshotBaselin
 	}
 	if culledMeasurement.ApproxBytesPerSecond >= fullMeasurement.ApproxBytesPerSecond {
 		t.Fatalf("expected culled bytes/sec %v to be smaller than full bytes/sec %v", culledMeasurement.ApproxBytesPerSecond, fullMeasurement.ApproxBytesPerSecond)
+	}
+}
+
+func TestViewportTransportSnapshotCanOmitOrientationSummaryOnNonRefreshTicks(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot, false)
+
+	if transportSnapshot.OrientationFresh {
+		t.Fatal("expected non-refresh transport snapshot to mark orientation as stale")
+	}
+	if transportSnapshot.MinimapAutonomousCircles != nil {
+		t.Fatalf("expected minimap autonomous summaries to be omitted on non-refresh ticks, got %d", len(transportSnapshot.MinimapAutonomousCircles))
+	}
+	if transportSnapshot.MinimapFoods != nil {
+		t.Fatalf("expected minimap food summaries to be omitted on non-refresh ticks, got %d", len(transportSnapshot.MinimapFoods))
+	}
+	if transportSnapshot.TotalAutonomousCircles != len(fullSnapshot.AutonomousCircles) {
+		t.Fatalf("expected total autonomous count %d, got %d", len(fullSnapshot.AutonomousCircles), transportSnapshot.TotalAutonomousCircles)
+	}
+	if transportSnapshot.TotalFoods != len(fullSnapshot.Foods) {
+		t.Fatalf("expected total food count %d, got %d", len(fullSnapshot.Foods), transportSnapshot.TotalFoods)
+	}
+}
+
+func TestDualCadenceTransportAverageCostFallsBelowSingleCadenceCulledBaseline(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+	singleCadenceMeasurement, err := transport.MeasureSnapshotTransport(transport.BuildViewportSnapshot(fullSnapshot, true), transport.DefaultTickEvery)
+	if err != nil {
+		t.Fatalf("measure single cadence transport: %v", err)
+	}
+
+	totalBytes := 0
+	for tick := int64(1); tick <= transport.DefaultOrientationEveryTicks; tick++ {
+		snapshot, err := transport.MeasureSnapshotTransport(
+			transport.BuildViewportSnapshot(simulation.Snapshot{
+				Type:              fullSnapshot.Type,
+				Tick:              tick,
+				World:             fullSnapshot.World,
+				Player:            fullSnapshot.Player,
+				AutonomousCircles: fullSnapshot.AutonomousCircles,
+				Interaction:       fullSnapshot.Interaction,
+				Foods:             fullSnapshot.Foods,
+			}, tick%transport.DefaultOrientationEveryTicks == 0),
+			transport.DefaultTickEvery,
+		)
+		if err != nil {
+			t.Fatalf("measure dual cadence transport tick %d: %v", tick, err)
+		}
+		totalBytes += snapshot.PayloadBytes
+	}
+
+	averagePayload := float64(totalBytes) / float64(transport.DefaultOrientationEveryTicks)
+	averageBytesPerSecond := averagePayload * singleCadenceMeasurement.SnapshotsPerSecond
+	if averageBytesPerSecond >= singleCadenceMeasurement.ApproxBytesPerSecond {
+		t.Fatalf("expected dual cadence average bytes/sec %v to be below single cadence culled baseline %v", averageBytesPerSecond, singleCadenceMeasurement.ApproxBytesPerSecond)
 	}
 }

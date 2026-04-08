@@ -6,6 +6,7 @@ const (
 	DefaultViewportInterestWidth  = 1200.0
 	DefaultViewportInterestHeight = 840.0
 	DefaultViewportInterestMargin = 180.0
+	DefaultOrientationEveryTicks  = int64(5)
 )
 
 type MinimapAutonomousCircle struct {
@@ -29,13 +30,14 @@ type Snapshot struct {
 	AutonomousCircles        []simulation.AutonomousCircle         `json:"autonomous_circles"`
 	Interaction              *simulation.InteractionClassification `json:"interaction"`
 	Foods                    []simulation.Food                     `json:"foods"`
+	OrientationFresh         bool                                  `json:"orientation_fresh"`
 	MinimapAutonomousCircles []MinimapAutonomousCircle             `json:"minimap_autonomous_circles"`
 	MinimapFoods             []MinimapFood                         `json:"minimap_foods"`
 	TotalAutonomousCircles   int                                   `json:"total_autonomous_circles"`
 	TotalFoods               int                                   `json:"total_foods"`
 }
 
-func BuildViewportSnapshot(snapshot simulation.Snapshot) Snapshot {
+func BuildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
 	focusX := snapshot.World.Width / 2
 	focusY := snapshot.World.Height / 2
 	if snapshot.Player != nil {
@@ -65,14 +67,19 @@ func BuildViewportSnapshot(snapshot simulation.Snapshot) Snapshot {
 	}
 
 	localAutonomous := make([]simulation.AutonomousCircle, 0, len(snapshot.AutonomousCircles))
-	minimapAutonomous := make([]MinimapAutonomousCircle, 0, len(snapshot.AutonomousCircles))
+	var minimapAutonomous []MinimapAutonomousCircle
+	if includeOrientation {
+		minimapAutonomous = make([]MinimapAutonomousCircle, 0, len(snapshot.AutonomousCircles))
+	}
 	for _, circle := range snapshot.AutonomousCircles {
-		minimapAutonomous = append(minimapAutonomous, MinimapAutonomousCircle{
-			ID:    circle.ID,
-			Shape: circle.Shape,
-			X:     circle.X,
-			Y:     circle.Y,
-		})
+		if includeOrientation {
+			minimapAutonomous = append(minimapAutonomous, MinimapAutonomousCircle{
+				ID:    circle.ID,
+				Shape: circle.Shape,
+				X:     circle.X,
+				Y:     circle.Y,
+			})
+		}
 		_, required := requiredIDs[circle.ID]
 		if required || pointInsideRect(circle.X, circle.Y, left, right, top, bottom) {
 			localAutonomous = append(localAutonomous, circle)
@@ -80,13 +87,18 @@ func BuildViewportSnapshot(snapshot simulation.Snapshot) Snapshot {
 	}
 
 	localFoods := make([]simulation.Food, 0, len(snapshot.Foods))
-	minimapFoods := make([]MinimapFood, 0, len(snapshot.Foods))
+	var minimapFoods []MinimapFood
+	if includeOrientation {
+		minimapFoods = make([]MinimapFood, 0, len(snapshot.Foods))
+	}
 	for _, food := range snapshot.Foods {
-		minimapFoods = append(minimapFoods, MinimapFood{
-			ID: food.ID,
-			X:  food.X,
-			Y:  food.Y,
-		})
+		if includeOrientation {
+			minimapFoods = append(minimapFoods, MinimapFood{
+				ID: food.ID,
+				X:  food.X,
+				Y:  food.Y,
+			})
+		}
 		if pointInsideRect(food.X, food.Y, left, right, top, bottom) {
 			localFoods = append(localFoods, food)
 		}
@@ -100,6 +112,7 @@ func BuildViewportSnapshot(snapshot simulation.Snapshot) Snapshot {
 		AutonomousCircles:        localAutonomous,
 		Interaction:              snapshot.Interaction,
 		Foods:                    localFoods,
+		OrientationFresh:         includeOrientation,
 		MinimapAutonomousCircles: minimapAutonomous,
 		MinimapFoods:             minimapFoods,
 		TotalAutonomousCircles:   len(snapshot.AutonomousCircles),

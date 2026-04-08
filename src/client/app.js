@@ -20,6 +20,8 @@ let previousPlayerPosition = null;
 let recentEffects = [];
 let lastInteractionSignature = null;
 let previousCamera = null;
+let cachedMinimapAutonomousCircles = [];
+let cachedMinimapFoods = [];
 const pressedKeys = new Set();
 let activeSocket = null;
 let senderIntervalId = null;
@@ -71,11 +73,11 @@ function childCount(circle) {
 }
 
 function minimapAutonomousCircles(snapshot) {
-  return snapshot.minimap_autonomous_circles ?? snapshot.autonomous_circles;
+  return snapshot.minimap_autonomous_circles ?? cachedMinimapAutonomousCircles ?? snapshot.autonomous_circles;
 }
 
 function minimapFoods(snapshot) {
-  return snapshot.minimap_foods ?? snapshot.foods;
+  return snapshot.minimap_foods ?? cachedMinimapFoods ?? snapshot.foods;
 }
 
 function distanceBetween(a, b) {
@@ -1110,6 +1112,14 @@ function connect() {
     const snapshot = JSON.parse(event.data);
     if (snapshot.type !== MESSAGE_TYPES.worldSnapshot) {
       return;
+    }
+
+    if (snapshot.orientation_fresh) {
+      cachedMinimapAutonomousCircles = snapshot.minimap_autonomous_circles ?? [];
+      cachedMinimapFoods = snapshot.minimap_foods ?? [];
+    } else {
+      snapshot.minimap_autonomous_circles = cachedMinimapAutonomousCircles;
+      snapshot.minimap_foods = cachedMinimapFoods;
     }
 
     latestSnapshot = snapshot;

@@ -4,7 +4,7 @@
   "title": "WorldSnapshot",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "tick", "world", "player", "autonomous_circles", "interaction", "foods", "minimap_autonomous_circles", "minimap_foods", "total_autonomous_circles", "total_foods"],
+  "required": ["type", "tick", "world", "player", "autonomous_circles", "interaction", "foods", "orientation_fresh", "total_autonomous_circles", "total_foods"],
   "properties": {
     "type": {
       "const": "world_snapshot"
@@ -167,26 +167,33 @@
       }
     },
     "minimap_autonomous_circles": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "shape", "x", "y"],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "shape": {
-            "type": "string"
-          },
-          "x": {
-            "type": "number"
-          },
-          "y": {
-            "type": "number"
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "shape", "x", "y"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "shape": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
           }
+        },
+        {
+          "type": "null"
         }
-      }
+      ]
     },
     "interaction": {
       "anyOf": [
@@ -335,24 +342,34 @@
         }
       }
     },
+    "orientation_fresh": {
+      "type": "boolean"
+    },
     "minimap_foods": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "x", "y"],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "x": {
-            "type": "number"
-          },
-          "y": {
-            "type": "number"
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "x", "y"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
           }
+        },
+        {
+          "type": "null"
         }
-      }
+      ]
     },
     "total_autonomous_circles": {
       "type": "integer",

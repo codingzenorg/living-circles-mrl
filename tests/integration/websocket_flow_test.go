@@ -1629,6 +1629,9 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.Player == nil {
 		t.Fatal("expected player in initial snapshot")
 	}
+	if !initial.OrientationFresh {
+		t.Fatal("expected initial transport snapshot to include fresh orientation data")
+	}
 	if initial.World.Width != simulation.DefaultExpandedWorldWidth || initial.World.Height != simulation.DefaultExpandedWorldHeight {
 		t.Fatalf("expected expanded world %vx%v, got %vx%v", simulation.DefaultExpandedWorldWidth, simulation.DefaultExpandedWorldHeight, initial.World.Width, initial.World.Height)
 	}
@@ -1715,6 +1718,73 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 		if circle.Energy < 82 || circle.Energy > 96 {
 			t.Fatalf("expected seeded expanded autonomous energy to stay in range, got %+v", circle)
 		}
+	}
+}
+
+func TestTransportOrientationSummaryRefreshesAtLowerCadence(t *testing.T) {
+	server := transport.NewServer()
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial transport.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+	if !initial.OrientationFresh {
+		t.Fatal("expected initial snapshot orientation to be fresh")
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	sawStale := false
+	sawRefresh := false
+	for range transport.DefaultOrientationEveryTicks + 2 {
+		var snapshot transport.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+		if snapshot.Tick == 0 {
+			continue
+		}
+
+		if snapshot.Tick%transport.DefaultOrientationEveryTicks == 0 {
+			if !snapshot.OrientationFresh {
+				t.Fatalf("expected tick %d to include fresh orientation data", snapshot.Tick)
+			}
+			if snapshot.MinimapAutonomousCircles == nil || snapshot.MinimapFoods == nil {
+				t.Fatalf("expected tick %d to include minimap summaries", snapshot.Tick)
+			}
+			sawRefresh = true
+			break
+		}
+
+		if snapshot.OrientationFresh {
+			t.Fatalf("expected non-refresh tick %d to omit fresh orientation data", snapshot.Tick)
+		}
+		if snapshot.MinimapAutonomousCircles != nil || snapshot.MinimapFoods != nil {
+			t.Fatalf("expected non-refresh tick %d to omit minimap summaries", snapshot.Tick)
+		}
+		sawStale = true
+	}
+
+	if !sawStale {
+		t.Fatal("expected at least one stale-orientation tick before refresh")
+	}
+	if !sawRefresh {
+		t.Fatal("expected to observe a later orientation refresh tick")
 	}
 }
 
