@@ -229,6 +229,79 @@ func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	}
 }
 
+func TestClientReceivesRegionalCrowdingEnergyPressure(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                1000,
+		WorldHeight:               800,
+		UseExpandedPopulation:     true,
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "triangle",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          simulation.DefaultPlayerEnergy,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+		PlayerX:                   500,
+		PlayerY:                   400,
+		AutonomousX:               560,
+		AutonomousY:               400,
+		SecondaryAutonomousX:      500,
+		SecondaryAutonomousY:      460,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	message := map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 1,
+			"y": 0,
+		},
+	}
+	if err := connection.WriteJSON(message); err != nil {
+		t.Fatalf("write movement intent: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read updated snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.Player == nil {
+			continue
+		}
+
+		expectedEnergy := initial.Player.Energy -
+			simulation.DefaultMoveCost -
+			simulation.DefaultCrowdingMoveCost -
+			simulation.DefaultRegionalCrowdingMoveCost
+		if snapshot.Player.Energy != expectedEnergy {
+			t.Fatalf("expected player energy %v under regional crowding pressure, got %v", expectedEnergy, snapshot.Player.Energy)
+		}
+		return
+	}
+}
+
 func TestClientReceivesCrowdingEnergyPressureInClusteredWorld(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		WorldWidth:                1000,

@@ -39,6 +39,9 @@ const (
 	DefaultCrowdingDistance                     = 120.0
 	DefaultCrowdingThreshold                    = 2
 	DefaultCrowdingMoveCost                     = 1.0
+	DefaultRegionalCrowdingDistance             = 260.0
+	DefaultRegionalCrowdingThreshold            = 4
+	DefaultRegionalCrowdingMoveCost             = 1.0
 	DefaultReproductionMinEnergy                = 15.0
 	DefaultReproductionCost                     = 10.0
 	DefaultPlayerShape                          = "triangle"
@@ -740,6 +743,7 @@ func (w *World) advanceCircle(circle *PlayerCircle, intent Vector) *PlayerCircle
 	circle.Y = clamp(circle.Y+normalized.Y*w.speed, DefaultPlayerRadius, w.bounds.Height-DefaultPlayerRadius)
 	circle.Energy = math.Max(0, circle.Energy-w.moveCost)
 	circle.Energy = math.Max(0, circle.Energy-w.playerCrowdingCost(*circle))
+	circle.Energy = math.Max(0, circle.Energy-w.playerRegionalCrowdingCost(*circle))
 
 	return circle
 }
@@ -760,6 +764,7 @@ func (w *World) advanceAutonomousCircles(tick int64) {
 		circle.Y = clamp(circle.Y+normalized.Y*w.speed, DefaultPlayerRadius, w.bounds.Height-DefaultPlayerRadius)
 		circle.Energy = math.Max(0, circle.Energy-w.moveCost)
 		circle.Energy = math.Max(0, circle.Energy-w.autonomousCrowdingCost(circle))
+		circle.Energy = math.Max(0, circle.Energy-w.autonomousRegionalCrowdingCost(circle))
 		if circle.X == DefaultPlayerRadius || circle.X == w.bounds.Width-DefaultPlayerRadius {
 			w.autonomousDirections[index] = Vector{X: -intent.X, Y: intent.Y}
 		}
@@ -802,6 +807,43 @@ func (w *World) autonomousCrowdingCost(circle AutonomousCircle) float64 {
 	}
 
 	return DefaultCrowdingMoveCost
+}
+
+func (w *World) playerRegionalCrowdingCost(circle PlayerCircle) float64 {
+	neighbors := 0
+	for _, other := range w.autonomousCircles {
+		if other.Energy <= 0 {
+			continue
+		}
+		if distanceBetween(circle.X, circle.Y, other.X, other.Y) <= DefaultRegionalCrowdingDistance {
+			neighbors++
+		}
+	}
+	if neighbors < DefaultRegionalCrowdingThreshold {
+		return 0
+	}
+
+	return DefaultRegionalCrowdingMoveCost
+}
+
+func (w *World) autonomousRegionalCrowdingCost(circle AutonomousCircle) float64 {
+	neighbors := 0
+	if w.player != nil && w.player.Energy > 0 && distanceBetween(circle.X, circle.Y, w.player.X, w.player.Y) <= DefaultRegionalCrowdingDistance {
+		neighbors++
+	}
+	for _, other := range w.autonomousCircles {
+		if other.ID == circle.ID || other.Energy <= 0 {
+			continue
+		}
+		if distanceBetween(circle.X, circle.Y, other.X, other.Y) <= DefaultRegionalCrowdingDistance {
+			neighbors++
+		}
+	}
+	if neighbors < DefaultRegionalCrowdingThreshold {
+		return 0
+	}
+
+	return DefaultRegionalCrowdingMoveCost
 }
 
 func (w *World) autonomousIntent(circle AutonomousCircle, index int, tick int64) Vector {

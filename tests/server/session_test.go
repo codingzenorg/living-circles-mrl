@@ -139,6 +139,38 @@ func TestAutonomousPaysCrowdingCostWhenTwoNeighborsAreNearby(t *testing.T) {
 	}
 }
 
+func TestPlayerPaysAdditionalRegionalCrowdingCostInDenseArea(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                1000,
+		WorldHeight:               800,
+		UseExpandedPopulation:     true,
+		PlayerShape:               "triangle",
+		AutonomousShape:           "square",
+		SecondaryAutonomousShape:  "triangle",
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          simulation.DefaultPlayerEnergy,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+		PlayerX:                   500,
+		PlayerY:                   400,
+		AutonomousX:               560,
+		AutonomousY:               400,
+		SecondaryAutonomousX:      500,
+		SecondaryAutonomousY:      460,
+	})
+	before := session.Snapshot()
+
+	session.ApplyIntent(simulation.Vector{X: 1, Y: 0})
+	after := session.Advance()
+
+	expectedEnergy := before.Player.Energy -
+		simulation.DefaultMoveCost -
+		simulation.DefaultCrowdingMoveCost -
+		simulation.DefaultRegionalCrowdingMoveCost
+	if after.Player.Energy != expectedEnergy {
+		t.Fatalf("expected regionally crowded player movement energy %v, got %v", expectedEnergy, after.Player.Energy)
+	}
+}
+
 func TestPlayerWithZeroEnergyDisappearsWithoutChildren(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:      "triangle",
