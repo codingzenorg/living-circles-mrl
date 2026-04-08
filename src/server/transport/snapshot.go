@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"math"
 	"slices"
 	"strconv"
 
@@ -44,14 +45,18 @@ type Snapshot struct {
 }
 
 func BuildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
-	return buildViewportSnapshot(snapshot, includeOrientation, true)
+	return buildViewportSnapshot(snapshot, includeOrientation, true, true)
 }
 
 func BuildViewportSnapshotExactOrientation(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
-	return buildViewportSnapshot(snapshot, includeOrientation, false)
+	return buildViewportSnapshot(snapshot, includeOrientation, false, true)
 }
 
-func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool, compactOrientation bool) Snapshot {
+func BuildViewportSnapshotCompactFullPrecision(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
+	return buildViewportSnapshot(snapshot, includeOrientation, true, false)
+}
+
+func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool, compactOrientation bool, reducePrecision bool) Snapshot {
 	focusX := snapshot.World.Width / 2
 	focusY := snapshot.World.Height / 2
 	if snapshot.Player != nil {
@@ -162,10 +167,10 @@ func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 		Type:                     snapshot.Type,
 		Tick:                     snapshot.Tick,
 		World:                    snapshot.World,
-		Player:                   snapshot.Player,
-		AutonomousCircles:        localAutonomous,
-		Interaction:              snapshot.Interaction,
-		Foods:                    localFoods,
+		Player:                   roundedPlayer(snapshot.Player, reducePrecision),
+		AutonomousCircles:        roundedAutonomousCircles(localAutonomous, reducePrecision),
+		Interaction:              roundedInteraction(snapshot.Interaction, reducePrecision),
+		Foods:                    roundedFoods(localFoods, reducePrecision),
 		OrientationFresh:         includeOrientation,
 		MinimapAutonomousCircles: minimapAutonomous,
 		MinimapFoods:             minimapFoods,
@@ -224,4 +229,89 @@ func foodClustersFromMap(clusters map[string]*MinimapFood) []MinimapFood {
 		items = append(items, *clusters[key])
 	}
 	return items
+}
+
+func roundTransportFloat(value float64) float64 {
+	return math.Round(value)
+}
+
+func roundedPlayer(circle *simulation.PlayerCircle, reducePrecision bool) *simulation.PlayerCircle {
+	if circle == nil || !reducePrecision {
+		return circle
+	}
+
+	copy := *circle
+	copy.X = roundTransportFloat(copy.X)
+	copy.Y = roundTransportFloat(copy.Y)
+	copy.Radius = roundTransportFloat(copy.Radius)
+	copy.Energy = roundTransportFloat(copy.Energy)
+	copy.AttachedChildren = roundedChildren(copy.AttachedChildren, reducePrecision)
+	return &copy
+}
+
+func roundedAutonomousCircles(circles []simulation.AutonomousCircle, reducePrecision bool) []simulation.AutonomousCircle {
+	if !reducePrecision {
+		return circles
+	}
+
+	rounded := make([]simulation.AutonomousCircle, 0, len(circles))
+	for _, circle := range circles {
+		copy := circle
+		copy.X = roundTransportFloat(copy.X)
+		copy.Y = roundTransportFloat(copy.Y)
+		copy.Radius = roundTransportFloat(copy.Radius)
+		copy.Energy = roundTransportFloat(copy.Energy)
+		copy.AttachedChildren = roundedChildren(copy.AttachedChildren, reducePrecision)
+		rounded = append(rounded, copy)
+	}
+	return rounded
+}
+
+func roundedChildren(children []simulation.AttachedChild, reducePrecision bool) []simulation.AttachedChild {
+	if !reducePrecision {
+		return children
+	}
+
+	rounded := make([]simulation.AttachedChild, 0, len(children))
+	for _, child := range children {
+		copy := child
+		copy.X = roundTransportFloat(copy.X)
+		copy.Y = roundTransportFloat(copy.Y)
+		copy.Radius = roundTransportFloat(copy.Radius)
+		rounded = append(rounded, copy)
+	}
+	return rounded
+}
+
+func roundedFoods(foods []simulation.Food, reducePrecision bool) []simulation.Food {
+	if !reducePrecision {
+		return foods
+	}
+
+	rounded := make([]simulation.Food, 0, len(foods))
+	for _, food := range foods {
+		copy := food
+		copy.X = roundTransportFloat(copy.X)
+		copy.Y = roundTransportFloat(copy.Y)
+		copy.Radius = roundTransportFloat(copy.Radius)
+		rounded = append(rounded, copy)
+	}
+	return rounded
+}
+
+func roundedInteraction(interaction *simulation.InteractionClassification, reducePrecision bool) *simulation.InteractionClassification {
+	if interaction == nil || !reducePrecision {
+		return interaction
+	}
+
+	copy := *interaction
+	copy.SourceCapacityValue = roundTransportFloat(copy.SourceCapacityValue)
+	copy.TargetCapacityValue = roundTransportFloat(copy.TargetCapacityValue)
+	copy.SourceEnergyComponent = roundTransportFloat(copy.SourceEnergyComponent)
+	copy.TargetEnergyComponent = roundTransportFloat(copy.TargetEnergyComponent)
+	copy.SourceReserveComponent = roundTransportFloat(copy.SourceReserveComponent)
+	copy.TargetReserveComponent = roundTransportFloat(copy.TargetReserveComponent)
+	copy.ReproductionThreshold = roundTransportFloat(copy.ReproductionThreshold)
+	copy.ReproductionCost = roundTransportFloat(copy.ReproductionCost)
+	return &copy
 }

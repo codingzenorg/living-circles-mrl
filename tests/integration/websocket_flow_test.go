@@ -2403,8 +2403,10 @@ func TestClientReceivesEnergyCollapseReplacement(t *testing.T) {
 		if snapshot.Player.Generation != initial.Player.Generation+1 {
 			t.Fatalf("expected replacement generation %d, got %d", initial.Player.Generation+1, snapshot.Player.Generation)
 		}
-		if math.Abs(snapshot.Player.X-expectedX) > 1e-9 || math.Abs(snapshot.Player.Y-expectedY) > 1e-9 {
-			t.Fatalf("expected replacement at promoted child position (%v, %v), got (%v, %v)", expectedX, expectedY, snapshot.Player.X, snapshot.Player.Y)
+		roundedExpectedX := math.Round(expectedX)
+		roundedExpectedY := math.Round(expectedY)
+		if math.Abs(snapshot.Player.X-roundedExpectedX) > 1e-9 || math.Abs(snapshot.Player.Y-roundedExpectedY) > 1e-9 {
+			t.Fatalf("expected replacement at rounded promoted child position (%v, %v), got (%v, %v)", roundedExpectedX, roundedExpectedY, snapshot.Player.X, snapshot.Player.Y)
 		}
 		if snapshot.Interaction == nil {
 			t.Fatal("expected continuity interaction after zero-energy promotion")

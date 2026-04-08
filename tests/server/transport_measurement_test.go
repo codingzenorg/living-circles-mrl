@@ -200,3 +200,20 @@ func TestCompactMinimapSummaryReducesOrientationRefreshPayloadBelowExactSummary(
 		t.Fatalf("expected compact orientation payload %d to be smaller than exact orientation payload %d", compactMeasurement.PayloadBytes, exactMeasurement.PayloadBytes)
 	}
 }
+
+func TestReducedLocalPrecisionLowersCompactSummaryPayload(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+
+	fullPrecisionMeasurement, err := transport.MeasureSnapshotTransport(transport.BuildViewportSnapshotCompactFullPrecision(fullSnapshot, true), transport.DefaultTickEvery)
+	if err != nil {
+		t.Fatalf("measure full-precision compact transport: %v", err)
+	}
+	reducedPrecisionMeasurement, err := transport.MeasureSnapshotTransport(transport.BuildViewportSnapshot(fullSnapshot, true), transport.DefaultTickEvery)
+	if err != nil {
+		t.Fatalf("measure reduced-precision compact transport: %v", err)
+	}
+
+	if reducedPrecisionMeasurement.PayloadBytes >= fullPrecisionMeasurement.PayloadBytes {
+		t.Fatalf("expected reduced-precision payload %d to be smaller than full-precision payload %d", reducedPrecisionMeasurement.PayloadBytes, fullPrecisionMeasurement.PayloadBytes)
+	}
+}
