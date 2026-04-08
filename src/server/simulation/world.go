@@ -26,7 +26,7 @@ const (
 	DefaultPlayerEnergy                               = 100.0
 	DefaultReplacementEnergy                          = 100.0
 	DefaultMaxEnergy                                  = 100.0
-	DefaultMoveSpeed                                  = 8.0
+	DefaultMoveSpeed                                  = 10.0
 	DefaultMoveCost                                   = 1.0
 	DefaultFoodRadius                                 = 6.0
 	DefaultFoodEnergy                                 = 10.0

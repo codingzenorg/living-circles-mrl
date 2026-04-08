@@ -961,7 +961,7 @@ func TestPlayerCollectsLowerYieldFoodInLocallyDepletedRegion(t *testing.T) {
 		AutonomousY:               400,
 		AutonomousEnergy:          80,
 		SecondaryAutonomousShape:  "square",
-		SecondaryAutonomousX:      647,
+		SecondaryAutonomousX:      649,
 		SecondaryAutonomousY:      484,
 		SecondaryAutonomousEnergy: 80,
 		DisableFoodSeeking:        true,
@@ -2883,10 +2883,17 @@ func TestDifferentShapeOverlapConsumesChildAsReproductionPayment(t *testing.T) {
 
 func TestDifferentShapeOverlapPaidByEnergyRemainsOrdinaryResolvedReproduction(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                          1000,
+		WorldHeight:                         800,
 		PlayerShape:                         "triangle",
+		PlayerX:                             800,
+		PlayerY:                             200,
 		AutonomousShape:                     "square",
+		AutonomousX:                         660,
+		AutonomousY:                         200,
 		PlayerEnergy:                        simulation.DefaultPlayerEnergy,
 		AutonomousEnergy:                    simulation.DefaultPlayerEnergy,
+		DisableFoodSeeking:                  true,
 		DisableBlockedReproductionAvoidance: true,
 	})
 	before := session.Snapshot()
