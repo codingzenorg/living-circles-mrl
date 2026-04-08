@@ -2,6 +2,59 @@
 
 ## Change
 
+Make compact orientation refreshes event-driven, with a slower fallback refresh, instead of refreshing them on a fixed short cadence.
+
+## Why This Matters
+
+The transport path is now down to about `15494` bytes/sec per client under the default expanded-world baseline. That is a strong improvement, but the compact minimap summary still refreshes on a fixed schedule even when the summary itself may not have changed.
+
+The next pressure is therefore refresh relevance:
+
+- keep local detail frequent
+- avoid redundant compact orientation refreshes
+- still guarantee periodic orientation revalidation
+
+## Impacted Areas
+
+### Transport boundary
+
+- the server needs a deterministic notion of summary change
+- orientation refresh policy shifts from fixed short cadence to change-driven plus slower fallback cadence
+- transport measurement should compare average cost over deterministic windows
+
+### Runtime contract
+
+- the current `orientation_fresh` signal may already be sufficient
+- the contract shape may not need to change in this slice
+
+### Browser client
+
+- the client should continue reusing the last valid orientation summary between refreshes
+- no local play behavior should change
+
+### Simulation model
+
+- authoritative simulation remains unchanged
+- only transport refresh policy changes
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- what counts as a material compact-summary change
+- how often the fallback refresh should still happen
+- how to prove that redundant refreshes are avoided without letting the minimap drift too long
+
+## Risks If Ignored
+
+- the repo will continue paying for some compact orientation refreshes that add no new orientation value
+- later optimization work may jump to more complex transport techniques before exploiting the simpler refresh-policy win
+- the transport will remain partially timer-driven where a deterministic change signal could suffice
+
+---
+
+## Change
+
 Reduce high-cadence local transport precision to display-sufficient values while keeping full internal simulation precision.
 
 ## Why This Matters
