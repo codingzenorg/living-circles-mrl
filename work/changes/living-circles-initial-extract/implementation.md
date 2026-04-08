@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_transport_payload_measurement.md`
+`docs/slices/initial_viewport_interest_culling_transport.md`
 
 ## Implemented Shape
 
@@ -33,6 +33,9 @@
 - transport payload measurement is now explicit through a server-side helper that serializes the current authoritative snapshot as-is and combines it with the live tick cadence
 - the deterministic default expanded-world baseline currently measures at `6487` bytes per snapshot, or about `64870` bytes/sec per client at the current `10` snapshots/sec cadence
 - a deterministic larger-world scenario with doubled expanded autonomous and food counts currently measures at `12539` bytes per snapshot, or about `125390` bytes/sec per client at the same cadence
+- websocket and reset transport now send local full-detail autonomous circles and foods for the current viewport neighborhood instead of the full world at equal detail
+- transport snapshots now also carry lightweight whole-world minimap summaries and total world counts so the client keeps orientation while the main play surface consumes less payload
+- the viewport-thinned transport path now measures at `3907` bytes per snapshot, or about `39070` bytes/sec per client at `10` snapshots/sec, down from the prior `6487` byte / `64870` bytes-sec full-snapshot baseline
 - the default expanded world baseline now uses a larger bounded space, more autonomous circles, and deterministic seeded food slots instead of a hand-authored expanded food layout
 - the expanded default autonomous startup pattern now uses deterministic seeded placement for the additional expanded circles instead of fixed authored offsets
 - the additional expanded autonomous circles now also use a deterministic seeded startup shape and energy mix instead of fixed authored per-ID state

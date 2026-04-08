@@ -170,7 +170,7 @@ func TestClientReceivesInitialSnapshotAndFightResolution(t *testing.T) {
 	}
 	defer connection.Close()
 
-	var initial simulation.Snapshot
+	var initial transport.Snapshot
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
@@ -263,7 +263,7 @@ func TestClientReceivesRegionalCrowdingEnergyPressure(t *testing.T) {
 	}
 	defer connection.Close()
 
-	var initial simulation.Snapshot
+	var initial transport.Snapshot
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
@@ -336,7 +336,7 @@ func TestClientReceivesCrowdingEnergyPressureInClusteredWorld(t *testing.T) {
 	}
 	defer connection.Close()
 
-	var initial simulation.Snapshot
+	var initial transport.Snapshot
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
@@ -409,7 +409,7 @@ func TestClientReceivesCrowdingAwareAutonomousSteering(t *testing.T) {
 	}
 	defer connection.Close()
 
-	var initial simulation.Snapshot
+	var initial transport.Snapshot
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
@@ -470,7 +470,7 @@ func TestClientReceivesRegionalCrowdingAwareAutonomousSteering(t *testing.T) {
 	}
 	defer connection.Close()
 
-	var initial simulation.Snapshot
+	var initial transport.Snapshot
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
@@ -1621,7 +1621,7 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	}
 	defer connection.Close()
 
-	var initial simulation.Snapshot
+	var initial transport.Snapshot
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
@@ -1632,13 +1632,25 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.World.Width != simulation.DefaultExpandedWorldWidth || initial.World.Height != simulation.DefaultExpandedWorldHeight {
 		t.Fatalf("expected expanded world %vx%v, got %vx%v", simulation.DefaultExpandedWorldWidth, simulation.DefaultExpandedWorldHeight, initial.World.Width, initial.World.Height)
 	}
-	if len(initial.AutonomousCircles) != simulation.DefaultExpandedAutonomousCount {
-		t.Fatalf("expected %d autonomous circles, got %d", simulation.DefaultExpandedAutonomousCount, len(initial.AutonomousCircles))
+	if initial.TotalAutonomousCircles != simulation.DefaultExpandedAutonomousCount {
+		t.Fatalf("expected %d autonomous circles, got %d", simulation.DefaultExpandedAutonomousCount, initial.TotalAutonomousCircles)
 	}
-	if len(initial.Foods) != simulation.DefaultExpandedFoodCount {
-		t.Fatalf("expected %d food slots, got %d", simulation.DefaultExpandedFoodCount, len(initial.Foods))
+	if initial.TotalFoods != simulation.DefaultExpandedFoodCount {
+		t.Fatalf("expected %d food slots, got %d", simulation.DefaultExpandedFoodCount, initial.TotalFoods)
 	}
-	for index, food := range initial.Foods {
+	if len(initial.MinimapAutonomousCircles) != simulation.DefaultExpandedAutonomousCount {
+		t.Fatalf("expected minimap to retain %d autonomous circles, got %d", simulation.DefaultExpandedAutonomousCount, len(initial.MinimapAutonomousCircles))
+	}
+	if len(initial.MinimapFoods) != simulation.DefaultExpandedFoodCount {
+		t.Fatalf("expected minimap to retain %d food slots, got %d", simulation.DefaultExpandedFoodCount, len(initial.MinimapFoods))
+	}
+	if len(initial.AutonomousCircles) >= initial.TotalAutonomousCircles {
+		t.Fatalf("expected viewport transport to cull local autonomous detail below total count, local=%d total=%d", len(initial.AutonomousCircles), initial.TotalAutonomousCircles)
+	}
+	if len(initial.Foods) >= initial.TotalFoods {
+		t.Fatalf("expected viewport transport to cull local food detail below total count, local=%d total=%d", len(initial.Foods), initial.TotalFoods)
+	}
+	for index, food := range initial.MinimapFoods {
 		expectedID := "food-" + strconv.Itoa(index+1)
 		if food.ID != expectedID {
 			t.Fatalf("expected deterministic expanded food id %q, got %q", expectedID, food.ID)
@@ -1685,13 +1697,13 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 			t.Fatalf("expected seeded autonomous layout to avoid exact center, got %+v", circle)
 		}
 	}
-	if initial.AutonomousCircles[2].ID != simulation.DefaultTertiaryID ||
-		initial.AutonomousCircles[3].ID != simulation.DefaultQuaternaryID ||
-		initial.AutonomousCircles[4].ID != simulation.DefaultQuinaryID ||
-		initial.AutonomousCircles[5].ID != simulation.DefaultSenaryID ||
-		initial.AutonomousCircles[6].ID != simulation.DefaultSeptenaryID ||
-		initial.AutonomousCircles[7].ID != simulation.DefaultOctonaryID {
-		t.Fatalf("expected deterministic expanded autonomous ids, got %+v", initial.AutonomousCircles)
+	if initial.MinimapAutonomousCircles[2].ID != simulation.DefaultTertiaryID ||
+		initial.MinimapAutonomousCircles[3].ID != simulation.DefaultQuaternaryID ||
+		initial.MinimapAutonomousCircles[4].ID != simulation.DefaultQuinaryID ||
+		initial.MinimapAutonomousCircles[5].ID != simulation.DefaultSenaryID ||
+		initial.MinimapAutonomousCircles[6].ID != simulation.DefaultSeptenaryID ||
+		initial.MinimapAutonomousCircles[7].ID != simulation.DefaultOctonaryID {
+		t.Fatalf("expected deterministic expanded autonomous ids, got %+v", initial.MinimapAutonomousCircles)
 	}
 	if initial.Player.Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected fixed player radius %v, got %v", simulation.DefaultPlayerRadius, initial.Player.Radius)
@@ -1741,6 +1753,10 @@ func TestClientReceivesAutonomousFoodSeekingMotion(t *testing.T) {
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
+	initialTarget, found := autonomousByID(initial.AutonomousCircles, simulation.DefaultSecondaryID)
+	if !found {
+		t.Fatalf("expected secondary autonomous %q in initial snapshot", simulation.DefaultSecondaryID)
+	}
 
 	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
 
@@ -1754,7 +1770,12 @@ func TestClientReceivesAutonomousFoodSeekingMotion(t *testing.T) {
 			continue
 		}
 
-		if snapshot.AutonomousCircles[1].Y > initial.AutonomousCircles[1].Y {
+		target, found := autonomousByID(snapshot.AutonomousCircles, simulation.DefaultSecondaryID)
+		if !found {
+			continue
+		}
+
+		if target.Y > initialTarget.Y {
 			return
 		}
 	}
@@ -2421,7 +2442,7 @@ func TestClientSeesPressureScaledFoodRegenDelayInExpandedWorld(t *testing.T) {
 	}
 	defer connection.Close()
 
-	var initial simulation.Snapshot
+	var initial transport.Snapshot
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
 	}
@@ -2441,7 +2462,7 @@ func TestClientSeesPressureScaledFoodRegenDelayInExpandedWorld(t *testing.T) {
 
 	sawTwoMissing := false
 	for range simulation.DefaultFoodRegenDelay + 20 {
-		var snapshot simulation.Snapshot
+		var snapshot transport.Snapshot
 		if err := connection.ReadJSON(&snapshot); err != nil {
 			t.Fatalf("read snapshot: %v", err)
 		}
@@ -2450,13 +2471,13 @@ func TestClientSeesPressureScaledFoodRegenDelayInExpandedWorld(t *testing.T) {
 			continue
 		}
 
-		if len(snapshot.Foods) <= len(initial.Foods)-2 {
+		if snapshot.TotalFoods <= initial.TotalFoods-2 {
 			sawTwoMissing = true
 			continue
 		}
 
-		if sawTwoMissing && snapshot.Tick <= simulation.DefaultFoodRegenDelay+4 && len(snapshot.Foods) == len(initial.Foods) {
-			t.Fatalf("expected expanded world to stay partially depleted longer than the base regen delay, tick=%d foods=%d", snapshot.Tick, len(snapshot.Foods))
+		if sawTwoMissing && snapshot.Tick <= simulation.DefaultFoodRegenDelay+4 && snapshot.TotalFoods == initial.TotalFoods {
+			t.Fatalf("expected expanded world to stay partially depleted longer than the base regen delay, tick=%d foods=%d", snapshot.Tick, snapshot.TotalFoods)
 		}
 	}
 

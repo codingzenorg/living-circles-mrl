@@ -66,3 +66,51 @@ func TestLargerWorldScenarioTransportMeasurementExceedsDefaultExpandedBaseline(t
 		t.Fatalf("expected larger scenario bytes/sec %v to exceed default bytes/sec %v", largerMeasurement.ApproxBytesPerSecond, defaultMeasurement.ApproxBytesPerSecond)
 	}
 }
+
+func TestViewportTransportSnapshotKeepsMinimapOrientationWhileCullingLocalDetail(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot)
+
+	if transportSnapshot.Player == nil {
+		t.Fatal("expected player to remain present in transport snapshot")
+	}
+	if len(transportSnapshot.AutonomousCircles) >= len(fullSnapshot.AutonomousCircles) {
+		t.Fatalf("expected local autonomous detail to be culled below full world count, local=%d full=%d", len(transportSnapshot.AutonomousCircles), len(fullSnapshot.AutonomousCircles))
+	}
+	if len(transportSnapshot.Foods) >= len(fullSnapshot.Foods) {
+		t.Fatalf("expected local food detail to be culled below full world count, local=%d full=%d", len(transportSnapshot.Foods), len(fullSnapshot.Foods))
+	}
+	if transportSnapshot.TotalAutonomousCircles != len(fullSnapshot.AutonomousCircles) {
+		t.Fatalf("expected total autonomous count %d, got %d", len(fullSnapshot.AutonomousCircles), transportSnapshot.TotalAutonomousCircles)
+	}
+	if transportSnapshot.TotalFoods != len(fullSnapshot.Foods) {
+		t.Fatalf("expected total food count %d, got %d", len(fullSnapshot.Foods), transportSnapshot.TotalFoods)
+	}
+	if len(transportSnapshot.MinimapAutonomousCircles) != len(fullSnapshot.AutonomousCircles) {
+		t.Fatalf("expected minimap autonomous summaries %d, got %d", len(fullSnapshot.AutonomousCircles), len(transportSnapshot.MinimapAutonomousCircles))
+	}
+	if len(transportSnapshot.MinimapFoods) != len(fullSnapshot.Foods) {
+		t.Fatalf("expected minimap food summaries %d, got %d", len(fullSnapshot.Foods), len(transportSnapshot.MinimapFoods))
+	}
+}
+
+func TestViewportTransportSnapshotReducesMeasuredPayloadBelowFullSnapshotBaseline(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot)
+
+	fullMeasurement, err := transport.MeasureSnapshotTransport(fullSnapshot, transport.DefaultTickEvery)
+	if err != nil {
+		t.Fatalf("measure full snapshot transport: %v", err)
+	}
+	culledMeasurement, err := transport.MeasureSnapshotTransport(transportSnapshot, transport.DefaultTickEvery)
+	if err != nil {
+		t.Fatalf("measure culled snapshot transport: %v", err)
+	}
+
+	if culledMeasurement.PayloadBytes >= fullMeasurement.PayloadBytes {
+		t.Fatalf("expected culled payload %d to be smaller than full payload %d", culledMeasurement.PayloadBytes, fullMeasurement.PayloadBytes)
+	}
+	if culledMeasurement.ApproxBytesPerSecond >= fullMeasurement.ApproxBytesPerSecond {
+		t.Fatalf("expected culled bytes/sec %v to be smaller than full bytes/sec %v", culledMeasurement.ApproxBytesPerSecond, fullMeasurement.ApproxBytesPerSecond)
+	}
+}

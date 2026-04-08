@@ -70,6 +70,14 @@ function childCount(circle) {
   return circle.attached_children.length;
 }
 
+function minimapAutonomousCircles(snapshot) {
+  return snapshot.minimap_autonomous_circles ?? snapshot.autonomous_circles;
+}
+
+function minimapFoods(snapshot) {
+  return snapshot.minimap_foods ?? snapshot.foods;
+}
+
 function distanceBetween(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
@@ -614,7 +622,9 @@ function draw(snapshot) {
 
   renderNpcCard(snapshot.autonomous_circles);
 
-  tickNode.textContent = `${snapshot.tick} · ${snapshot.foods.length}f · ${snapshot.autonomous_circles.length}o`;
+  const totalFoods = snapshot.total_foods ?? minimapFoods(snapshot).length;
+  const totalAutonomousCircles = snapshot.total_autonomous_circles ?? minimapAutonomousCircles(snapshot).length;
+  tickNode.textContent = `${snapshot.tick} · ${totalFoods}f · ${totalAutonomousCircles}o`;
   pushEventLog(interactionSummary(snapshot.interaction));
   previousAutonomousById = new Map(snapshot.autonomous_circles.map((circle) => [circle.id, { x: circle.x, y: circle.y }]));
   previousPlayerPosition = snapshot.player ? { x: snapshot.player.x, y: snapshot.player.y } : null;
@@ -729,6 +739,8 @@ function drawMinimap(snapshot, camera) {
   const height = minimapCanvas.height;
   const scaleX = width / snapshot.world.width;
   const scaleY = height / snapshot.world.height;
+  const circles = minimapAutonomousCircles(snapshot);
+  const foods = minimapFoods(snapshot);
 
   minimapContext.clearRect(0, 0, width, height);
   minimapContext.fillStyle = "rgba(6, 18, 24, 0.96)";
@@ -739,7 +751,7 @@ function drawMinimap(snapshot, camera) {
   minimapContext.strokeRect(0.5, 0.5, width - 1, height - 1);
 
   minimapContext.fillStyle = "rgba(255, 138, 91, 0.82)";
-  for (const food of snapshot.foods) {
+  for (const food of foods) {
     minimapContext.fillRect(
       Math.round(food.x * scaleX) - 1,
       Math.round(food.y * scaleY) - 1,
@@ -748,7 +760,7 @@ function drawMinimap(snapshot, camera) {
     );
   }
 
-  for (const circle of snapshot.autonomous_circles) {
+  for (const circle of circles) {
     minimapContext.fillStyle = circle.shape === "triangle" ? "#6fd5ff" : "#c08cff";
     minimapContext.beginPath();
     minimapContext.arc(circle.x * scaleX, circle.y * scaleY, 2.5, 0, Math.PI * 2);

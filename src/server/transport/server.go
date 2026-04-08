@@ -109,7 +109,7 @@ func (s *Server) handleWebSocket(writer http.ResponseWriter, request *http.Reque
 	}
 
 	client := s.addConnection(connection)
-	if err := client.WriteJSON(s.session.Snapshot()); err != nil {
+	if err := client.WriteJSON(BuildViewportSnapshot(s.session.Snapshot())); err != nil {
 		s.removeConnection(connection)
 		_ = client.Close()
 		return
@@ -154,10 +154,11 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 	s.broadcastSnapshot(snapshot)
 
 	writer.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(writer).Encode(snapshot)
+	_ = json.NewEncoder(writer).Encode(BuildViewportSnapshot(snapshot))
 }
 
 func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot) {
+	transportSnapshot := BuildViewportSnapshot(snapshot)
 	s.mu.Lock()
 	connections := make([]*clientConnection, 0, len(s.conns))
 	for _, connection := range s.conns {
@@ -166,7 +167,7 @@ func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot) {
 	s.mu.Unlock()
 
 	for _, connection := range connections {
-		if err := connection.WriteJSON(snapshot); err != nil {
+		if err := connection.WriteJSON(transportSnapshot); err != nil {
 			if !errors.Is(err, websocket.ErrCloseSent) {
 				s.removeConnection(connection.conn)
 			}

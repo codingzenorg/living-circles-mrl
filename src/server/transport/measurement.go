@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"github.com/codingzen/living-circles-mrl/src/server/simulation"
 )
 
 type SnapshotTransportMeasurement struct {
@@ -14,7 +12,7 @@ type SnapshotTransportMeasurement struct {
 	ApproxBytesPerSecond float64
 }
 
-func MeasureSnapshotTransport(snapshot simulation.Snapshot, tickEvery time.Duration) (SnapshotTransportMeasurement, error) {
+func MeasureSnapshotTransport(snapshot any, tickEvery time.Duration) (SnapshotTransportMeasurement, error) {
 	if tickEvery <= 0 {
 		return SnapshotTransportMeasurement{}, fmt.Errorf("tickEvery must be positive")
 	}
