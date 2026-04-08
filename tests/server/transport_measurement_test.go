@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/codingzen/living-circles-mrl/src/server/simulation"
 	"github.com/codingzen/living-circles-mrl/src/server/transport"
@@ -64,6 +65,75 @@ func TestLargerWorldScenarioTransportMeasurementExceedsDefaultExpandedBaseline(t
 	}
 	if largerMeasurement.ApproxBytesPerSecond <= defaultMeasurement.ApproxBytesPerSecond {
 		t.Fatalf("expected larger scenario bytes/sec %v to exceed default bytes/sec %v", largerMeasurement.ApproxBytesPerSecond, defaultMeasurement.ApproxBytesPerSecond)
+	}
+}
+
+func TestMultiClientTransportMeasurementIsDeterministic(t *testing.T) {
+	first, err := transport.MeasureMultiClientTransport(simulation.NewSession(), 4, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure first multi-client transport: %v", err)
+	}
+
+	second, err := transport.MeasureMultiClientTransport(simulation.NewSession(), 4, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure second multi-client transport: %v", err)
+	}
+
+	if first.ClientCount != second.ClientCount {
+		t.Fatalf("expected same client count, first=%+v second=%+v", first, second)
+	}
+	if first.AggregateSnapshots != second.AggregateSnapshots {
+		t.Fatalf("expected deterministic aggregate snapshot count, first=%+v second=%+v", first, second)
+	}
+	if first.AggregateBytes != second.AggregateBytes {
+		t.Fatalf("expected deterministic aggregate bytes, first=%+v second=%+v", first, second)
+	}
+	if first.MaxInterSnapshotGap <= 0 {
+		t.Fatalf("expected positive max inter-snapshot gap, got %+v", first)
+	}
+}
+
+func TestMultiClientTransportMeasurementScalesAggregateBytesAbovePerClientBytes(t *testing.T) {
+	measurement, err := transport.MeasureMultiClientTransport(simulation.NewSession(), 4, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure multi-client transport: %v", err)
+	}
+
+	if measurement.AggregateBytes <= 0 {
+		t.Fatalf("expected aggregate bytes to be positive, got %+v", measurement)
+	}
+	if measurement.AggregateSnapshots <= 0 {
+		t.Fatalf("expected aggregate snapshots to be positive, got %+v", measurement)
+	}
+	if measurement.ApproxAggregateBytesPerSec <= measurement.ApproxPerClientBytesPerSec {
+		t.Fatalf("expected aggregate bytes/sec %v to exceed per-client bytes/sec %v", measurement.ApproxAggregateBytesPerSec, measurement.ApproxPerClientBytesPerSec)
+	}
+	for index, bytes := range measurement.PerClientBytes {
+		if bytes <= 0 {
+			t.Fatalf("expected client %d bytes to be positive, got %+v", index, measurement)
+		}
+	}
+	for index, snapshots := range measurement.PerClientSnapshots {
+		if snapshots <= 0 {
+			t.Fatalf("expected client %d snapshots to be positive, got %+v", index, measurement)
+		}
+	}
+}
+
+func TestMultiClientTransportMeasurementReportsTickPressureSignal(t *testing.T) {
+	measurement, err := transport.MeasureMultiClientTransport(simulation.NewSession(), 4, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure multi-client transport: %v", err)
+	}
+
+	if measurement.ExpectedTickEvery != transport.DefaultTickEvery {
+		t.Fatalf("expected tick cadence %v, got %+v", transport.DefaultTickEvery, measurement)
+	}
+	if measurement.MaxInterSnapshotGap < measurement.ExpectedTickEvery {
+		t.Fatalf("expected max inter-snapshot gap %v to be at least one tick interval %v", measurement.MaxInterSnapshotGap, measurement.ExpectedTickEvery)
+	}
+	if measurement.MaxInterSnapshotGap > 3*measurement.ExpectedTickEvery {
+		t.Fatalf("expected max inter-snapshot gap %v to stay within bounded local pressure window", measurement.MaxInterSnapshotGap)
 	}
 }
 
