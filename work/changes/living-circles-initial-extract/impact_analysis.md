@@ -461,6 +461,64 @@ The next implementation-facing slice should explicitly choose:
 
 ## Change
 
+Add regional crowding-driven energy pressure beyond the current local crowding surcharge.
+
+## Why This Matters
+
+The current build now has one real regional ecological difference:
+
+- local food recovery can diverge by neighborhood
+
+But inhabitation cost is still mostly immediate and local:
+
+- movement has a base energy cost
+- a local crowding surcharge applies when nearby neighbors are present
+- yet dense regions do not become substantially more expensive over time than sparse ones
+
+The next pressure is to make the larger world matter not only through resource return timing, but also through ongoing occupancy cost.
+
+## Impacted Areas
+
+### Simulation model
+
+- energy cost should now consider broader regional density, not only immediate local crowding
+- the current local crowding surcharge should remain intact
+- the rule should remain deterministic and bounded
+
+### Population dynamics
+
+- dense areas should become more energetically expensive to remain in
+- sparse areas should become comparatively safer to occupy
+- the larger world should support stronger displacement or settlement patterns
+
+### Browser rendering
+
+- no contract change is required if the new pressure remains visible through ordinary energy changes and movement outcomes
+- current viewport, minimap, and support panels should naturally expose its effects without new UI in this slice
+
+### Existing semantics
+
+- food, autonomy, fight, reproduction, continuity, and startup seeding remain unchanged
+- narrow custom worlds should remain useful for deterministic focused tests
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- the broader radius used to define regional density pressure
+- the extra energy penalty beyond the existing local surcharge
+- how to keep the rule small and explainable rather than turning it into a generalized heatmap system
+
+## Risks If Ignored
+
+- larger-world regions may still differ more in food timing than in actual inhabitation consequence
+- local crowding will remain tactically meaningful without becoming strategically meaningful
+- the system may continue to feel more like layered local heuristics than like a world with medium-term ecological structure
+
+---
+
+## Change
+
 Remove grown derived radius from attached-child orbit distance.
 
 ## Why This Matters
