@@ -9,8 +9,8 @@ import (
 const (
 	DefaultWorldWidth                                 = 800.0
 	DefaultWorldHeight                                = 600.0
-	DefaultExpandedWorldWidth                         = 1600.0
-	DefaultExpandedWorldHeight                        = 1200.0
+	DefaultExpandedWorldWidth                         = 5060.0
+	DefaultExpandedWorldHeight                        = 3795.0
 	DefaultPlayerRadius                               = 12.0
 	DefaultAttachedChildRadius                        = 4.0
 	DefaultAttachedChildOrbitGap                      = 8.0
@@ -48,7 +48,7 @@ const (
 	DefaultReproductionCost                           = 10.0
 	DefaultPlayerShape                                = "triangle"
 	DefaultAutoShape                                  = "square"
-	DefaultExpandedAutonomousCount                    = 8
+	DefaultExpandedAutonomousCount                    = 30
 	DefaultExpandedFoodCount                          = DefaultExpandedAutonomousCount + 3
 	DefaultExpandedFoodSeed                     int64 = 73
 	DefaultExpandedAutonomousSeed               int64 = 131
@@ -388,13 +388,15 @@ func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64, reserved 
 		id     string
 		shape  string
 		energy float64
-	}{
-		{id: DefaultTertiaryID},
-		{id: DefaultQuaternaryID},
-		{id: DefaultQuinaryID},
-		{id: DefaultSenaryID},
-		{id: DefaultSeptenaryID},
-		{id: DefaultOctonaryID},
+	}{}
+	for index := 0; index < DefaultExpandedAutonomousCount-2; index++ {
+		specs = append(specs, struct {
+			id     string
+			shape  string
+			energy float64
+		}{
+			id: defaultExpandedAutonomousID(index),
+		})
 	}
 	stateMix := seededExpandedAutonomousStateMix(len(specs))
 	for index := range specs {
@@ -419,6 +421,25 @@ func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64, reserved 
 	}
 
 	return circles
+}
+
+func defaultExpandedAutonomousID(index int) string {
+	switch index {
+	case 0:
+		return DefaultTertiaryID
+	case 1:
+		return DefaultQuaternaryID
+	case 2:
+		return DefaultQuinaryID
+	case 3:
+		return DefaultSenaryID
+	case 4:
+		return DefaultSeptenaryID
+	case 5:
+		return DefaultOctonaryID
+	default:
+		return "circle-" + strconv.Itoa(index+4)
+	}
 }
 
 func seededExpandedAutonomousStateMix(count int) []struct {
@@ -1874,8 +1895,10 @@ func (w *World) resolveEnergyCollapse(tick int64) {
 		}
 	}
 
-	for index, circle := range w.autonomousCircles {
+	for index := 0; index < len(w.autonomousCircles); {
+		circle := w.autonomousCircles[index]
 		if circle.Energy != 0 {
+			index++
 			continue
 		}
 
@@ -1884,7 +1907,6 @@ func (w *World) resolveEnergyCollapse(tick int64) {
 		if !active {
 			w.autonomousCircles = append(w.autonomousCircles[:index], w.autonomousCircles[index+1:]...)
 			w.autonomousDirections = append(w.autonomousDirections[:index], w.autonomousDirections[index+1:]...)
-			index--
 			continue
 		}
 
@@ -1899,6 +1921,7 @@ func (w *World) resolveEnergyCollapse(tick int64) {
 				PromotedChildID: promotedChildID,
 			}
 		}
+		index++
 	}
 }
 

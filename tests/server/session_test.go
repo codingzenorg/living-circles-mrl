@@ -310,6 +310,26 @@ func TestAutonomousCircleWithZeroEnergyDisappearsWithoutChildren(t *testing.T) {
 	}
 }
 
+func TestMultipleAutonomousCirclesWithZeroEnergyDisappearInSameTick(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                1000,
+		WorldHeight:               800,
+		UseExpandedPopulation:     false,
+		PlayerShape:               "triangle",
+		AutonomousShape:           "triangle",
+		SecondaryAutonomousShape:  "square",
+		PlayerEnergy:              100,
+		AutonomousEnergy:          0,
+		SecondaryAutonomousEnergy: 0,
+	})
+
+	snapshot := session.Advance()
+
+	if len(snapshot.AutonomousCircles) != 0 {
+		t.Fatalf("expected all zero-energy autonomous circles to disappear in the same tick, got %d circles", len(snapshot.AutonomousCircles))
+	}
+}
+
 func TestAutonomousCircleWithZeroEnergyReplacesThroughChildContinuity(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:             "triangle",
