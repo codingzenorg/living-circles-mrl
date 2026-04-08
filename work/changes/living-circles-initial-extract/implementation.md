@@ -340,6 +340,7 @@ The slice needed these implementation choices not fully specified in the refined
 - successful reproduction now applies a bounded regional surcharge based on nearby missing food slots around the reproduction location, while keeping threshold checks and child-payment semantics on the existing baseline path
 - the expanded default world now preserves the existing aspect ratio at approximately `10x` the previous total area, while keeping the viewport/minimap model unchanged and increasing the seeded expanded startup population baseline to avoid obvious emptiness
 - orientation refresh transport is now driven by deterministic compact-summary change plus a slower fallback interval, instead of a fixed short cadence alone
+- local viewport food transport is now driven by visible-food change plus a slower fallback interval, while local circle detail still arrives every tick
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
 
@@ -353,3 +354,4 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 
 - viewport-culling plus dual cadence plus compact minimap summaries plus reduced local precision measured about `1549` bytes/message, about `15494` bytes/sec/client at `10` snapshots/sec
 - event-driven orientation refresh with the same compact summary path now measures below that fixed dual-cadence baseline over a deterministic fallback window because unchanged orientation summaries are skipped until they materially change or the slower fallback interval is reached
+- event-driven local food transport now measures below the event-driven orientation baseline over a deterministic fallback window because unchanged visible-food detail is omitted until it materially changes or the local fallback interval is reached

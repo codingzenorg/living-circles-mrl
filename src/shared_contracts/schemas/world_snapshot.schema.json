@@ -4,7 +4,7 @@
   "title": "WorldSnapshot",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "tick", "world", "player", "autonomous_circles", "interaction", "foods", "orientation_fresh", "total_autonomous_circles", "total_foods"],
+  "required": ["type", "tick", "world", "player", "autonomous_circles", "interaction", "foods", "foods_fresh", "orientation_fresh", "total_autonomous_circles", "total_foods"],
   "properties": {
     "type": {
       "const": "world_snapshot"
@@ -321,27 +321,37 @@
       ]
     },
     "foods": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "x", "y", "radius"],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "x": {
-            "type": "number"
-          },
-          "y": {
-            "type": "number"
-          },
-          "radius": {
-            "type": "number",
-            "exclusiveMinimum": 0
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "x", "y", "radius"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "radius": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            }
           }
+        },
+        {
+          "type": "null"
         }
-      }
+      ]
+    },
+    "foods_fresh": {
+      "type": "boolean"
     },
     "orientation_fresh": {
       "type": "boolean"

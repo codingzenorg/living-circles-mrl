@@ -49,6 +49,8 @@ type Server struct {
 	conns               map[*websocket.Conn]*clientConnection
 	lastOrientationSig  string
 	lastOrientationTick int64
+	lastFoodSig         string
+	lastFoodTick        int64
 }
 
 func NewServer() *Server {
@@ -118,6 +120,7 @@ func (s *Server) handleWebSocket(writer http.ResponseWriter, request *http.Reque
 		return
 	}
 	s.recordOrientationRefresh(transportSnapshot)
+	s.recordFoodRefresh(transportSnapshot)
 
 	go s.readMessages(connection)
 }
@@ -158,19 +161,32 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 	s.broadcastSnapshot(snapshot)
 
 	writer.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(writer).Encode(BuildViewportSnapshot(snapshot, true))
+	transportSnapshot := BuildViewportSnapshot(snapshot, true)
+	s.recordOrientationRefresh(transportSnapshot)
+	s.recordFoodRefresh(transportSnapshot)
+	_ = json.NewEncoder(writer).Encode(transportSnapshot)
 }
 
 func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot) {
 	orientationSnapshot := BuildViewportSnapshot(snapshot, true)
 	orientationSignature := OrientationSummarySignature(orientationSnapshot)
+	foodSignature := LocalFoodSignature(orientationSnapshot)
 	includeOrientation := s.shouldRefreshOrientation(snapshot.Tick, orientationSignature)
+	includeFoods := s.shouldRefreshFoods(snapshot.Tick, foodSignature)
 
 	transportSnapshot := orientationSnapshot
 	if !includeOrientation {
-		transportSnapshot = BuildViewportSnapshot(snapshot, false)
+		transportSnapshot.OrientationFresh = false
+		transportSnapshot.MinimapAutonomousCircles = nil
+		transportSnapshot.MinimapFoods = nil
 	} else {
 		s.recordOrientationRefresh(orientationSnapshot)
+	}
+	if !includeFoods {
+		transportSnapshot.FoodsFresh = false
+		transportSnapshot.Foods = nil
+	} else {
+		s.recordFoodRefresh(orientationSnapshot)
 	}
 
 	s.mu.Lock()
@@ -228,4 +244,21 @@ func (s *Server) recordOrientationRefresh(snapshot Snapshot) {
 	defer s.mu.Unlock()
 	s.lastOrientationSig = OrientationSummarySignature(snapshot)
 	s.lastOrientationTick = snapshot.Tick
+}
+
+func (s *Server) shouldRefreshFoods(currentTick int64, currentSignature string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return ShouldRefreshLocalFoods(s.lastFoodSig, s.lastFoodTick, currentTick, currentSignature)
+}
+
+func (s *Server) recordFoodRefresh(snapshot Snapshot) {
+	if !snapshot.FoodsFresh {
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastFoodSig = LocalFoodSignature(snapshot)
+	s.lastFoodTick = snapshot.Tick
 }

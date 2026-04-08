@@ -150,6 +150,23 @@ func TestViewportTransportSnapshotCanOmitOrientationSummaryOnNonRefreshTicks(t *
 	}
 }
 
+func TestViewportTransportSnapshotCanOmitLocalFoodsOnNonRefreshTicks(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot, true)
+	transportSnapshot.FoodsFresh = false
+	transportSnapshot.Foods = nil
+
+	if transportSnapshot.FoodsFresh {
+		t.Fatal("expected non-refresh transport snapshot to mark foods as stale")
+	}
+	if transportSnapshot.Foods != nil {
+		t.Fatalf("expected local foods to be omitted on stale-food ticks, got %d", len(transportSnapshot.Foods))
+	}
+	if transportSnapshot.TotalFoods != len(fullSnapshot.Foods) {
+		t.Fatalf("expected total food count %d, got %d", len(fullSnapshot.Foods), transportSnapshot.TotalFoods)
+	}
+}
+
 func TestDualCadenceTransportAverageCostFallsBelowSingleCadenceCulledBaseline(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
 	singleCadenceMeasurement, err := transport.MeasureSnapshotTransport(transport.BuildViewportSnapshotExactOrientation(fullSnapshot, true), transport.DefaultTickEvery)
@@ -287,6 +304,135 @@ func TestEventDrivenOrientationAverageCostFallsBelowFixedDualCadenceBaseline(t *
 	eventDrivenAverageBytesPerSecond := (float64(eventDrivenTotalBytes) / float64(transport.DefaultOrientationFallbackTicks)) * (1 / transport.DefaultTickEvery.Seconds())
 	if eventDrivenAverageBytesPerSecond >= fixedAverageBytesPerSecond {
 		t.Fatalf("expected event-driven average bytes/sec %v to be below fixed dual-cadence baseline %v", eventDrivenAverageBytesPerSecond, fixedAverageBytesPerSecond)
+	}
+}
+
+func TestLocalFoodRefreshPolicySkipsUnchangedFoodsAndFallsBackLater(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot, true)
+	signature := transport.LocalFoodSignature(transportSnapshot)
+
+	if !transport.ShouldRefreshLocalFoods("", 0, 0, signature) {
+		t.Fatal("expected empty prior state to force an initial local-food refresh")
+	}
+	if transport.ShouldRefreshLocalFoods(signature, 0, transport.DefaultLocalFoodFallbackTicks-1, signature) {
+		t.Fatal("expected unchanged local food detail to stay stale before the fallback interval")
+	}
+	if !transport.ShouldRefreshLocalFoods(signature, 0, transport.DefaultLocalFoodFallbackTicks, signature) {
+		t.Fatal("expected fallback interval to force a local-food refresh")
+	}
+}
+
+func TestLocalFoodRefreshPolicyTriggersOnVisibleFoodChange(t *testing.T) {
+	baseSnapshot := simulation.NewSession().Snapshot()
+	baseTransportSnapshot := transport.BuildViewportSnapshot(baseSnapshot, true)
+	baseSignature := transport.LocalFoodSignature(baseTransportSnapshot)
+	if len(baseTransportSnapshot.Foods) == 0 {
+		t.Fatal("expected base transport snapshot to include at least one visible food")
+	}
+
+	changedSnapshot := baseSnapshot
+	changedSnapshot.Foods = append([]simulation.Food{}, baseSnapshot.Foods...)
+	visibleFoodID := baseTransportSnapshot.Foods[0].ID
+	for index, food := range changedSnapshot.Foods {
+		if food.ID == visibleFoodID {
+			changedSnapshot.Foods[index].X += 120
+			break
+		}
+	}
+	changedTransportSnapshot := transport.BuildViewportSnapshot(changedSnapshot, true)
+	changedSignature := transport.LocalFoodSignature(changedTransportSnapshot)
+
+	if changedSignature == baseSignature {
+		t.Fatal("expected moved visible food to change the local food signature")
+	}
+	if !transport.ShouldRefreshLocalFoods(baseSignature, 0, 1, changedSignature) {
+		t.Fatal("expected visible local food change to force a refresh")
+	}
+}
+
+func TestEventDrivenLocalFoodAverageCostFallsBelowEventDrivenOrientationBaseline(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+
+	baselineTotalBytes := 0
+	lastOrientationSignature := ""
+	lastOrientationTick := int64(-1)
+	for tick := int64(1); tick <= transport.DefaultLocalFoodFallbackTicks; tick++ {
+		orientationSnapshot := transport.BuildViewportSnapshot(simulation.Snapshot{
+			Type:              fullSnapshot.Type,
+			Tick:              tick,
+			World:             fullSnapshot.World,
+			Player:            fullSnapshot.Player,
+			AutonomousCircles: fullSnapshot.AutonomousCircles,
+			Interaction:       fullSnapshot.Interaction,
+			Foods:             fullSnapshot.Foods,
+		}, true)
+		orientationSignature := transport.OrientationSummarySignature(orientationSnapshot)
+		includeOrientation := transport.ShouldRefreshOrientation(lastOrientationSignature, lastOrientationTick, tick, orientationSignature)
+		if includeOrientation {
+			lastOrientationSignature = orientationSignature
+			lastOrientationTick = tick
+		} else {
+			orientationSnapshot.OrientationFresh = false
+			orientationSnapshot.MinimapAutonomousCircles = nil
+			orientationSnapshot.MinimapFoods = nil
+		}
+
+		measurement, err := transport.MeasureSnapshotTransport(orientationSnapshot, transport.DefaultTickEvery)
+		if err != nil {
+			t.Fatalf("measure orientation-only event-driven baseline tick %d: %v", tick, err)
+		}
+		baselineTotalBytes += measurement.PayloadBytes
+	}
+
+	eventDrivenFoodTotalBytes := 0
+	lastOrientationSignature = ""
+	lastOrientationTick = int64(-1)
+	lastFoodSignature := ""
+	lastFoodTick := int64(-1)
+	for tick := int64(1); tick <= transport.DefaultLocalFoodFallbackTicks; tick++ {
+		transportSnapshot := transport.BuildViewportSnapshot(simulation.Snapshot{
+			Type:              fullSnapshot.Type,
+			Tick:              tick,
+			World:             fullSnapshot.World,
+			Player:            fullSnapshot.Player,
+			AutonomousCircles: fullSnapshot.AutonomousCircles,
+			Interaction:       fullSnapshot.Interaction,
+			Foods:             fullSnapshot.Foods,
+		}, true)
+
+		orientationSignature := transport.OrientationSummarySignature(transportSnapshot)
+		includeOrientation := transport.ShouldRefreshOrientation(lastOrientationSignature, lastOrientationTick, tick, orientationSignature)
+		if includeOrientation {
+			lastOrientationSignature = orientationSignature
+			lastOrientationTick = tick
+		} else {
+			transportSnapshot.OrientationFresh = false
+			transportSnapshot.MinimapAutonomousCircles = nil
+			transportSnapshot.MinimapFoods = nil
+		}
+
+		foodSignature := transport.LocalFoodSignature(transportSnapshot)
+		includeFoods := transport.ShouldRefreshLocalFoods(lastFoodSignature, lastFoodTick, tick, foodSignature)
+		if includeFoods {
+			lastFoodSignature = foodSignature
+			lastFoodTick = tick
+		} else {
+			transportSnapshot.FoodsFresh = false
+			transportSnapshot.Foods = nil
+		}
+
+		measurement, err := transport.MeasureSnapshotTransport(transportSnapshot, transport.DefaultTickEvery)
+		if err != nil {
+			t.Fatalf("measure event-driven local food transport tick %d: %v", tick, err)
+		}
+		eventDrivenFoodTotalBytes += measurement.PayloadBytes
+	}
+
+	baselineAverageBytesPerSecond := (float64(baselineTotalBytes) / float64(transport.DefaultLocalFoodFallbackTicks)) * (1 / transport.DefaultTickEvery.Seconds())
+	eventDrivenFoodAverageBytesPerSecond := (float64(eventDrivenFoodTotalBytes) / float64(transport.DefaultLocalFoodFallbackTicks)) * (1 / transport.DefaultTickEvery.Seconds())
+	if eventDrivenFoodAverageBytesPerSecond >= baselineAverageBytesPerSecond {
+		t.Fatalf("expected event-driven local-food bytes/sec %v to be below event-driven orientation baseline %v", eventDrivenFoodAverageBytesPerSecond, baselineAverageBytesPerSecond)
 	}
 }
 

@@ -22,6 +22,7 @@ let lastInteractionSignature = null;
 let previousCamera = null;
 let cachedMinimapAutonomousCircles = [];
 let cachedMinimapFoods = [];
+let cachedLocalFoods = [];
 const pressedKeys = new Set();
 let activeSocket = null;
 let senderIntervalId = null;
@@ -78,6 +79,10 @@ function minimapAutonomousCircles(snapshot) {
 
 function minimapFoods(snapshot) {
   return snapshot.minimap_foods ?? cachedMinimapFoods ?? snapshot.foods;
+}
+
+function localFoods(snapshot) {
+  return snapshot.foods ?? cachedLocalFoods;
 }
 
 function distanceBetween(a, b) {
@@ -558,8 +563,9 @@ function cameraRect(snapshot, viewport) {
 }
 
 function draw(snapshot) {
+  const foods = localFoods(snapshot);
   const circles = snapshot.player ? [snapshot.player, ...snapshot.autonomous_circles] : [...snapshot.autonomous_circles];
-  const playerFoodPressure = snapshot.player ? foodPressureAt(snapshot.player, snapshot.foods) : null;
+  const playerFoodPressure = snapshot.player ? foodPressureAt(snapshot.player, foods) : null;
   trackRecentInteraction(snapshot);
 
   const viewport = viewportSize(snapshot.world);
@@ -584,11 +590,11 @@ function draw(snapshot) {
 
   drawRecentEffects();
   drawCrowdingZones(circles, snapshot.player);
-  drawFoodZones(snapshot.foods, snapshot.player);
+  drawFoodZones(foods, snapshot.player);
   drawLineageLinks(circles, snapshot.interaction);
 
   context.fillStyle = "#ff8a5b";
-  for (const food of snapshot.foods) {
+  for (const food of foods) {
     const nearbyOpportunity = snapshot.player && distanceBetween(food, snapshot.player) <= FOOD_CUE_DISTANCE;
     if (nearbyOpportunity) {
       const gradient = context.createRadialGradient(food.x, food.y, food.radius, food.x, food.y, 28);
@@ -607,11 +613,11 @@ function draw(snapshot) {
   }
 
   for (const circle of snapshot.autonomous_circles) {
-    drawCircle(circle, false, snapshot.player, circles, snapshot.foods);
+    drawCircle(circle, false, snapshot.player, circles, foods);
   }
 
   if (snapshot.player) {
-    drawCircle(snapshot.player, true, snapshot.player, circles, snapshot.foods);
+    drawCircle(snapshot.player, true, snapshot.player, circles, foods);
     drawPlayerHeadingCue(snapshot.player);
     const pressure = isCrowded(snapshot.player, circles) ? "pressure" : "";
     const foodState = playerFoodPressure?.scarcity ? "scarce" : playerFoodPressure?.opportunity ? "food-rich" : "";
@@ -713,7 +719,7 @@ function drawOffscreenFoodAwareness(snapshot, camera) {
   const viewportRight = camera.x + camera.width;
   const viewportTop = camera.y;
   const viewportBottom = camera.y + camera.height;
-  const nearbyFoods = snapshot.foods.filter((food) => {
+  const nearbyFoods = localFoods(snapshot).filter((food) => {
     const distance = distanceBetween(food, snapshot.player);
     if (distance > OFFSCREEN_AWARENESS_DISTANCE) {
       return false;
@@ -1072,6 +1078,18 @@ async function resetWorld() {
     }
 
     const snapshot = await response.json();
+    if (snapshot.foods_fresh ?? true) {
+      cachedLocalFoods = snapshot.foods ?? [];
+    } else {
+      snapshot.foods = cachedLocalFoods;
+    }
+    if (snapshot.orientation_fresh) {
+      cachedMinimapAutonomousCircles = snapshot.minimap_autonomous_circles ?? [];
+      cachedMinimapFoods = snapshot.minimap_foods ?? [];
+    } else {
+      snapshot.minimap_autonomous_circles = cachedMinimapAutonomousCircles;
+      snapshot.minimap_foods = cachedMinimapFoods;
+    }
     eventLog = ["World restarted."];
     renderEventLog();
     latestSnapshot = snapshot;
@@ -1121,6 +1139,11 @@ function connect() {
     } else {
       snapshot.minimap_autonomous_circles = cachedMinimapAutonomousCircles;
       snapshot.minimap_foods = cachedMinimapFoods;
+    }
+    if (snapshot.foods_fresh ?? true) {
+      cachedLocalFoods = snapshot.foods ?? [];
+    } else {
+      snapshot.foods = cachedLocalFoods;
     }
 
     latestSnapshot = snapshot;

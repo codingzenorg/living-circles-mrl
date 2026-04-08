@@ -15,6 +15,7 @@ const (
 	DefaultViewportInterestMargin   = 180.0
 	DefaultOrientationEveryTicks    = int64(5)
 	DefaultOrientationFallbackTicks = int64(20)
+	DefaultLocalFoodFallbackTicks   = int64(20)
 	DefaultMinimapClusterSize       = 480.0
 )
 
@@ -39,6 +40,7 @@ type Snapshot struct {
 	AutonomousCircles        []simulation.AutonomousCircle         `json:"autonomous_circles"`
 	Interaction              *simulation.InteractionClassification `json:"interaction"`
 	Foods                    []simulation.Food                     `json:"foods"`
+	FoodsFresh               bool                                  `json:"foods_fresh"`
 	OrientationFresh         bool                                  `json:"orientation_fresh"`
 	MinimapAutonomousCircles []MinimapAutonomousCircle             `json:"minimap_autonomous_circles"`
 	MinimapFoods             []MinimapFood                         `json:"minimap_foods"`
@@ -98,6 +100,37 @@ func ShouldRefreshOrientation(lastSignature string, lastRefreshTick, currentTick
 		return true
 	}
 	return currentTick-lastRefreshTick >= DefaultOrientationFallbackTicks
+}
+
+func LocalFoodSignature(snapshot Snapshot) string {
+	var builder strings.Builder
+	builder.WriteString(strconv.Itoa(snapshot.TotalFoods))
+
+	for _, food := range snapshot.Foods {
+		builder.WriteByte('|')
+		builder.WriteString(food.ID)
+		builder.WriteByte(':')
+		builder.WriteString(strconv.FormatFloat(food.X, 'f', -1, 64))
+		builder.WriteByte(':')
+		builder.WriteString(strconv.FormatFloat(food.Y, 'f', -1, 64))
+		builder.WriteByte(':')
+		builder.WriteString(strconv.FormatFloat(food.Radius, 'f', -1, 64))
+	}
+
+	return builder.String()
+}
+
+func ShouldRefreshLocalFoods(lastSignature string, lastRefreshTick, currentTick int64, currentSignature string) bool {
+	if currentTick <= lastRefreshTick {
+		return true
+	}
+	if lastSignature == "" {
+		return true
+	}
+	if currentSignature != lastSignature {
+		return true
+	}
+	return currentTick-lastRefreshTick >= DefaultLocalFoodFallbackTicks
 }
 
 func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool, compactOrientation bool, reducePrecision bool) Snapshot {
@@ -215,6 +248,7 @@ func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 		AutonomousCircles:        roundedAutonomousCircles(localAutonomous, reducePrecision),
 		Interaction:              roundedInteraction(snapshot.Interaction, reducePrecision),
 		Foods:                    roundedFoods(localFoods, reducePrecision),
+		FoodsFresh:               true,
 		OrientationFresh:         includeOrientation,
 		MinimapAutonomousCircles: minimapAutonomous,
 		MinimapFoods:             minimapFoods,

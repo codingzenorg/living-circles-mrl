@@ -1631,6 +1631,9 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if !initial.OrientationFresh {
 		t.Fatal("expected initial transport snapshot to include fresh orientation data")
 	}
+	if !initial.FoodsFresh {
+		t.Fatal("expected initial transport snapshot to include fresh local food detail")
+	}
 	if initial.World.Width != simulation.DefaultExpandedWorldWidth || initial.World.Height != simulation.DefaultExpandedWorldHeight {
 		t.Fatalf("expected expanded world %vx%v, got %vx%v", simulation.DefaultExpandedWorldWidth, simulation.DefaultExpandedWorldHeight, initial.World.Width, initial.World.Height)
 	}
@@ -1809,6 +1812,92 @@ func TestTransportOrientationSummaryRefreshesAtLowerCadence(t *testing.T) {
 	}
 	if !sawStaleBeforeRefresh {
 		t.Fatal("expected to observe at least one stale tick before a later refresh")
+	}
+}
+
+func TestTransportLocalFoodDetailRefreshesAtLowerCadence(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:            400,
+		WorldHeight:           300,
+		PlayerShape:           simulation.DefaultPlayerShape,
+		AutonomousShape:       simulation.DefaultAutoShape,
+		PlayerEnergy:          simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:      simulation.DefaultPlayerEnergy,
+		ExpandedFoodCount:     3,
+		UseExpandedPopulation: false,
+		PlayerX:               200,
+		PlayerY:               150,
+		AutonomousX:           100,
+		AutonomousY:           100,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial transport.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+	if !initial.FoodsFresh {
+		t.Fatal("expected initial snapshot local foods to be fresh")
+	}
+	if len(initial.Foods) == 0 {
+		t.Fatal("expected initial snapshot to include local food detail")
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	sawStale := false
+	sawRefresh := false
+	sawStaleBeforeRefresh := false
+	for range transport.DefaultLocalFoodFallbackTicks + 2 {
+		var snapshot transport.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+		if snapshot.Tick == 0 {
+			continue
+		}
+
+		if snapshot.FoodsFresh {
+			if snapshot.Foods == nil {
+				t.Fatalf("expected tick %d to include local foods when foods are fresh", snapshot.Tick)
+			}
+			if sawStale {
+				sawStaleBeforeRefresh = true
+			}
+			sawRefresh = true
+			if snapshot.Tick >= transport.DefaultLocalFoodFallbackTicks {
+				break
+			}
+			continue
+		}
+		if snapshot.Foods != nil {
+			t.Fatalf("expected stale-food tick %d to omit local food detail", snapshot.Tick)
+		}
+		sawStale = true
+	}
+
+	if !sawStale {
+		t.Fatal("expected at least one stale-food tick")
+	}
+	if !sawRefresh {
+		t.Fatal("expected to observe a later local-food refresh tick")
+	}
+	if !sawStaleBeforeRefresh {
+		t.Fatal("expected to observe at least one stale-food tick before a later refresh")
 	}
 }
 
