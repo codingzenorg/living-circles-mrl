@@ -3702,3 +3702,18 @@ That points to a bounded server-side slice:
 - extend autonomous steering to react to regional crowding pressure
 - preserve the existing steering stack rather than replacing it
 - leave food, regeneration, fight, reproduction, continuity, and contract shape unchanged by default
+## Pressure: Regional Food Yield Pressure
+
+The world now has regional recovery timing, local and regional crowding cost, and regional-crowding-aware autonomous steering. Regional scarcity is therefore starting to matter structurally, but food payoff itself is still uniform once a slot is collected.
+
+The new pressure is:
+
+- stripped regions should not feel identical to healthier regions once food finally appears
+- regional scarcity should affect both recovery timing and energy payoff
+- the change should remain bounded, deterministic, and shared across player and autonomous circles
+
+That points to a bounded server-side slice:
+
+- make food yield region-sensitive based on nearby depletion
+- preserve slot identity, slot placement, and regeneration timing
+- leave fight, reproduction, continuity, autonomy rules, and contract shape unchanged by default
