@@ -3687,3 +3687,18 @@ That points to a bounded client-only slice:
 - add lightweight offscreen food awareness
 - keep the cues local and secondary
 - leave server semantics and contract shape unchanged
+## Pressure: Regional Crowding Aware Autonomy
+
+The world now differentiates between immediate local crowding pressure and broader regional density pressure. That improves ecological consequence, but autonomous steering still only reacts directly to the more local cost model.
+
+The new pressure is:
+
+- autonomous circles should not keep steering as if dense regions were free to inhabit over time
+- regional density should influence movement in a bounded and deterministic way
+- the current food, threat, interaction, and local crowding steering layers should remain recognizable
+
+That points to a bounded server-side slice:
+
+- extend autonomous steering to react to regional crowding pressure
+- preserve the existing steering stack rather than replacing it
+- leave food, regeneration, fight, reproduction, continuity, and contract shape unchanged by default
