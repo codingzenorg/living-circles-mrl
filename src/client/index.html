@@ -32,6 +32,47 @@
         font-family: Georgia, "Times New Roman", serif;
       }
 
+      .launch-guard {
+        display: none;
+        min-height: 100vh;
+        padding: 24px;
+      }
+
+      .launch-guard--visible {
+        display: grid;
+        place-items: center;
+      }
+
+      .launch-card {
+        width: min(680px, 100%);
+        padding: 24px 26px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
+      }
+
+      .launch-card h1 {
+        margin: 0 0 10px;
+      }
+
+      .launch-card p {
+        margin: 0 0 10px;
+        max-width: none;
+      }
+
+      .launch-card pre {
+        margin: 0 0 12px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(126, 166, 178, 0.14);
+        background: rgba(8, 20, 26, 0.6);
+        color: var(--ink);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.9rem;
+        overflow: auto;
+      }
+
       main {
         width: 100%;
         max-width: none;
@@ -420,6 +461,17 @@
     </style>
   </head>
   <body>
+    <section class="launch-guard" id="launch-guard">
+      <div class="launch-card">
+        <h1>Run the demo through localhost</h1>
+        <p>This page cannot run correctly from <code>file://</code>. The browser blocks the module and WebSocket startup.</p>
+        <p>Start the local server from the repository root, then open <code>http://localhost:8080</code>.</p>
+        <pre>air
+
+# or
+go run ./src/server/cmd/livingcircles</pre>
+      </div>
+    </section>
     <main>
       <section class="panel">
         <h1>Living Circles</h1>
@@ -468,6 +520,19 @@
         </div>
       </section>
     </main>
-    <script type="module" src="/app.js"></script>
+    <script>
+      const launchGuardNode = document.getElementById("launch-guard");
+      const shouldBootApp = window.location.protocol !== "file:";
+
+      if (shouldBootApp) {
+        const moduleScript = document.createElement("script");
+        moduleScript.type = "module";
+        moduleScript.src = "/app.js";
+        document.body.appendChild(moduleScript);
+      } else {
+        launchGuardNode.classList.add("launch-guard--visible");
+        document.querySelector("main").hidden = true;
+      }
+    </script>
   </body>
 </html>
