@@ -4049,3 +4049,19 @@ That points to a bounded transport slice:
 - make visible local food refresh change-driven with a slower fallback refresh
 - preserve current local circle cadence and current orientation-summary behavior
 - measure average bytes/sec against the current event-driven orientation baseline
+## Pressure: Multi-Client Transport Pressure Measurement
+
+The transport path is now significantly more disciplined than the original full and chatty baseline. That is good, but it changes the next pressure: further optimization should now be justified by stronger runtime evidence rather than by one-client intuition alone.
+
+The new pressure is:
+
+- determine whether the current optimized transport path is already acceptable for several simultaneous clients
+- distinguish per-client bytes from aggregate server output
+- detect whether the real next bottleneck is bytes, tick timing, or neither
+
+That points to a bounded measurement slice:
+
+- run one server with several deterministic local websocket clients
+- record aggregate and per-client transport cost over a bounded deterministic window
+- record an explicit tick-pressure or broadcast-pressure signal
+- leave protocol shape and gameplay behavior unchanged
