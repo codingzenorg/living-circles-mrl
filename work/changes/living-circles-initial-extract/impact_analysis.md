@@ -2,6 +2,54 @@
 
 ## Change
 
+Reduce high-cadence local transport precision to display-sufficient values while keeping full internal simulation precision.
+
+## Why This Matters
+
+The transport path is now much cheaper than the original full snapshot baseline, but the remaining highest-frequency path is still the local viewport payload. That path still serializes floating-point positions, radii, energies, and child coordinates with more precision than the current pixel-based client visibly uses.
+
+The next pressure is therefore not a new transport shape. It is to trim unnecessary numeric precision in the still-frequent local payload while keeping internal simulation precision unchanged.
+
+## Impacted Areas
+
+### Transport boundary
+
+- local transport serialization may round or trim numbers before they cross the wire
+- transport measurement should compare the local high-cadence payload before and after precision reduction
+
+### Runtime contract
+
+- the contract shape can likely stay the same
+- only the serialized numeric precision should change
+
+### Browser client
+
+- the client should continue to render local movement and interaction clearly with the reduced precision
+- no client-side protocol redesign should be necessary
+
+### Simulation model
+
+- internal authoritative calculations remain unchanged
+- only the wire representation is reduced
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- which local numeric fields can be rounded safely
+- what rounding precision is sufficient for current viewport rendering
+- how to prove that visual clarity remains acceptable while payload cost decreases
+
+## Risks If Ignored
+
+- the repo will keep paying a local-payload cost for precision the current client does not visibly use
+- later optimization work may jump to heavier mechanisms before exhausting a simpler wire-representation reduction
+- the distinction between internal simulation precision and serialized display precision will remain unexplored
+
+---
+
+## Change
+
 Introduce compact minimap summaries so the lower-cadence orientation refreshes carry less detail per refresh.
 
 ## Why This Matters
