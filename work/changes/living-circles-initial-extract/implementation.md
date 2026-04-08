@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_dual_cadence_transport_snapshots.md`
+`docs/slices/initial_minimap_summary_compaction.md`
 
 ## Implemented Shape
 
@@ -39,6 +39,9 @@
 - transport snapshots now keep local viewport detail on every tick while refreshing minimap-orientation summaries only every `5` ticks, with the client reusing the last valid orientation summary between refreshes
 - the current single-cadence viewport-culling payload measures at `3932` bytes per snapshot, or about `39320` bytes/sec per client at `10` snapshots/sec
 - the current dual-cadence transport averages about `1710` bytes per message, or about `17096` bytes/sec per client over the same `10` snapshots/sec cadence window
+- minimap-orientation refreshes now use deterministic coarse clusters instead of exact whole-world food and autonomous point lists
+- the exact orientation-refresh payload would measure at `3574` bytes per refresh, while the compact clustered orientation refresh now measures at `3311` bytes
+- the compact dual-cadence transport now averages about `1585` bytes per message, or about `15854` bytes/sec per client over the same `10` snapshots/sec cadence window
 - the default expanded world baseline now uses a larger bounded space, more autonomous circles, and deterministic seeded food slots instead of a hand-authored expanded food layout
 - the expanded default autonomous startup pattern now uses deterministic seeded placement for the additional expanded circles instead of fixed authored offsets
 - the additional expanded autonomous circles now also use a deterministic seeded startup shape and energy mix instead of fixed authored per-ID state

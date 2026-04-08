@@ -754,18 +754,19 @@ function drawMinimap(snapshot, camera) {
 
   minimapContext.fillStyle = "rgba(255, 138, 91, 0.82)";
   for (const food of foods) {
+    const size = Math.min(5, 1 + (food.count ?? 1));
     minimapContext.fillRect(
-      Math.round(food.x * scaleX) - 1,
-      Math.round(food.y * scaleY) - 1,
-      2,
-      2,
+      Math.round(food.x * scaleX) - Math.floor(size / 2),
+      Math.round(food.y * scaleY) - Math.floor(size / 2),
+      size,
+      size,
     );
   }
 
   for (const circle of circles) {
     minimapContext.fillStyle = circle.shape === "triangle" ? "#6fd5ff" : "#c08cff";
     minimapContext.beginPath();
-    minimapContext.arc(circle.x * scaleX, circle.y * scaleY, 2.5, 0, Math.PI * 2);
+    minimapContext.arc(circle.x * scaleX, circle.y * scaleY, Math.min(5, 1.5 + (circle.count ?? 1)), 0, Math.PI * 2);
     minimapContext.fill();
   }
 

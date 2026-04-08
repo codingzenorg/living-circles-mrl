@@ -6,7 +6,6 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1641,11 +1640,17 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if initial.TotalFoods != simulation.DefaultExpandedFoodCount {
 		t.Fatalf("expected %d food slots, got %d", simulation.DefaultExpandedFoodCount, initial.TotalFoods)
 	}
-	if len(initial.MinimapAutonomousCircles) != simulation.DefaultExpandedAutonomousCount {
-		t.Fatalf("expected minimap to retain %d autonomous circles, got %d", simulation.DefaultExpandedAutonomousCount, len(initial.MinimapAutonomousCircles))
+	if len(initial.MinimapAutonomousCircles) >= simulation.DefaultExpandedAutonomousCount {
+		t.Fatalf("expected compact minimap to reduce autonomous summaries below %d, got %d", simulation.DefaultExpandedAutonomousCount, len(initial.MinimapAutonomousCircles))
 	}
-	if len(initial.MinimapFoods) != simulation.DefaultExpandedFoodCount {
-		t.Fatalf("expected minimap to retain %d food slots, got %d", simulation.DefaultExpandedFoodCount, len(initial.MinimapFoods))
+	if len(initial.MinimapAutonomousCircles) == 0 {
+		t.Fatal("expected non-empty compact autonomous minimap summaries")
+	}
+	if len(initial.MinimapFoods) >= simulation.DefaultExpandedFoodCount {
+		t.Fatalf("expected compact minimap to reduce food summaries below %d, got %d", simulation.DefaultExpandedFoodCount, len(initial.MinimapFoods))
+	}
+	if len(initial.MinimapFoods) == 0 {
+		t.Fatal("expected non-empty compact food minimap summaries")
 	}
 	if len(initial.AutonomousCircles) >= initial.TotalAutonomousCircles {
 		t.Fatalf("expected viewport transport to cull local autonomous detail below total count, local=%d total=%d", len(initial.AutonomousCircles), initial.TotalAutonomousCircles)
@@ -1653,14 +1658,15 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 	if len(initial.Foods) >= initial.TotalFoods {
 		t.Fatalf("expected viewport transport to cull local food detail below total count, local=%d total=%d", len(initial.Foods), initial.TotalFoods)
 	}
-	for index, food := range initial.MinimapFoods {
-		expectedID := "food-" + strconv.Itoa(index+1)
-		if food.ID != expectedID {
-			t.Fatalf("expected deterministic expanded food id %q, got %q", expectedID, food.ID)
-		}
+	minimapFoodCount := 0
+	for _, food := range initial.MinimapFoods {
+		minimapFoodCount += food.Count
 		if food.X == simulation.DefaultExpandedWorldWidth/2 && food.Y == simulation.DefaultExpandedWorldHeight/2 {
 			t.Fatalf("expected seeded expanded food layout to avoid exact center, got %+v", food)
 		}
+	}
+	if minimapFoodCount != simulation.DefaultExpandedFoodCount {
+		t.Fatalf("expected compact food minimap summaries to retain total count %d, got %d", simulation.DefaultExpandedFoodCount, minimapFoodCount)
 	}
 	if initial.AutonomousCircles[0].Shape != initial.Player.Shape {
 		t.Fatalf("expected first autonomous circle to match player shape %q, got %q", initial.Player.Shape, initial.AutonomousCircles[0].Shape)
@@ -1700,13 +1706,15 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 			t.Fatalf("expected seeded autonomous layout to avoid exact center, got %+v", circle)
 		}
 	}
-	if initial.MinimapAutonomousCircles[2].ID != simulation.DefaultTertiaryID ||
-		initial.MinimapAutonomousCircles[3].ID != simulation.DefaultQuaternaryID ||
-		initial.MinimapAutonomousCircles[4].ID != simulation.DefaultQuinaryID ||
-		initial.MinimapAutonomousCircles[5].ID != simulation.DefaultSenaryID ||
-		initial.MinimapAutonomousCircles[6].ID != simulation.DefaultSeptenaryID ||
-		initial.MinimapAutonomousCircles[7].ID != simulation.DefaultOctonaryID {
-		t.Fatalf("expected deterministic expanded autonomous ids, got %+v", initial.MinimapAutonomousCircles)
+	minimapAutonomousCount := 0
+	for _, cluster := range initial.MinimapAutonomousCircles {
+		minimapAutonomousCount += cluster.Count
+		if cluster.Shape != "triangle" && cluster.Shape != "square" {
+			t.Fatalf("expected compact minimap autonomous shape to remain explicit, got %+v", cluster)
+		}
+	}
+	if minimapAutonomousCount != simulation.DefaultExpandedAutonomousCount {
+		t.Fatalf("expected compact autonomous minimap summaries to retain total count %d, got %d", simulation.DefaultExpandedAutonomousCount, minimapAutonomousCount)
 	}
 	if initial.Player.Radius != simulation.DefaultPlayerRadius {
 		t.Fatalf("expected fixed player radius %v, got %v", simulation.DefaultPlayerRadius, initial.Player.Radius)

@@ -173,11 +173,8 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "shape", "x", "y"],
+            "required": ["shape", "x", "y", "count"],
             "properties": {
-              "id": {
-                "type": "string"
-              },
               "shape": {
                 "type": "string"
               },
@@ -186,6 +183,10 @@
               },
               "y": {
                 "type": "number"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1
               }
             }
           }
@@ -352,16 +353,17 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "x", "y"],
+            "required": ["x", "y", "count"],
             "properties": {
-              "id": {
-                "type": "string"
-              },
               "x": {
                 "type": "number"
               },
               "y": {
                 "type": "number"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1
               }
             }
           }

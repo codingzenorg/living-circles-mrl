@@ -86,11 +86,25 @@ func TestViewportTransportSnapshotKeepsMinimapOrientationWhileCullingLocalDetail
 	if transportSnapshot.TotalFoods != len(fullSnapshot.Foods) {
 		t.Fatalf("expected total food count %d, got %d", len(fullSnapshot.Foods), transportSnapshot.TotalFoods)
 	}
-	if len(transportSnapshot.MinimapAutonomousCircles) != len(fullSnapshot.AutonomousCircles) {
-		t.Fatalf("expected minimap autonomous summaries %d, got %d", len(fullSnapshot.AutonomousCircles), len(transportSnapshot.MinimapAutonomousCircles))
+	if len(transportSnapshot.MinimapAutonomousCircles) == 0 || len(transportSnapshot.MinimapAutonomousCircles) >= len(fullSnapshot.AutonomousCircles) {
+		t.Fatalf("expected compact minimap autonomous summaries to be non-empty and smaller than full world count, compact=%d full=%d", len(transportSnapshot.MinimapAutonomousCircles), len(fullSnapshot.AutonomousCircles))
 	}
-	if len(transportSnapshot.MinimapFoods) != len(fullSnapshot.Foods) {
-		t.Fatalf("expected minimap food summaries %d, got %d", len(fullSnapshot.Foods), len(transportSnapshot.MinimapFoods))
+	if len(transportSnapshot.MinimapFoods) == 0 || len(transportSnapshot.MinimapFoods) >= len(fullSnapshot.Foods) {
+		t.Fatalf("expected compact minimap food summaries to be non-empty and smaller than full world count, compact=%d full=%d", len(transportSnapshot.MinimapFoods), len(fullSnapshot.Foods))
+	}
+	autonomousCount := 0
+	for _, cluster := range transportSnapshot.MinimapAutonomousCircles {
+		autonomousCount += cluster.Count
+	}
+	if autonomousCount != len(fullSnapshot.AutonomousCircles) {
+		t.Fatalf("expected compact autonomous summary to retain total count %d, got %d", len(fullSnapshot.AutonomousCircles), autonomousCount)
+	}
+	foodCount := 0
+	for _, cluster := range transportSnapshot.MinimapFoods {
+		foodCount += cluster.Count
+	}
+	if foodCount != len(fullSnapshot.Foods) {
+		t.Fatalf("expected compact food summary to retain total count %d, got %d", len(fullSnapshot.Foods), foodCount)
 	}
 }
 
@@ -138,7 +152,7 @@ func TestViewportTransportSnapshotCanOmitOrientationSummaryOnNonRefreshTicks(t *
 
 func TestDualCadenceTransportAverageCostFallsBelowSingleCadenceCulledBaseline(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
-	singleCadenceMeasurement, err := transport.MeasureSnapshotTransport(transport.BuildViewportSnapshot(fullSnapshot, true), transport.DefaultTickEvery)
+	singleCadenceMeasurement, err := transport.MeasureSnapshotTransport(transport.BuildViewportSnapshotExactOrientation(fullSnapshot, true), transport.DefaultTickEvery)
 	if err != nil {
 		t.Fatalf("measure single cadence transport: %v", err)
 	}
@@ -167,5 +181,22 @@ func TestDualCadenceTransportAverageCostFallsBelowSingleCadenceCulledBaseline(t 
 	averageBytesPerSecond := averagePayload * singleCadenceMeasurement.SnapshotsPerSecond
 	if averageBytesPerSecond >= singleCadenceMeasurement.ApproxBytesPerSecond {
 		t.Fatalf("expected dual cadence average bytes/sec %v to be below single cadence culled baseline %v", averageBytesPerSecond, singleCadenceMeasurement.ApproxBytesPerSecond)
+	}
+}
+
+func TestCompactMinimapSummaryReducesOrientationRefreshPayloadBelowExactSummary(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+
+	exactMeasurement, err := transport.MeasureSnapshotTransport(transport.BuildViewportSnapshotExactOrientation(fullSnapshot, true), transport.DefaultTickEvery)
+	if err != nil {
+		t.Fatalf("measure exact orientation transport: %v", err)
+	}
+	compactMeasurement, err := transport.MeasureSnapshotTransport(transport.BuildViewportSnapshot(fullSnapshot, true), transport.DefaultTickEvery)
+	if err != nil {
+		t.Fatalf("measure compact orientation transport: %v", err)
+	}
+
+	if compactMeasurement.PayloadBytes >= exactMeasurement.PayloadBytes {
+		t.Fatalf("expected compact orientation payload %d to be smaller than exact orientation payload %d", compactMeasurement.PayloadBytes, exactMeasurement.PayloadBytes)
 	}
 }

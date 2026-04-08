@@ -1,25 +1,31 @@
 package transport
 
-import "github.com/codingzen/living-circles-mrl/src/server/simulation"
+import (
+	"slices"
+	"strconv"
+
+	"github.com/codingzen/living-circles-mrl/src/server/simulation"
+)
 
 const (
 	DefaultViewportInterestWidth  = 1200.0
 	DefaultViewportInterestHeight = 840.0
 	DefaultViewportInterestMargin = 180.0
 	DefaultOrientationEveryTicks  = int64(5)
+	DefaultMinimapClusterSize     = 480.0
 )
 
 type MinimapAutonomousCircle struct {
-	ID    string  `json:"id"`
 	Shape string  `json:"shape"`
 	X     float64 `json:"x"`
 	Y     float64 `json:"y"`
+	Count int     `json:"count"`
 }
 
 type MinimapFood struct {
-	ID string  `json:"id"`
-	X  float64 `json:"x"`
-	Y  float64 `json:"y"`
+	X     float64 `json:"x"`
+	Y     float64 `json:"y"`
+	Count int     `json:"count"`
 }
 
 type Snapshot struct {
@@ -38,6 +44,14 @@ type Snapshot struct {
 }
 
 func BuildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
+	return buildViewportSnapshot(snapshot, includeOrientation, true)
+}
+
+func BuildViewportSnapshotExactOrientation(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
+	return buildViewportSnapshot(snapshot, includeOrientation, false)
+}
+
+func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool, compactOrientation bool) Snapshot {
 	focusX := snapshot.World.Width / 2
 	focusY := snapshot.World.Height / 2
 	if snapshot.Player != nil {
@@ -68,17 +82,36 @@ func BuildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 
 	localAutonomous := make([]simulation.AutonomousCircle, 0, len(snapshot.AutonomousCircles))
 	var minimapAutonomous []MinimapAutonomousCircle
-	if includeOrientation {
+	var autonomousClusters map[string]*MinimapAutonomousCircle
+	if includeOrientation && compactOrientation {
+		autonomousClusters = make(map[string]*MinimapAutonomousCircle)
+	} else if includeOrientation {
 		minimapAutonomous = make([]MinimapAutonomousCircle, 0, len(snapshot.AutonomousCircles))
 	}
 	for _, circle := range snapshot.AutonomousCircles {
 		if includeOrientation {
-			minimapAutonomous = append(minimapAutonomous, MinimapAutonomousCircle{
-				ID:    circle.ID,
-				Shape: circle.Shape,
-				X:     circle.X,
-				Y:     circle.Y,
-			})
+			if compactOrientation {
+				key, x, y := minimapClusterKey(circle.X, circle.Y, snapshot.World)
+				clusterKey := circle.Shape + ":" + key
+				cluster := autonomousClusters[clusterKey]
+				if cluster == nil {
+					autonomousClusters[clusterKey] = &MinimapAutonomousCircle{
+						Shape: circle.Shape,
+						X:     x,
+						Y:     y,
+						Count: 1,
+					}
+				} else {
+					cluster.Count++
+				}
+			} else {
+				minimapAutonomous = append(minimapAutonomous, MinimapAutonomousCircle{
+					Shape: circle.Shape,
+					X:     circle.X,
+					Y:     circle.Y,
+					Count: 1,
+				})
+			}
 		}
 		_, required := requiredIDs[circle.ID]
 		if required || pointInsideRect(circle.X, circle.Y, left, right, top, bottom) {
@@ -88,20 +121,41 @@ func BuildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 
 	localFoods := make([]simulation.Food, 0, len(snapshot.Foods))
 	var minimapFoods []MinimapFood
-	if includeOrientation {
+	var foodClusters map[string]*MinimapFood
+	if includeOrientation && compactOrientation {
+		foodClusters = make(map[string]*MinimapFood)
+	} else if includeOrientation {
 		minimapFoods = make([]MinimapFood, 0, len(snapshot.Foods))
 	}
 	for _, food := range snapshot.Foods {
 		if includeOrientation {
-			minimapFoods = append(minimapFoods, MinimapFood{
-				ID: food.ID,
-				X:  food.X,
-				Y:  food.Y,
-			})
+			if compactOrientation {
+				key, x, y := minimapClusterKey(food.X, food.Y, snapshot.World)
+				cluster := foodClusters[key]
+				if cluster == nil {
+					foodClusters[key] = &MinimapFood{
+						X:     x,
+						Y:     y,
+						Count: 1,
+					}
+				} else {
+					cluster.Count++
+				}
+			} else {
+				minimapFoods = append(minimapFoods, MinimapFood{
+					X:     food.X,
+					Y:     food.Y,
+					Count: 1,
+				})
+			}
 		}
 		if pointInsideRect(food.X, food.Y, left, right, top, bottom) {
 			localFoods = append(localFoods, food)
 		}
+	}
+	if includeOrientation && compactOrientation {
+		minimapAutonomous = clustersFromMap(autonomousClusters)
+		minimapFoods = foodClustersFromMap(foodClusters)
 	}
 
 	return Snapshot{
@@ -129,4 +183,45 @@ func minFloat(a, b float64) float64 {
 		return a
 	}
 	return b
+}
+
+func minimapClusterKey(x, y float64, bounds simulation.Bounds) (string, float64, float64) {
+	cellSize := DefaultMinimapClusterSize
+	column := int(x / cellSize)
+	row := int(y / cellSize)
+	centerX := minFloat(bounds.Width, float64(column)*cellSize+cellSize/2)
+	centerY := minFloat(bounds.Height, float64(row)*cellSize+cellSize/2)
+	return simulationKey(column, row), centerX, centerY
+}
+
+func simulationKey(column, row int) string {
+	return strconv.Itoa(column) + ":" + strconv.Itoa(row)
+}
+
+func clustersFromMap(clusters map[string]*MinimapAutonomousCircle) []MinimapAutonomousCircle {
+	keys := make([]string, 0, len(clusters))
+	for key := range clusters {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+
+	items := make([]MinimapAutonomousCircle, 0, len(clusters))
+	for _, key := range keys {
+		items = append(items, *clusters[key])
+	}
+	return items
+}
+
+func foodClustersFromMap(clusters map[string]*MinimapFood) []MinimapFood {
+	keys := make([]string, 0, len(clusters))
+	for key := range clusters {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+
+	items := make([]MinimapFood, 0, len(clusters))
+	for _, key := range keys {
+		items = append(items, *clusters[key])
+	}
+	return items
 }
