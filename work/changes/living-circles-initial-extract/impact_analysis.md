@@ -2,6 +2,62 @@
 
 ## Change
 
+Introduce compact minimap summaries so the lower-cadence orientation refreshes carry less detail per refresh.
+
+## Why This Matters
+
+The current transport path now has two important wins:
+
+- local viewport detail is culled
+- orientation refreshes already happen less often
+
+That dropped the default expanded-world average cost to about `17096` bytes/sec per client. But the slower refreshes still resend exact world food and autonomous positions across the whole map. That is more detail than the current passive minimap really needs.
+
+The next pressure is therefore summary compactness:
+
+- keep the slower refresh cadence
+- make each refresh itself cheaper
+
+## Impacted Areas
+
+### Transport boundary
+
+- the orientation summary builder should evolve from exact whole-world lists toward a more compact minimap-oriented representation
+- measurement should continue using average cost over a deterministic cadence window
+
+### Runtime contract
+
+- the current minimap summary fields will likely need to evolve into a more compact summary shape
+- this should remain bounded to orientation data only
+
+### Browser client
+
+- the minimap should consume the compact summary without affecting local viewport play
+- the current player and viewport window overlays should remain intact
+
+### Simulation model
+
+- authoritative simulation state remains unchanged
+- only the orientation summary representation changes
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether compaction is best expressed as spatial buckets, reduced precision, or another deterministic coarse summary
+- what minimum orientation fidelity the minimap still needs
+- how to compare compact-summary transport cost against the current dual-cadence baseline
+
+## Risks If Ignored
+
+- the transport will keep paying a noticeable premium for exact remote-world orientation that the current minimap does not fully use
+- later optimization work may jump to deltas or compression before finishing the simpler minimap-summary cleanup
+- the repo will keep treating the minimap as if it needs a near-full world mirror
+
+---
+
+## Change
+
 Introduce a dual-cadence transport step so local viewport detail and distant orientation data stop sharing the same frequency.
 
 ## Why This Matters
