@@ -4065,3 +4065,18 @@ That points to a bounded measurement slice:
 - record aggregate and per-client transport cost over a bounded deterministic window
 - record an explicit tick-pressure or broadcast-pressure signal
 - leave protocol shape and gameplay behavior unchanged
+## Pressure: Moving Versus Idle Multi-Client Transport Measurement
+
+The new multi-client baseline tells us what several simultaneous clients cost in aggregate, but it still does not isolate the biggest remaining source of pressure. The next unknown is whether active movement materially changes transport and cadence pressure compared with passive observers.
+
+The new pressure is:
+
+- separate passive observer fanout cost from active-play cost
+- find out whether moving local circle detail is now the dominant remaining high-cadence cost
+- justify future transport work from a direct comparison rather than a single coarse baseline
+
+That points to a bounded measurement slice:
+
+- compare deterministic idle and moving multi-client runs
+- report the delta in aggregate bytes/sec, per-client bytes/sec, and inter-snapshot gap
+- leave protocol shape and gameplay behavior unchanged
