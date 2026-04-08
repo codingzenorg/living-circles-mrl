@@ -433,6 +433,67 @@ func TestClientReceivesCrowdingAwareAutonomousSteering(t *testing.T) {
 	}
 }
 
+func TestClientReceivesRegionalCrowdingAwareAutonomousSteering(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                          1000,
+		WorldHeight:                         800,
+		UseExpandedPopulation:               false,
+		PlayerShape:                         "square",
+		PlayerX:                             625,
+		PlayerY:                             400,
+		PlayerEnergy:                        100,
+		PlayerChildrenCount:                 0,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "square",
+		AutonomousX:                         360,
+		AutonomousY:                         400,
+		SecondaryAutonomousX:                625,
+		SecondaryAutonomousY:                430,
+		AutonomousEnergy:                    100,
+		SecondaryAutonomousEnergy:           100,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+
+	var initial simulation.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	for {
+		var snapshot simulation.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+
+		if snapshot.AutonomousCircles[0].X >= initial.AutonomousCircles[0].X {
+			t.Fatalf("expected autonomous circle to steer away from denser region, before=%v after=%v", initial.AutonomousCircles[0].X, snapshot.AutonomousCircles[0].X)
+		}
+		return
+	}
+}
+
 func TestClientReceivesFightAbsorptionThroughChildLoss(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		PlayerShape:             "triangle",

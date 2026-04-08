@@ -139,6 +139,36 @@ func TestAutonomousPaysCrowdingCostWhenTwoNeighborsAreNearby(t *testing.T) {
 	}
 }
 
+func TestAutonomousKeepsPreferredDirectionWhenRegionalDensityIsNotMeaningful(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                          1000,
+		WorldHeight:                         800,
+		UseExpandedPopulation:               false,
+		PlayerShape:                         "square",
+		PlayerX:                             120,
+		PlayerY:                             120,
+		PlayerEnergy:                        100,
+		PlayerChildrenCount:                 0,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "square",
+		AutonomousX:                         360,
+		AutonomousY:                         400,
+		SecondaryAutonomousX:                180,
+		SecondaryAutonomousY:                180,
+		AutonomousEnergy:                    100,
+		SecondaryAutonomousEnergy:           100,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
+	before := session.Snapshot()
+
+	after := session.Advance()
+
+	if after.AutonomousCircles[0].X <= before.AutonomousCircles[0].X {
+		t.Fatalf("expected autonomous circle to keep moving right when regional density is not meaningful, before=%v after=%v", before.AutonomousCircles[0].X, after.AutonomousCircles[0].X)
+	}
+}
+
 func TestPlayerPaysAdditionalRegionalCrowdingCostInDenseArea(t *testing.T) {
 	session := simulation.NewSessionWithConfig(simulation.Config{
 		WorldWidth:                1000,
@@ -168,6 +198,36 @@ func TestPlayerPaysAdditionalRegionalCrowdingCostInDenseArea(t *testing.T) {
 		simulation.DefaultRegionalCrowdingMoveCost
 	if after.Player.Energy != expectedEnergy {
 		t.Fatalf("expected regionally crowded player movement energy %v, got %v", expectedEnergy, after.Player.Energy)
+	}
+}
+
+func TestAutonomousSteersAwayFromDenserRegion(t *testing.T) {
+	session := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                          1000,
+		WorldHeight:                         800,
+		UseExpandedPopulation:               false,
+		PlayerShape:                         "square",
+		PlayerX:                             625,
+		PlayerY:                             400,
+		PlayerEnergy:                        100,
+		PlayerChildrenCount:                 0,
+		AutonomousShape:                     "triangle",
+		SecondaryAutonomousShape:            "square",
+		AutonomousX:                         360,
+		AutonomousY:                         400,
+		SecondaryAutonomousX:                625,
+		SecondaryAutonomousY:                430,
+		AutonomousEnergy:                    100,
+		SecondaryAutonomousEnergy:           100,
+		DisableThreatAvoidance:              true,
+		DisableBlockedReproductionAvoidance: true,
+	})
+	before := session.Snapshot()
+
+	after := session.Advance()
+
+	if after.AutonomousCircles[0].X >= before.AutonomousCircles[0].X {
+		t.Fatalf("expected autonomous circle to steer away from denser region, before=%v after=%v", before.AutonomousCircles[0].X, after.AutonomousCircles[0].X)
 	}
 }
 

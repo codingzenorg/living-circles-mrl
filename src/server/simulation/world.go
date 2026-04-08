@@ -918,6 +918,20 @@ func (w *World) adjustForCrowding(circle AutonomousCircle, intent Vector) Vector
 		}
 	}
 
+	currentRegionalNeighbors := w.regionalCrowdingNeighbors(circle.X, circle.Y, circle.ID)
+	nextRegionalNeighbors := w.regionalCrowdingNeighbors(nextX, nextY, circle.ID)
+	if nextRegionalNeighbors > currentRegionalNeighbors+1 {
+		oppositeX := clamp(circle.X-normalized.X*w.speed, DefaultPlayerRadius, w.bounds.Width-DefaultPlayerRadius)
+		oppositeY := clamp(circle.Y-normalized.Y*w.speed, DefaultPlayerRadius, w.bounds.Height-DefaultPlayerRadius)
+		oppositeRegionalNeighbors := w.regionalCrowdingNeighbors(oppositeX, oppositeY, circle.ID)
+		if oppositeRegionalNeighbors < nextRegionalNeighbors {
+			return Vector{
+				X: -normalized.X,
+				Y: -normalized.Y,
+			}
+		}
+	}
+
 	return intent
 }
 
@@ -931,6 +945,23 @@ func (w *World) localCrowdingNeighbors(x, y float64, selfID string) int {
 			continue
 		}
 		if distanceBetween(x, y, other.X, other.Y) <= DefaultCrowdingDistance {
+			neighbors++
+		}
+	}
+
+	return neighbors
+}
+
+func (w *World) regionalCrowdingNeighbors(x, y float64, selfID string) int {
+	neighbors := 0
+	if w.player != nil && w.player.Energy > 0 && w.player.ID != selfID && distanceBetween(x, y, w.player.X, w.player.Y) <= DefaultRegionalCrowdingDistance {
+		neighbors++
+	}
+	for _, other := range w.autonomousCircles {
+		if other.ID == selfID || other.Energy <= 0 {
+			continue
+		}
+		if distanceBetween(x, y, other.X, other.Y) <= DefaultRegionalCrowdingDistance {
 			neighbors++
 		}
 	}

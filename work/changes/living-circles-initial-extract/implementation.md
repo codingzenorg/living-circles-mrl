@@ -320,6 +320,7 @@ The slice needed these implementation choices not fully specified in the refined
 - when continuity occurs on parent death, one attached child is explicitly consumed and the snapshot exposes `death_promoted_child` for inspectability unless a higher-priority same-tick interaction already exists
 - parent-body and attached-child contact still resolve at most one interaction per pair in a tick
 - `POST /reset` rebuilds the session from its initial config, resets tick to `0`, clears intent, and broadcasts the fresh snapshot
+- autonomous steering now reacts to regional density in a bounded way by reversing a chosen direction when the next step would enter a clearly denser nearby region and the opposite step is less regionally crowded
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
 
