@@ -3732,3 +3732,20 @@ That points to a bounded server-side slice:
 - make successful reproduction cost region-sensitive based on nearby depletion
 - preserve the current reproduction threshold and payment semantics
 - leave fight, continuity, food placement, regeneration timing, and contract shape unchanged by default
+## Pressure: Tenfold Area World Expansion
+
+The current demo now has a viewport-first presentation model with minimap orientation, offscreen awareness, and a larger expanded world baseline. That makes a much bigger authoritative map more viable than before. The remaining gap is scale: the world is larger than the original baseline, but still not yet large enough to fully justify the current navigation model.
+
+The new pressure is:
+
+- make the authoritative map substantially larger without changing the on-screen viewport size
+- preserve the current aspect ratio and player-follow camera model
+- keep the minimap as the main whole-world navigation aid
+- adjust only the expanded default startup baseline enough to avoid an empty-feeling world
+
+That points to a bounded client/server slice:
+
+- increase expanded world area by about `10x`
+- preserve the current viewport and minimap model
+- reseed the expanded startup baseline coherently for the larger bounds
+- leave ecology rules, steering rules, and contract shape unchanged by default
