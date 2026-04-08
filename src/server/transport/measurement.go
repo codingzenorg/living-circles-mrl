@@ -33,6 +33,13 @@ type MultiClientTransportMeasurement struct {
 	ExpectedTickEvery          time.Duration
 }
 
+type MultiClientTransportConfig struct {
+	ClientCount       int
+	Window            time.Duration
+	MovingClientCount int
+	MovementDirection simulation.Vector
+}
+
 func MeasureSnapshotTransport(snapshot any, tickEvery time.Duration) (SnapshotTransportMeasurement, error) {
 	if tickEvery <= 0 {
 		return SnapshotTransportMeasurement{}, fmt.Errorf("tickEvery must be positive")
@@ -52,16 +59,32 @@ func MeasureSnapshotTransport(snapshot any, tickEvery time.Duration) (SnapshotTr
 }
 
 func MeasureMultiClientTransport(session *simulation.Session, clientCount int, window time.Duration) (MultiClientTransportMeasurement, error) {
+	return MeasureMultiClientTransportWithConfig(session, MultiClientTransportConfig{
+		ClientCount:       clientCount,
+		Window:            window,
+		MovingClientCount: 0,
+	})
+}
+
+func MeasureMultiClientTransportWithConfig(session *simulation.Session, config MultiClientTransportConfig) (MultiClientTransportMeasurement, error) {
 	if session == nil {
 		return MultiClientTransportMeasurement{}, fmt.Errorf("session must not be nil")
 	}
-	if clientCount <= 0 {
+	if config.ClientCount <= 0 {
 		return MultiClientTransportMeasurement{}, fmt.Errorf("clientCount must be positive")
 	}
-	if window <= 0 {
+	if config.Window <= 0 {
 		return MultiClientTransportMeasurement{}, fmt.Errorf("window must be positive")
 	}
-	expectedTicks := int(window / DefaultTickEvery)
+	if config.MovingClientCount < 0 || config.MovingClientCount > config.ClientCount {
+		return MultiClientTransportMeasurement{}, fmt.Errorf("movingClientCount must be between 0 and clientCount")
+	}
+	direction := config.MovementDirection
+	if direction.X == 0 && direction.Y == 0 {
+		direction = simulation.Vector{X: 1, Y: 0}
+	}
+
+	expectedTicks := int(config.Window / DefaultTickEvery)
 	if expectedTicks <= 0 {
 		return MultiClientTransportMeasurement{}, fmt.Errorf("window must span at least one tick")
 	}
@@ -87,10 +110,10 @@ func MeasureMultiClientTransport(session *simulation.Session, clientCount int, w
 		err                 error
 	}
 
-	results := make(chan clientResult, clientCount)
+	results := make(chan clientResult, config.ClientCount)
 	var waitGroup sync.WaitGroup
 
-	for clientIndex := range clientCount {
+	for clientIndex := range config.ClientCount {
 		waitGroup.Add(1)
 		go func(index int) {
 			defer waitGroup.Done()
@@ -102,10 +125,20 @@ func MeasureMultiClientTransport(session *simulation.Session, clientCount int, w
 			}
 			defer connection.Close()
 
-			deadline := time.Now().Add(window + 2*time.Second)
+			deadline := time.Now().Add(config.Window + 2*time.Second)
 			if err := connection.SetReadDeadline(deadline); err != nil {
 				results <- clientResult{index: index, err: err}
 				return
+			}
+
+			if index < config.MovingClientCount {
+				if err := connection.WriteJSON(movementIntentMessage{
+					Type:      "movement_intent",
+					Direction: direction,
+				}); err != nil {
+					results <- clientResult{index: index, err: err}
+					return
+				}
 			}
 
 			bytesRead := 0
@@ -147,14 +180,14 @@ func MeasureMultiClientTransport(session *simulation.Session, clientCount int, w
 	<-done
 
 	measurement := MultiClientTransportMeasurement{
-		ClientCount:        clientCount,
-		Window:             window,
-		PerClientBytes:     make([]int, clientCount),
-		PerClientSnapshots: make([]int, clientCount),
+		ClientCount:        config.ClientCount,
+		Window:             config.Window,
+		PerClientBytes:     make([]int, config.ClientCount),
+		PerClientSnapshots: make([]int, config.ClientCount),
 		ExpectedTickEvery:  DefaultTickEvery,
 	}
 
-	for range clientCount {
+	for range config.ClientCount {
 		result := <-results
 		if result.err != nil {
 			return MultiClientTransportMeasurement{}, result.err
@@ -168,8 +201,8 @@ func MeasureMultiClientTransport(session *simulation.Session, clientCount int, w
 		}
 	}
 
-	measurement.ApproxAggregateBytesPerSec = float64(measurement.AggregateBytes) / window.Seconds()
-	measurement.ApproxPerClientBytesPerSec = measurement.ApproxAggregateBytesPerSec / float64(clientCount)
+	measurement.ApproxAggregateBytesPerSec = float64(measurement.AggregateBytes) / config.Window.Seconds()
+	measurement.ApproxPerClientBytesPerSec = measurement.ApproxAggregateBytesPerSec / float64(config.ClientCount)
 
 	return measurement, nil
 }

@@ -342,6 +342,7 @@ The slice needed these implementation choices not fully specified in the refined
 - orientation refresh transport is now driven by deterministic compact-summary change plus a slower fallback interval, instead of a fixed short cadence alone
 - local viewport food transport is now driven by visible-food change plus a slower fallback interval, while local circle detail still arrives every tick
 - the repository now includes a deterministic multi-client websocket measurement harness for aggregate bytes/sec, per-client bytes/sec, aggregate snapshot count, and observed inter-snapshot gap under bounded local load
+- the multi-client transport harness now also compares deterministic idle and moving-client runs so active-play pressure can be distinguished from passive observer fanout
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
 
@@ -357,3 +358,7 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 - event-driven orientation refresh with the same compact summary path now measures below that fixed dual-cadence baseline over a deterministic fallback window because unchanged orientation summaries are skipped until they materially change or the slower fallback interval is reached
 - event-driven local food transport now measures below the event-driven orientation baseline over a deterministic fallback window because unchanged visible-food detail is omitted until it materially changes or the local fallback interval is reached
 - deterministic multi-client transport pressure with `4` local websocket clients over `300ms` measured `51904` aggregate bytes across `16` snapshots, about `173013` aggregate bytes/sec and about `43253` bytes/sec/client, with a measured max inter-snapshot gap of `100ms` against an expected tick of `100ms`
+- deterministic idle-versus-moving comparison with `4` local websocket clients over `300ms` measured:
+  - idle: `51904` aggregate bytes, about `173013` aggregate bytes/sec, `100ms` max gap
+  - one moving client: `51892` aggregate bytes, about `172973` aggregate bytes/sec, `101ms` max gap
+- under this bounded case, active movement changes the transport profile only slightly, which suggests the current dominant cost is still broad snapshot fanout rather than a large movement-specific throughput spike

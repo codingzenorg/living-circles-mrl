@@ -137,6 +137,75 @@ func TestMultiClientTransportMeasurementReportsTickPressureSignal(t *testing.T) 
 	}
 }
 
+func TestMovingMultiClientTransportMeasurementIsDeterministic(t *testing.T) {
+	config := transport.MultiClientTransportConfig{
+		ClientCount:       4,
+		Window:            300 * time.Millisecond,
+		MovingClientCount: 1,
+		MovementDirection: simulation.Vector{X: 1, Y: 0},
+	}
+
+	first, err := transport.MeasureMultiClientTransportWithConfig(simulation.NewSession(), config)
+	if err != nil {
+		t.Fatalf("measure first moving multi-client transport: %v", err)
+	}
+
+	second, err := transport.MeasureMultiClientTransportWithConfig(simulation.NewSession(), config)
+	if err != nil {
+		t.Fatalf("measure second moving multi-client transport: %v", err)
+	}
+
+	if first.AggregateSnapshots != second.AggregateSnapshots {
+		t.Fatalf("expected deterministic aggregate snapshot count, first=%+v second=%+v", first, second)
+	}
+	if first.AggregateBytes != second.AggregateBytes {
+		t.Fatalf("expected deterministic aggregate bytes, first=%+v second=%+v", first, second)
+	}
+}
+
+func TestMovingMultiClientTransportDiffersFromIdleAggregateBytes(t *testing.T) {
+	idleMeasurement, err := transport.MeasureMultiClientTransport(simulation.NewSession(), 4, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure idle multi-client transport: %v", err)
+	}
+
+	movingMeasurement, err := transport.MeasureMultiClientTransportWithConfig(simulation.NewSession(), transport.MultiClientTransportConfig{
+		ClientCount:       4,
+		Window:            300 * time.Millisecond,
+		MovingClientCount: 1,
+		MovementDirection: simulation.Vector{X: 1, Y: 0},
+	})
+	if err != nil {
+		t.Fatalf("measure moving multi-client transport: %v", err)
+	}
+
+	if movingMeasurement.AggregateBytes == idleMeasurement.AggregateBytes {
+		t.Fatalf("expected moving aggregate bytes to differ from idle aggregate bytes, idle=%d moving=%d", idleMeasurement.AggregateBytes, movingMeasurement.AggregateBytes)
+	}
+	if movingMeasurement.ApproxAggregateBytesPerSec == idleMeasurement.ApproxAggregateBytesPerSec {
+		t.Fatalf("expected moving aggregate bytes/sec to differ from idle aggregate bytes/sec, idle=%v moving=%v", idleMeasurement.ApproxAggregateBytesPerSec, movingMeasurement.ApproxAggregateBytesPerSec)
+	}
+}
+
+func TestMovingMultiClientTransportKeepsBoundedTickPressure(t *testing.T) {
+	measurement, err := transport.MeasureMultiClientTransportWithConfig(simulation.NewSession(), transport.MultiClientTransportConfig{
+		ClientCount:       4,
+		Window:            300 * time.Millisecond,
+		MovingClientCount: 1,
+		MovementDirection: simulation.Vector{X: 1, Y: 0},
+	})
+	if err != nil {
+		t.Fatalf("measure moving multi-client transport: %v", err)
+	}
+
+	if measurement.MaxInterSnapshotGap < measurement.ExpectedTickEvery {
+		t.Fatalf("expected moving max inter-snapshot gap %v to be at least one tick interval %v", measurement.MaxInterSnapshotGap, measurement.ExpectedTickEvery)
+	}
+	if measurement.MaxInterSnapshotGap > 3*measurement.ExpectedTickEvery {
+		t.Fatalf("expected moving max inter-snapshot gap %v to stay within bounded local pressure window", measurement.MaxInterSnapshotGap)
+	}
+}
+
 func TestViewportTransportSnapshotKeepsMinimapOrientationWhileCullingLocalDetail(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
 	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot, true)
