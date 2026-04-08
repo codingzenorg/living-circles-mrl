@@ -233,6 +233,8 @@ type Config struct {
 	WorldWidth                          float64
 	WorldHeight                         float64
 	UseExpandedPopulation               bool
+	ExpandedAutonomousCount             int
+	ExpandedFoodCount                   int
 	PlayerShape                         string
 	AutonomousShape                     string
 	SecondaryAutonomousShape            string
@@ -322,6 +324,7 @@ func NewWorldWithConfig(config Config) *World {
 		})
 	}
 	if config.UseExpandedPopulation {
+		extraAutonomousCount := expandedExtraAutonomousCount(config, len(autonomousCircles))
 		reserved := []Vector{
 			{X: playerX, Y: playerY},
 			{X: autonomousX, Y: autonomousY},
@@ -332,14 +335,14 @@ func NewWorldWithConfig(config Config) *World {
 				Y: configuredOrDefault(config.SecondaryAutonomousY, worldHeight/2),
 			})
 		}
-		autonomousCircles = append(autonomousCircles, defaultExpandedAutonomousCircles(worldWidth, worldHeight, reserved)...)
+		autonomousCircles = append(autonomousCircles, defaultExpandedAutonomousCircles(worldWidth, worldHeight, reserved, extraAutonomousCount)...)
 	}
 
 	activeCircleCount := len(autonomousCircles)
 	if config.PlayerEnergy > 0 {
 		activeCircleCount++
 	}
-	foodSlots := defaultFoodSlots(worldWidth, worldHeight, config.UseExpandedPopulation, activeCircleCount)
+	foodSlots := defaultFoodSlots(worldWidth, worldHeight, config.UseExpandedPopulation, activeCircleCount, config.ExpandedFoodCount)
 	player := &PlayerCircle{
 		ID:               playerID,
 		LineageID:        lineageIDFor(playerID),
@@ -383,13 +386,24 @@ func configuredOrDefault(value, fallback float64) float64 {
 	return value
 }
 
-func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64, reserved []Vector) []AutonomousCircle {
+func expandedExtraAutonomousCount(config Config, currentAutonomousCount int) int {
+	totalCount := config.ExpandedAutonomousCount
+	if totalCount <= 0 {
+		totalCount = DefaultExpandedAutonomousCount
+	}
+	if totalCount <= currentAutonomousCount {
+		return 0
+	}
+	return totalCount - currentAutonomousCount
+}
+
+func defaultExpandedAutonomousCircles(worldWidth, worldHeight float64, reserved []Vector, extraCount int) []AutonomousCircle {
 	specs := []struct {
 		id     string
 		shape  string
 		energy float64
 	}{}
-	for index := 0; index < DefaultExpandedAutonomousCount-2; index++ {
+	for index := 0; index < extraCount; index++ {
 		specs = append(specs, struct {
 			id     string
 			shape  string
@@ -530,7 +544,7 @@ func seededExpandedAutonomousPositions(worldWidth, worldHeight float64, count in
 	return positions
 }
 
-func defaultFoodSlots(worldWidth, worldHeight float64, expanded bool, activeCircleCount int) []Food {
+func defaultFoodSlots(worldWidth, worldHeight float64, expanded bool, activeCircleCount int, configuredCount int) []Food {
 	centerX := worldWidth / 2
 	centerY := worldHeight / 2
 
@@ -546,6 +560,9 @@ func defaultFoodSlots(worldWidth, worldHeight float64, expanded bool, activeCirc
 	slotCount := activeCircleCount + 2
 	if slotCount < DefaultExpandedFoodCount {
 		slotCount = DefaultExpandedFoodCount
+	}
+	if configuredCount > slotCount {
+		slotCount = configuredCount
 	}
 	return seededExpandedFoodSlots(worldWidth, worldHeight, slotCount)
 }

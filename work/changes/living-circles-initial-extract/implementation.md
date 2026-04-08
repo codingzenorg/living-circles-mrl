@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_regional_crowding_energy_pressure.md`
+`docs/slices/initial_transport_payload_measurement.md`
 
 ## Implemented Shape
 
@@ -30,6 +30,9 @@
 - viewport mode now adds a small local heading cue near the player derived from recent authoritative motion so movement direction is easier to read inside the camera window
 - viewport mode now adds lightweight edge cues for nearby offscreen food so local recovery opportunity just outside the camera window is easier to notice
 - viewport mode now applies a small camera lookahead in the player's recent authoritative direction of travel while preserving deadzone follow and world-edge clamping
+- transport payload measurement is now explicit through a server-side helper that serializes the current authoritative snapshot as-is and combines it with the live tick cadence
+- the deterministic default expanded-world baseline currently measures at `6487` bytes per snapshot, or about `64870` bytes/sec per client at the current `10` snapshots/sec cadence
+- a deterministic larger-world scenario with doubled expanded autonomous and food counts currently measures at `12539` bytes per snapshot, or about `125390` bytes/sec per client at the same cadence
 - the default expanded world baseline now uses a larger bounded space, more autonomous circles, and deterministic seeded food slots instead of a hand-authored expanded food layout
 - the expanded default autonomous startup pattern now uses deterministic seeded placement for the additional expanded circles instead of fixed authored offsets
 - the additional expanded autonomous circles now also use a deterministic seeded startup shape and energy mix instead of fixed authored per-ID state

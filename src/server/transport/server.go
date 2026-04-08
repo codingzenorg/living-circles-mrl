@@ -15,6 +15,8 @@ import (
 
 const websocketPath = "/ws"
 
+const DefaultTickEvery = 100 * time.Millisecond
+
 type movementIntentMessage struct {
 	Type      string            `json:"type"`
 	Direction simulation.Vector `json:"direction"`
@@ -59,7 +61,7 @@ func NewServerWithSession(session *simulation.Session) *Server {
 	server := &Server{
 		mux:       http.NewServeMux(),
 		session:   session,
-		tickEvery: 100 * time.Millisecond,
+		tickEvery: DefaultTickEvery,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(*http.Request) bool { return true },
 		},
