@@ -3717,3 +3717,18 @@ That points to a bounded server-side slice:
 - make food yield region-sensitive based on nearby depletion
 - preserve slot identity, slot placement, and regeneration timing
 - leave fight, reproduction, continuity, autonomy rules, and contract shape unchanged by default
+## Pressure: Regional Reproduction Cost Pressure
+
+Regional scarcity now affects regeneration timing, food yield, crowding cost, and autonomous steering. The remaining ecological asymmetry is that successful reproduction still costs the same everywhere once the existing threshold is met.
+
+The new pressure is:
+
+- stripped regions should become harder places to expand population, not only harder places to survive in
+- regional scarcity should influence successful reproduction cost in a bounded deterministic way
+- the existing threshold, child payment, and ownership rules should remain recognizable
+
+That points to a bounded server-side slice:
+
+- make successful reproduction cost region-sensitive based on nearby depletion
+- preserve the current reproduction threshold and payment semantics
+- leave fight, continuity, food placement, regeneration timing, and contract shape unchanged by default
