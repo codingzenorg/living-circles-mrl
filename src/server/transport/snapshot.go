@@ -4,16 +4,18 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/codingzen/living-circles-mrl/src/server/simulation"
 )
 
 const (
-	DefaultViewportInterestWidth  = 1200.0
-	DefaultViewportInterestHeight = 840.0
-	DefaultViewportInterestMargin = 180.0
-	DefaultOrientationEveryTicks  = int64(5)
-	DefaultMinimapClusterSize     = 480.0
+	DefaultViewportInterestWidth    = 1200.0
+	DefaultViewportInterestHeight   = 840.0
+	DefaultViewportInterestMargin   = 180.0
+	DefaultOrientationEveryTicks    = int64(5)
+	DefaultOrientationFallbackTicks = int64(20)
+	DefaultMinimapClusterSize       = 480.0
 )
 
 type MinimapAutonomousCircle struct {
@@ -54,6 +56,48 @@ func BuildViewportSnapshotExactOrientation(snapshot simulation.Snapshot, include
 
 func BuildViewportSnapshotCompactFullPrecision(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
 	return buildViewportSnapshot(snapshot, includeOrientation, true, false)
+}
+
+func OrientationSummarySignature(snapshot Snapshot) string {
+	var builder strings.Builder
+	builder.WriteString(strconv.Itoa(snapshot.TotalAutonomousCircles))
+	builder.WriteByte('|')
+	builder.WriteString(strconv.Itoa(snapshot.TotalFoods))
+
+	for _, circle := range snapshot.MinimapAutonomousCircles {
+		builder.WriteByte('|')
+		builder.WriteString(circle.Shape)
+		builder.WriteByte(':')
+		builder.WriteString(strconv.FormatFloat(circle.X, 'f', -1, 64))
+		builder.WriteByte(':')
+		builder.WriteString(strconv.FormatFloat(circle.Y, 'f', -1, 64))
+		builder.WriteByte(':')
+		builder.WriteString(strconv.Itoa(circle.Count))
+	}
+
+	for _, food := range snapshot.MinimapFoods {
+		builder.WriteByte('|')
+		builder.WriteString(strconv.FormatFloat(food.X, 'f', -1, 64))
+		builder.WriteByte(':')
+		builder.WriteString(strconv.FormatFloat(food.Y, 'f', -1, 64))
+		builder.WriteByte(':')
+		builder.WriteString(strconv.Itoa(food.Count))
+	}
+
+	return builder.String()
+}
+
+func ShouldRefreshOrientation(lastSignature string, lastRefreshTick, currentTick int64, currentSignature string) bool {
+	if currentTick <= lastRefreshTick {
+		return true
+	}
+	if lastSignature == "" {
+		return true
+	}
+	if currentSignature != lastSignature {
+		return true
+	}
+	return currentTick-lastRefreshTick >= DefaultOrientationFallbackTicks
 }
 
 func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool, compactOrientation bool, reducePrecision bool) Snapshot {

@@ -1730,7 +1730,20 @@ func TestClientReceivesDefaultDualInteractionDemoSnapshot(t *testing.T) {
 }
 
 func TestTransportOrientationSummaryRefreshesAtLowerCadence(t *testing.T) {
-	server := transport.NewServer()
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:            400,
+		WorldHeight:           300,
+		PlayerShape:           simulation.DefaultPlayerShape,
+		AutonomousShape:       simulation.DefaultAutoShape,
+		PlayerEnergy:          simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:      simulation.DefaultPlayerEnergy,
+		ExpandedFoodCount:     3,
+		UseExpandedPopulation: false,
+		PlayerX:               200,
+		PlayerY:               150,
+		AutonomousX:           100,
+		AutonomousY:           100,
+	}))
 	httpServer := httptest.NewServer(server.Handler())
 	defer httpServer.Close()
 
@@ -1759,7 +1772,8 @@ func TestTransportOrientationSummaryRefreshesAtLowerCadence(t *testing.T) {
 
 	sawStale := false
 	sawRefresh := false
-	for range transport.DefaultOrientationEveryTicks + 2 {
+	sawStaleBeforeRefresh := false
+	for range transport.DefaultOrientationFallbackTicks + 2 {
 		var snapshot transport.Snapshot
 		if err := connection.ReadJSON(&snapshot); err != nil {
 			t.Fatalf("read snapshot: %v", err)
@@ -1768,31 +1782,33 @@ func TestTransportOrientationSummaryRefreshesAtLowerCadence(t *testing.T) {
 			continue
 		}
 
-		if snapshot.Tick%transport.DefaultOrientationEveryTicks == 0 {
-			if !snapshot.OrientationFresh {
-				t.Fatalf("expected tick %d to include fresh orientation data", snapshot.Tick)
-			}
+		if snapshot.OrientationFresh {
 			if snapshot.MinimapAutonomousCircles == nil || snapshot.MinimapFoods == nil {
-				t.Fatalf("expected tick %d to include minimap summaries", snapshot.Tick)
+				t.Fatalf("expected tick %d to include minimap summaries when orientation is fresh", snapshot.Tick)
+			}
+			if sawStale {
+				sawStaleBeforeRefresh = true
 			}
 			sawRefresh = true
-			break
-		}
-
-		if snapshot.OrientationFresh {
-			t.Fatalf("expected non-refresh tick %d to omit fresh orientation data", snapshot.Tick)
+			if snapshot.Tick >= transport.DefaultOrientationFallbackTicks {
+				break
+			}
+			continue
 		}
 		if snapshot.MinimapAutonomousCircles != nil || snapshot.MinimapFoods != nil {
-			t.Fatalf("expected non-refresh tick %d to omit minimap summaries", snapshot.Tick)
+			t.Fatalf("expected stale tick %d to omit minimap summaries", snapshot.Tick)
 		}
 		sawStale = true
 	}
 
 	if !sawStale {
-		t.Fatal("expected at least one stale-orientation tick before refresh")
+		t.Fatal("expected at least one stale-orientation tick")
 	}
 	if !sawRefresh {
 		t.Fatal("expected to observe a later orientation refresh tick")
+	}
+	if !sawStaleBeforeRefresh {
+		t.Fatal("expected to observe at least one stale tick before a later refresh")
 	}
 }
 

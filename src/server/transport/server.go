@@ -45,8 +45,10 @@ type Server struct {
 	tickEvery time.Duration
 	upgrader  websocket.Upgrader
 
-	mu    sync.Mutex
-	conns map[*websocket.Conn]*clientConnection
+	mu                  sync.Mutex
+	conns               map[*websocket.Conn]*clientConnection
+	lastOrientationSig  string
+	lastOrientationTick int64
 }
 
 func NewServer() *Server {
@@ -109,11 +111,13 @@ func (s *Server) handleWebSocket(writer http.ResponseWriter, request *http.Reque
 	}
 
 	client := s.addConnection(connection)
-	if err := client.WriteJSON(BuildViewportSnapshot(s.session.Snapshot(), true)); err != nil {
+	transportSnapshot := BuildViewportSnapshot(s.session.Snapshot(), true)
+	if err := client.WriteJSON(transportSnapshot); err != nil {
 		s.removeConnection(connection)
 		_ = client.Close()
 		return
 	}
+	s.recordOrientationRefresh(transportSnapshot)
 
 	go s.readMessages(connection)
 }
@@ -158,7 +162,17 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 }
 
 func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot) {
-	transportSnapshot := BuildViewportSnapshot(snapshot, snapshot.Tick%DefaultOrientationEveryTicks == 0)
+	orientationSnapshot := BuildViewportSnapshot(snapshot, true)
+	orientationSignature := OrientationSummarySignature(orientationSnapshot)
+	includeOrientation := s.shouldRefreshOrientation(snapshot.Tick, orientationSignature)
+
+	transportSnapshot := orientationSnapshot
+	if !includeOrientation {
+		transportSnapshot = BuildViewportSnapshot(snapshot, false)
+	} else {
+		s.recordOrientationRefresh(orientationSnapshot)
+	}
+
 	s.mu.Lock()
 	connections := make([]*clientConnection, 0, len(s.conns))
 	for _, connection := range s.conns {
@@ -197,4 +211,21 @@ func (s *Server) closeConnections() {
 		_ = connection.Close()
 		delete(s.conns, key)
 	}
+}
+
+func (s *Server) shouldRefreshOrientation(currentTick int64, currentSignature string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return ShouldRefreshOrientation(s.lastOrientationSig, s.lastOrientationTick, currentTick, currentSignature)
+}
+
+func (s *Server) recordOrientationRefresh(snapshot Snapshot) {
+	if !snapshot.OrientationFresh {
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastOrientationSig = OrientationSummarySignature(snapshot)
+	s.lastOrientationTick = snapshot.Tick
 }

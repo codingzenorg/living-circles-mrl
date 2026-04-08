@@ -184,6 +184,112 @@ func TestDualCadenceTransportAverageCostFallsBelowSingleCadenceCulledBaseline(t 
 	}
 }
 
+func TestOrientationRefreshPolicySkipsUnchangedSummaryAndFallsBackLater(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+	orientationSnapshot := transport.BuildViewportSnapshot(fullSnapshot, true)
+	signature := transport.OrientationSummarySignature(orientationSnapshot)
+
+	if !transport.ShouldRefreshOrientation("", 0, 0, signature) {
+		t.Fatal("expected empty prior state to force an initial orientation refresh")
+	}
+	if transport.ShouldRefreshOrientation(signature, 0, transport.DefaultOrientationFallbackTicks-1, signature) {
+		t.Fatal("expected unchanged summary to stay stale before the fallback interval")
+	}
+	if !transport.ShouldRefreshOrientation(signature, 0, transport.DefaultOrientationFallbackTicks, signature) {
+		t.Fatal("expected fallback interval to force an orientation refresh")
+	}
+}
+
+func TestOrientationRefreshPolicyTriggersOnCompactSummaryChange(t *testing.T) {
+	baseSnapshot := simulation.NewSession().Snapshot()
+	baseTransportSnapshot := transport.BuildViewportSnapshot(baseSnapshot, true)
+	baseSignature := transport.OrientationSummarySignature(baseTransportSnapshot)
+
+	changedSnapshot := baseSnapshot
+	changedSnapshot.AutonomousCircles = append([]simulation.AutonomousCircle{}, baseSnapshot.AutonomousCircles...)
+	changedSnapshot.AutonomousCircles[0].X += transport.DefaultMinimapClusterSize
+	changedTransportSnapshot := transport.BuildViewportSnapshot(changedSnapshot, true)
+	changedSignature := transport.OrientationSummarySignature(changedTransportSnapshot)
+
+	if changedSignature == baseSignature {
+		t.Fatal("expected moved autonomous circle to change the compact orientation summary signature")
+	}
+	if !transport.ShouldRefreshOrientation(baseSignature, 0, 1, changedSignature) {
+		t.Fatal("expected summary change to force an orientation refresh")
+	}
+}
+
+func TestEventDrivenOrientationAverageCostFallsBelowFixedDualCadenceBaseline(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+
+	fixedDualCadenceTotalBytes := 0
+	for tick := int64(1); tick <= transport.DefaultOrientationFallbackTicks; tick++ {
+		includeOrientation := tick%transport.DefaultOrientationEveryTicks == 0
+		measurement, err := transport.MeasureSnapshotTransport(
+			transport.BuildViewportSnapshot(simulation.Snapshot{
+				Type:              fullSnapshot.Type,
+				Tick:              tick,
+				World:             fullSnapshot.World,
+				Player:            fullSnapshot.Player,
+				AutonomousCircles: fullSnapshot.AutonomousCircles,
+				Interaction:       fullSnapshot.Interaction,
+				Foods:             fullSnapshot.Foods,
+			}, includeOrientation),
+			transport.DefaultTickEvery,
+		)
+		if err != nil {
+			t.Fatalf("measure fixed dual cadence transport tick %d: %v", tick, err)
+		}
+		fixedDualCadenceTotalBytes += measurement.PayloadBytes
+	}
+
+	eventDrivenTotalBytes := 0
+	lastSignature := ""
+	lastRefreshTick := int64(-1)
+	for tick := int64(1); tick <= transport.DefaultOrientationFallbackTicks; tick++ {
+		orientationSnapshot := transport.BuildViewportSnapshot(simulation.Snapshot{
+			Type:              fullSnapshot.Type,
+			Tick:              tick,
+			World:             fullSnapshot.World,
+			Player:            fullSnapshot.Player,
+			AutonomousCircles: fullSnapshot.AutonomousCircles,
+			Interaction:       fullSnapshot.Interaction,
+			Foods:             fullSnapshot.Foods,
+		}, true)
+		signature := transport.OrientationSummarySignature(orientationSnapshot)
+		includeOrientation := transport.ShouldRefreshOrientation(lastSignature, lastRefreshTick, tick, signature)
+		if includeOrientation {
+			lastSignature = signature
+			lastRefreshTick = tick
+		}
+
+		transportSnapshot := orientationSnapshot
+		if !includeOrientation {
+			transportSnapshot = transport.BuildViewportSnapshot(simulation.Snapshot{
+				Type:              fullSnapshot.Type,
+				Tick:              tick,
+				World:             fullSnapshot.World,
+				Player:            fullSnapshot.Player,
+				AutonomousCircles: fullSnapshot.AutonomousCircles,
+				Interaction:       fullSnapshot.Interaction,
+				Foods:             fullSnapshot.Foods,
+			}, false)
+		}
+
+		measurement, err := transport.MeasureSnapshotTransport(transportSnapshot, transport.DefaultTickEvery)
+		if err != nil {
+			t.Fatalf("measure event-driven transport tick %d: %v", tick, err)
+		}
+		eventDrivenTotalBytes += measurement.PayloadBytes
+	}
+
+	fixedAverageBytesPerSecond := (float64(fixedDualCadenceTotalBytes) / float64(transport.DefaultOrientationFallbackTicks)) * (1 / transport.DefaultTickEvery.Seconds())
+	eventDrivenAverageBytesPerSecond := (float64(eventDrivenTotalBytes) / float64(transport.DefaultOrientationFallbackTicks)) * (1 / transport.DefaultTickEvery.Seconds())
+	if eventDrivenAverageBytesPerSecond >= fixedAverageBytesPerSecond {
+		t.Fatalf("expected event-driven average bytes/sec %v to be below fixed dual-cadence baseline %v", eventDrivenAverageBytesPerSecond, fixedAverageBytesPerSecond)
+	}
+}
+
 func TestCompactMinimapSummaryReducesOrientationRefreshPayloadBelowExactSummary(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
 
