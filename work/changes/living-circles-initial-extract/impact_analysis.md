@@ -2,6 +2,62 @@
 
 ## Change
 
+Introduce a dual-cadence transport step so local viewport detail and distant orientation data stop sharing the same frequency.
+
+## Why This Matters
+
+The first transport-thinning slice already made a meaningful improvement:
+
+- from about `6487` bytes per snapshot
+- down to about `3907` bytes per snapshot
+
+But the client still receives that thinned transport at the same `10` snapshots/sec cadence for all included data. That is still flatter than the current client model actually needs:
+
+- local play detail is time-sensitive
+- minimap orientation data is useful, but less time-sensitive
+
+The next pressure is therefore not new shape but new cadence discipline.
+
+## Impacted Areas
+
+### Transport boundary
+
+- the server broadcast path should distinguish between high-cadence local detail and lower-cadence orientation summaries
+- measurement should shift from only single-message size toward average bytes/sec over a deterministic tick window
+
+### Runtime contract
+
+- the contract may need a small explicit signal for when orientation summary data is included
+- this should remain bounded and avoid a major protocol redesign
+
+### Browser client
+
+- the client should keep rendering local play from every snapshot
+- the minimap should reuse the last valid orientation summary between slower refresh ticks
+
+### Simulation model
+
+- simulation timing and authority remain unchanged
+- only the transport packaging cadence changes
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- how often orientation summaries refresh relative to local play detail
+- whether omitted orientation fields are represented by absence or an explicit marker
+- how measurement should compare pre- and post-cadence-splitting transport cost over time
+
+## Risks If Ignored
+
+- the transport will remain more chatty than the current client model requires
+- later optimization work may jump prematurely to deltas or compression before exploiting this simpler cadence distinction
+- the repo will keep sending slow-changing orientation data as if it were as urgent as local play state
+
+---
+
+## Change
+
 Introduce the first transport-thinning slice by aligning snapshot detail with the existing player-follow viewport model.
 
 ## Why This Matters
