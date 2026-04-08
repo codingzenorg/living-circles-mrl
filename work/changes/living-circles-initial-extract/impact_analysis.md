@@ -4034,3 +4034,18 @@ That points to a bounded measurement slice:
 - measure serialized snapshot size under the current protocol
 - record transport cost for the default expanded world and a larger-world scenario
 - leave protocol shape and gameplay behavior unchanged
+## Pressure: Event-Driven Local Food Transport
+
+Orientation refresh is now event-driven, which removes a significant source of redundant whole-world summary traffic. The next obvious redundancy sits inside the high-cadence local viewport payload: visible food detail is still resent every tick even when the visible food set has not changed.
+
+The new pressure is:
+
+- keep local circle motion fully responsive
+- stop treating static local food detail as if it changed every tick
+- reuse the existing client-side stale-data pattern instead of introducing generalized deltas
+
+That points to a bounded transport slice:
+
+- make visible local food refresh change-driven with a slower fallback refresh
+- preserve current local circle cadence and current orientation-summary behavior
+- measure average bytes/sec against the current event-driven orientation baseline
