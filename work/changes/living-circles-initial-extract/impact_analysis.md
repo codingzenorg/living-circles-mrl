@@ -3749,3 +3749,18 @@ That points to a bounded client/server slice:
 - preserve the current viewport and minimap model
 - reseed the expanded startup baseline coherently for the larger bounds
 - leave ecology rules, steering rules, and contract shape unchanged by default
+## Pressure: Transport Payload Measurement
+
+The protocol is still full and chatty. That was acceptable while the model was small and changing quickly, but the current world is now larger, denser, and more dependent on continuous authoritative snapshots. Optimization pressure is visible, but the next useful step is still measurement rather than premature redesign.
+
+The new pressure is:
+
+- make current snapshot payload size explicit
+- make approximate per-client transport cost explicit
+- capture that baseline under representative current world states before thinning the protocol
+
+That points to a bounded measurement slice:
+
+- measure serialized snapshot size under the current protocol
+- record transport cost for the default expanded world and a larger-world scenario
+- leave protocol shape and gameplay behavior unchanged
