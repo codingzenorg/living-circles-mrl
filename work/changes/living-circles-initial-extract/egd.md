@@ -4,176 +4,176 @@
 
 - reviewed against [model_hypothesis.md](/home/henrique/repos/github/codingzen/living-circles-mrl/docs/semantics/model_hypothesis.md)
 - reviewed against [domain_background_knowledge.md](/home/henrique/repos/github/codingzen/living-circles-mrl/docs/semantics/domain_background_knowledge.md)
-- reviewed against the current slice [initial_seeded_expanded_autonomous_state_mix.md](/home/henrique/repos/github/codingzen/living-circles-mrl/docs/slices/initial_seeded_expanded_autonomous_state_mix.md)
+- reviewed against the current slice [initial_regional_food_regeneration_pressure.md](/home/henrique/repos/github/codingzen/living-circles-mrl/docs/slices/initial_regional_food_regeneration_pressure.md)
 - reviewed against the current implementation summary in [implementation.md](/home/henrique/repos/github/codingzen/living-circles-mrl/work/changes/living-circles-initial-extract/implementation.md)
-- validated with `go test ./...` and `npm run test:contracts` on April 6, 2026
+- validated with `go test ./...` and `npm run test:contracts` on April 8, 2026
 
 ## Summary
 
-The current build now clears an older expectation gap: the world no longer starts as a tiny, obviously hand-authored toy setup. The default startup state is materially broader:
+The current build continues moving in the right direction. The default world is no longer only a plausible startup snapshot; it now has a first region-sensitive recovery rule. That matters because the previous EGD identified the main gap as medium-term ecological consequence rather than startup plausibility.
 
-- larger world
-- more autonomous circles
-- seeded food layout
-- seeded expanded autonomous placement
-- seeded expanded autonomous startup state mix
-- viewport-oriented presentation instead of whole-world shrinking
-
-That is real progress toward the model hypothesis of a system-driven ecosystem. But the main gap has shifted. The repo now has enough spatial breadth and startup variation to feel less staged, yet the system still lacks stronger medium-term ecological differentiation. It is better at startup plausibility than at long-horizon emergent consequence.
+This slice improves that gap, but only partially. The system can now let different neighborhoods recover at different rates, which is more ecosystem-like than a purely global regeneration delay. But the world still does not yet show stronger longer-horizon outcomes such as visible regional dominance, durable niches, or lineage-level population consequences.
 
 ## Main Findings
 
-### 1. Startup world plausibility is now much stronger than before
+### 1. The build now has its first meaningful region-level ecological difference
 
-Compared with the earlier EGD, the default world is no longer dominated by obviously authored startup geometry.
+This is the strongest positive finding in the current EGD.
 
-What now works better:
+Before this slice:
 
-- the world is large enough to justify viewport mode
-- food no longer starts from a visibly center-authored slot list
-- expanded autonomous circles no longer start from a visibly authored offset pattern
-- additional expanded circles no longer have a purely hand-scripted startup shape/energy mix
+- startup state varied more than before
+- the world was larger
+- food and expanded autonomous startup were less authored
+- but recovery pressure still remained too global
 
-This closes a meaningful gap from the earlier review: the startup world now reads more like a seeded ecosystem state than a deterministic rules exhibit.
+Now:
 
-### 2. Medium-term ecosystem behavior still looks thin relative to the model hypothesis
+- food still regenerates deterministically into the same slot
+- but locally depleted neighborhoods recover more slowly than less depleted ones
 
-The model hypothesis emphasizes:
+That is a real step toward the model hypothesis, because world regions can now diverge over time even when the underlying food model stays simple.
 
-- emergence
-- population dynamics
-- collapse and recovery
-- the player as one perturbing participant inside a shared rule set
+### 2. The simulation is becoming more ecosystem-like, but still mostly through additive heuristic rules
 
-The current system now supports more plausible startup variety, but EGD still cannot point to stronger medium-term consequences such as:
+The system now combines:
 
-- visible population booms and busts
-- region-level overuse and recovery patterns
-- durable competitive niches
-- meaningful long-horizon lineage turnover
-
-So the expectation gap is no longer “the world is too curated to start.” It is now “the world starts plausibly, but still may not evolve richly enough after startup.”
-
-### 3. Autonomy remains coherent but still reads as layered heuristics
-
-Autonomous behavior is now fairly rich for a bounded rules system:
-
+- energy costs
+- food recovery
+- global and local regeneration pressure
+- crowding pressure
 - food seeking
-- energy-aware priorities
-- interaction seeking
-- fight-feasibility filtering
-- blocked-reproduction avoidance
-- threat avoidance
-- crowding-aware steering
+- avoidance heuristics
+- shape-based interaction
+- child continuity
 
-This is coherent and increasingly gameable. But it still looks like an accumulation of local steering rules rather than a deeper ecological dynamic.
+This is coherent and increasingly rich. But it still reads as a layered bundle of local rules rather than a smaller set of highly generative ecological principles.
 
-That is not automatically a problem. It becomes a problem only if the intended identity requires stronger emergent differentiation than these heuristics can produce.
+That remains an open design question rather than a bug:
 
-Current review question:
+- is the intended identity satisfied by cumulative bounded rules?
+- or should future slices try to produce more from fewer mechanisms?
 
-- is this project aiming for “good bounded ecosystem-like behavior,” or for “deeper emergent dynamics from fewer more generative rules”?
+### 3. Medium-term consequence improved, but long-horizon dynamics are still not yet evidenced
 
-### 4. The world is better staged for play, but still only lightly evaluated as play
+The regional regeneration slice helps the world support:
 
-The viewport, deadzone, minimap, offscreen cues, heading cue, camera lookahead, and fullscreen layout all move the demo closer to an actual play surface.
+- uneven recovery
+- local depletion pressure
+- more meaningful large-world geography
 
-That is a strong improvement over the older whole-world-shrunk presentation. But the current repo evidence still says more about legibility affordances than about actual play quality.
+But EGD still cannot point to stronger long-horizon patterns such as:
 
-Open experience-level questions remain:
+- stable population clusters
+- repeated collapse/recovery cycles visible at world scale
+- strong area-based competition pressure
+- clearly differentiated autonomous niches
 
-- does the larger viewport world feel satisfying to move through over time?
-- do offscreen awareness and minimap cues feel helpful rather than supervisory?
-- does the player actually perceive meaningful local decisions, or mostly observe a system?
-- does the larger world improve play, or only presentation?
+So the gap has narrowed from “no medium-term ecological differentiation” to “some medium-term differentiation exists, but it is still not enough to prove the larger ecosystem claim.”
 
-So the gap here is evaluation, not missing UI.
+### 4. The larger viewport and minimap now have a stronger systemic reason to exist
 
-### 5. Lineage is inspectable and embodied, but still not yet strategically central
+This is an important secondary consequence.
 
-The build now has:
+Earlier, the viewport improvements were mostly presentation gains:
+
+- player-follow camera
+- deadzone
+- minimap
+- offscreen awareness
+- heading cue
+
+Now that recovery pressure is region-sensitive, the larger world is not just more eye candy. It has a better systemic justification:
+
+- where the player and autonomous circles move matters more over time
+- different parts of the map can meaningfully differ in recovery pace
+
+That strengthens the coherence between the presentation layer and the world model.
+
+### 5. Lineage is still present but still not one of the strongest ecosystem drivers
+
+Nothing in this slice changes the earlier lineage conclusion.
+
+The build still has:
 
 - attached children as the authoritative child model
 - continuity through promoted children
-- lineage and generation
-- visible continuity cues
-- explicit identity for promoted, absorbed, paid, created, and contacted children
+- visible lineage and generation
+- explicit inspectability of child-driven events
 
-This is conceptually much stronger than earlier builds. But lineage still functions more as a continuity and inspectability layer than as a major strategic force in the ecosystem.
+But lineage still contributes more to continuity and local outcomes than to larger population patterns.
 
-What still seems thin:
+That means the distinctiveness of Living Circles still leans more on:
 
-- longer-term lineage advantage or disadvantage
-- lineage-level divergence
-- visible family persistence patterns that matter beyond immediate continuity
+- energy
+- shape semantics
+- continuity embodiment
 
-So lineage is no longer missing, but it still is not yet one of the strongest drivers of the ecosystem.
+than on truly strong lineage-driven ecology.
 
-### 6. The recent validation exposed and fixed a real authority/transport weakness
+### 6. Process quality remains strong: the repo is still catching real system issues during validation
 
-During the latest build validation, the integration suite surfaced a real concurrent websocket write bug around reset broadcasting. That was fixed by serializing writes per connection in the transport layer.
+The previous loop surfaced and fixed a websocket transport race during validation. This loop added a direct simulation-level test for regional regeneration timing and still passed the broader integration suite.
 
-This matters in EGD because it confirms something important:
+That is a positive signal:
 
-- the repo is now large and real enough that authority and transport behavior can fail in genre-relevant ways
-- integration validation is catching issues that pure local reasoning would miss
-
-That is a positive sign about process quality, even though it surfaced as a bug first.
+- the process is not only adding features
+- it is preserving authority, determinism, and regression discipline while the world model grows
 
 ## Secondary Findings
 
-- The default startup world now better supports the current fullscreen viewport presentation.
-- Deterministic seeding is doing useful work: the repo is gaining variety without giving up reset/test reproducibility.
-- The implementation summary still contains some outdated older bullets, so repo-memory compression could be improved even though the build itself is coherent.
+- The world now has a more credible relationship between large map scale and resource dynamics.
+- Deterministic seeding continues to be a strong design choice; it allows richer initial conditions without sacrificing reset/test repeatability.
+- The implementation summary still contains some stale older simplification bullets, so repo-memory compression remains a cleanup candidate.
 
 ## Main Expectation Gaps
 
-1. The system is now stronger at startup plausibility than at medium-term ecological consequence.
-2. Autonomy still appears heuristic-layered rather than deeply generative.
-3. Play quality is still more assumed than evaluated.
-4. Lineage is visible and inspectable, but not yet strongly consequential over longer horizons.
+1. The world now supports local recovery divergence, but still lacks clearer long-horizon population dynamics.
+2. Autonomy still appears mostly heuristic-layered rather than strongly niche-forming.
+3. Lineage remains visible and inspectable, but still not strongly consequential at ecosystem scale.
+4. Play quality is better supported by the model now, but still lightly evaluated as experience rather than just structure.
 
 ## Recommendation
 
-Return to `refine`, but avoid another startup-world slice immediately unless it directly creates medium-term ecological consequences.
+Return to `refine`, but stay in the medium-term consequence direction rather than returning to startup-world polish.
 
-The most promising next directions are:
+The strongest next directions are:
 
-1. a medium-term ecological pressure slice
-2. a population-dynamics evaluation slice
-3. a lineage-consequence slice
+1. a regional ecological pressure slice beyond food timing alone
+2. a longer-run evaluation slice for population dynamics
+3. a lineage-consequence slice only if you want distinctiveness over pure ecosystem pressure
 
 ## Best Next Slice Directions
 
-### Option A: Regional resource pressure
+### Option A: Regional crowding or energy pressure
 
-Introduce a localized resource or depletion rule that makes different areas of the larger world diverge meaningfully over time, not just at startup.
-
-Why this fits:
-
-- the world is now large enough for regions to matter
-- it would create medium-term consequence instead of only startup variety
-- it would test whether the larger world actually supports population dynamics
-
-### Option B: Population-dynamics evaluation slice
-
-Add a bounded evaluation artifact or scenario that observes the system for longer runs and records whether dominance, collapse, recovery, and continuity patterns actually appear.
+Extend the current local differentiation logic so crowded or overused areas become more energetically expensive beyond food recovery timing alone.
 
 Why this fits:
 
-- the startup world is now more credible
-- the next gap is increasingly about what the system does over time
-- this could reveal whether more behavior slices are needed or whether current rules are already sufficient
+- it builds on the new regional resource-pressure foundation
+- it would deepen area-level divergence over time
+- it could create stronger movement and settlement patterns without adding terrain systems
+
+### Option B: Longer-run population-dynamics evaluation
+
+Add a bounded evaluation artifact or scenario that observes the world over longer runs and records whether regional depletion, recovery, dominance, and continuity patterns actually emerge.
+
+Why this fits:
+
+- the system now has enough medium-term pressure to justify a more serious observation pass
+- the next uncertainty is increasingly empirical rather than purely structural
+- it can reveal whether more behavior slices are needed or whether the current rule set already produces enough variety
 
 ### Option C: Lineage consequence slice
 
-Make lineage matter more than continuity bookkeeping, for example by giving longer-lived or higher-generation lines some explicit ecological consequence.
+Make lineage matter more than continuity bookkeeping, for example through a bounded rule that gives longer-lived or higher-generation lines a meaningful ecological tradeoff or advantage.
 
 Why this fits:
 
-- lineage is already present and visible
-- it is still weaker than the model hypothesis suggests
-- this would increase distinctiveness relative to a more generic circle ecosystem
+- lineage is already deeply embodied and inspectable
+- it still feels weaker than the model hypothesis suggests
+- it would increase distinctiveness relative to a more generic resource-competition sandbox
 
 ## Return-To-Loop Recommendation
 
@@ -181,6 +181,6 @@ Recommended next phase: `refine`
 
 Recommended intent:
 
-- stop polishing startup variability for now
-- choose a slice that changes medium-term consequence, not only initial conditions
-- if uncertainty remains high, choose an evaluation slice before introducing another behavior layer
+- keep building toward medium-term consequence, not startup variety
+- prefer either regional ecological pressure or a longer-run evaluation slice
+- only switch to lineage consequence next if distinctiveness is now more important than broader ecosystem dynamics
