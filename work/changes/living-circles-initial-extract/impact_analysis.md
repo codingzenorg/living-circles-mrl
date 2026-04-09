@@ -4095,3 +4095,18 @@ That points to a bounded measurement slice:
 - compare several explicit passive client counts under the same deterministic world and window
 - record aggregate bytes/sec, per-client bytes/sec, and cadence pressure at each count
 - leave protocol shape and gameplay behavior unchanged
+## Pressure: Idle Observer Transport Cadence Reduction
+
+The passive fanout ladder now makes the strongest remaining transport pressure explicit: aggregate output scales almost linearly with passive client count while per-client cost stays flat and bounded. That means broad passive fanout itself is now the clearest optimization target.
+
+The new pressure is:
+
+- reduce passive observer fanout without harming the active player path
+- target cadence rather than snapshot shape, since the shape has already been optimized several times
+- preserve the current contract while differentiating active and passive connection behavior
+
+That points to a bounded transport slice:
+
+- keep active clients at the current cadence
+- lower the cadence for passive observers with no recent movement intent
+- measure the passive fanout ladder again after the change
