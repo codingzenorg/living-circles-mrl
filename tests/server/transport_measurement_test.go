@@ -372,6 +372,36 @@ func TestViewportTransportSnapshotKeepsMinimapOrientationWhileCullingLocalDetail
 	}
 }
 
+func TestObserverTransportSnapshotKeepsOrientationWhileOmittingLocalDetail(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+	transportSnapshot := transport.BuildObserverSnapshot(fullSnapshot, true)
+
+	if transportSnapshot.TransportMode != "observer_orientation_only" {
+		t.Fatalf("expected observer transport mode, got %+v", transportSnapshot)
+	}
+	if transportSnapshot.Player != nil {
+		t.Fatalf("expected observer snapshot to omit player detail, got %+v", transportSnapshot.Player)
+	}
+	if len(transportSnapshot.AutonomousCircles) != 0 {
+		t.Fatalf("expected observer snapshot to omit local autonomous detail, got %d", len(transportSnapshot.AutonomousCircles))
+	}
+	if len(transportSnapshot.Foods) != 0 {
+		t.Fatalf("expected observer snapshot to omit local food detail, got %d", len(transportSnapshot.Foods))
+	}
+	if transportSnapshot.FoodsFresh {
+		t.Fatalf("expected observer snapshot foods_fresh to be false, got %+v", transportSnapshot)
+	}
+	if !transportSnapshot.OrientationFresh {
+		t.Fatalf("expected observer snapshot orientation to remain fresh, got %+v", transportSnapshot)
+	}
+	if len(transportSnapshot.MinimapAutonomousCircles) == 0 {
+		t.Fatalf("expected observer snapshot to retain minimap autonomous summaries, got %+v", transportSnapshot)
+	}
+	if len(transportSnapshot.MinimapFoods) == 0 {
+		t.Fatalf("expected observer snapshot to retain minimap food summaries, got %+v", transportSnapshot)
+	}
+}
+
 func TestViewportTransportSnapshotReducesMeasuredPayloadBelowFullSnapshotBaseline(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
 	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot, true)

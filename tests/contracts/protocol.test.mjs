@@ -22,7 +22,8 @@ test("world snapshot schema remains explicit and parseable", async () => {
   const schema = JSON.parse(file);
 
   assert.equal(schema.properties.type.const, MESSAGE_TYPES.worldSnapshot);
-  assert.deepEqual(schema.required, ["type", "tick", "world", "player", "autonomous_circles", "interaction", "foods", "foods_fresh", "orientation_fresh", "total_autonomous_circles", "total_foods"]);
+  assert.deepEqual(schema.required, ["type", "transport_mode", "tick", "world", "player", "autonomous_circles", "interaction", "foods", "foods_fresh", "orientation_fresh", "total_autonomous_circles", "total_foods"]);
+  assert.deepEqual(schema.properties.transport_mode.enum, ["active_local_detail", "observer_orientation_only"]);
   assert.deepEqual(schema.properties.player.anyOf[1].required, ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "attached_children"]);
   assert.deepEqual(schema.properties.autonomous_circles.items.required, ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "attached_children"]);
   assert.deepEqual(schema.properties.minimap_autonomous_circles.anyOf[0].items.required, ["shape", "x", "y", "count"]);

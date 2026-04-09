@@ -73,6 +73,10 @@ function childCount(circle) {
   return circle.attached_children.length;
 }
 
+function isObserverTransport(snapshot) {
+  return snapshot.transport_mode === "observer_orientation_only";
+}
+
 function minimapAutonomousCircles(snapshot) {
   return snapshot.minimap_autonomous_circles ?? cachedMinimapAutonomousCircles ?? snapshot.autonomous_circles;
 }
@@ -383,6 +387,18 @@ function renderEventLog() {
 }
 
 function renderPlayerCard(player, pressure, foodState) {
+  if (player === "observer") {
+    playerCardNode.innerHTML = `
+      <div class="player-stat">
+        <div class="player-identity">
+          <span class="player-name">Observer</span>
+          <span class="player-state">orientation-only</span>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
   if (!player) {
     playerCardNode.innerHTML = `
       <div class="player-stat">
@@ -563,6 +579,7 @@ function cameraRect(snapshot, viewport) {
 }
 
 function draw(snapshot) {
+  const observerTransport = isObserverTransport(snapshot);
   const foods = localFoods(snapshot);
   const circles = snapshot.player ? [snapshot.player, ...snapshot.autonomous_circles] : [...snapshot.autonomous_circles];
   const playerFoodPressure = snapshot.player ? foodPressureAt(snapshot.player, foods) : null;
@@ -624,8 +641,13 @@ function draw(snapshot) {
     energyNode.textContent = `${displayName(snapshot.player.id)}`;
     renderPlayerCard(snapshot.player, pressure, foodState);
   } else {
-    energyNode.textContent = "defeated";
-    renderPlayerCard(null, "", "");
+    if (observerTransport) {
+      energyNode.textContent = "observer";
+      renderPlayerCard("observer", "", "");
+    } else {
+      energyNode.textContent = "defeated";
+      renderPlayerCard(null, "", "");
+    }
   }
 
   renderNpcCard(snapshot.autonomous_circles);
@@ -1140,7 +1162,9 @@ function connect() {
       snapshot.minimap_autonomous_circles = cachedMinimapAutonomousCircles;
       snapshot.minimap_foods = cachedMinimapFoods;
     }
-    if (snapshot.foods_fresh ?? true) {
+    if (isObserverTransport(snapshot)) {
+      snapshot.foods = [];
+    } else if (snapshot.foods_fresh ?? true) {
       cachedLocalFoods = snapshot.foods ?? [];
     } else {
       snapshot.foods = cachedLocalFoods;

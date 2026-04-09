@@ -33,6 +33,7 @@ type MinimapFood struct {
 }
 
 type Snapshot struct {
+	TransportMode            string                                `json:"transport_mode"`
 	Type                     string                                `json:"type"`
 	Tick                     int64                                 `json:"tick"`
 	World                    simulation.Bounds                     `json:"world"`
@@ -50,6 +51,16 @@ type Snapshot struct {
 
 func BuildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
 	return buildViewportSnapshot(snapshot, includeOrientation, true, true)
+}
+
+func BuildObserverSnapshot(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
+	observerSnapshot := buildViewportSnapshot(snapshot, includeOrientation, true, true)
+	observerSnapshot.TransportMode = "observer_orientation_only"
+	observerSnapshot.Player = nil
+	observerSnapshot.AutonomousCircles = []simulation.AutonomousCircle{}
+	observerSnapshot.Foods = []simulation.Food{}
+	observerSnapshot.FoodsFresh = false
+	return observerSnapshot
 }
 
 func BuildViewportSnapshotExactOrientation(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
@@ -241,6 +252,7 @@ func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 	}
 
 	return Snapshot{
+		TransportMode:            "active_local_detail",
 		Type:                     snapshot.Type,
 		Tick:                     snapshot.Tick,
 		World:                    snapshot.World,

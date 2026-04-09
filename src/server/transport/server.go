@@ -210,25 +210,30 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 }
 
 func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot, force bool) {
-	orientationSnapshot := BuildViewportSnapshot(snapshot, true)
-	orientationSignature := OrientationSummarySignature(orientationSnapshot)
-	foodSignature := LocalFoodSignature(orientationSnapshot)
+	activeSnapshot := BuildViewportSnapshot(snapshot, true)
+	observerSnapshot := BuildObserverSnapshot(snapshot, true)
+	orientationSignature := OrientationSummarySignature(activeSnapshot)
+	foodSignature := LocalFoodSignature(activeSnapshot)
 	includeOrientation := s.shouldRefreshOrientation(snapshot.Tick, orientationSignature)
 	includeFoods := s.shouldRefreshFoods(snapshot.Tick, foodSignature)
 
-	transportSnapshot := orientationSnapshot
+	activeTransportSnapshot := activeSnapshot
+	observerTransportSnapshot := observerSnapshot
 	if !includeOrientation {
-		transportSnapshot.OrientationFresh = false
-		transportSnapshot.MinimapAutonomousCircles = nil
-		transportSnapshot.MinimapFoods = nil
+		activeTransportSnapshot.OrientationFresh = false
+		activeTransportSnapshot.MinimapAutonomousCircles = nil
+		activeTransportSnapshot.MinimapFoods = nil
+		observerTransportSnapshot.OrientationFresh = false
+		observerTransportSnapshot.MinimapAutonomousCircles = nil
+		observerTransportSnapshot.MinimapFoods = nil
 	} else {
-		s.recordOrientationRefresh(orientationSnapshot)
+		s.recordOrientationRefresh(activeSnapshot)
 	}
 	if !includeFoods {
-		transportSnapshot.FoodsFresh = false
-		transportSnapshot.Foods = nil
+		activeTransportSnapshot.FoodsFresh = false
+		activeTransportSnapshot.Foods = nil
 	} else {
-		s.recordFoodRefresh(orientationSnapshot)
+		s.recordFoodRefresh(activeSnapshot)
 	}
 
 	s.recordBroadcastTick(snapshot.Tick)
@@ -244,6 +249,10 @@ func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot, force bool) {
 	for _, connection := range connections {
 		if !connection.ShouldReceiveSnapshot(snapshot.Tick, reducePassiveCadence, force) {
 			continue
+		}
+		transportSnapshot := activeTransportSnapshot
+		if reducePassiveCadence && !connection.IsActiveAtTick(snapshot.Tick) {
+			transportSnapshot = observerTransportSnapshot
 		}
 		if err := connection.WriteJSON(transportSnapshot); err != nil {
 			if !errors.Is(err, websocket.ErrCloseSent) {

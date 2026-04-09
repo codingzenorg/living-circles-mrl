@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_idle_observer_transport_cadence_reduction.md`
+`docs/slices/initial_idle_observer_orientation_only_transport.md`
 
 ## Implemented Shape
 
@@ -375,3 +375,12 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - `8` clients: `51504` aggregate bytes, about `171680` bytes/sec, `300ms` max gap, `16` snapshots
 - under this bounded ladder, passive aggregate fanout now drops by roughly half at `4` and `8` clients while keeping single-client cadence unchanged
 - deterministic mixed `4`-client pressure with one active steering client over `300ms` now measures `32284` aggregate bytes across `10` snapshots, about `107613` aggregate bytes/sec and about `26903` bytes/sec/client, with the active client receiving `4` snapshots while each passive observer receives `2`
+- passive multi-client observers now receive an explicit `observer_orientation_only` transport mode instead of the active local-detail view
+- observer-oriented snapshots keep world bounds, totals, interaction state, and minimap orientation summaries, while omitting local player, autonomous, and food detail
+- active snapshots keep the existing `active_local_detail` transport mode and unchanged local-detail path
+- deterministic passive fanout scaling over `300ms` with observer-oriented snapshots now measures:
+  - `1` client: `13132` aggregate bytes, about `43773` bytes/sec, `100ms` max gap, `4` snapshots
+  - `4` clients: `22988` aggregate bytes, about `76627` bytes/sec, `301ms` max gap, `8` snapshots
+  - `8` clients: `45976` aggregate bytes, about `153253` bytes/sec, `301ms` max gap, `16` snapshots
+- under this bounded ladder, orientation-only passive snapshots cut the current post-cadence `4`-client passive baseline from `25752` aggregate bytes to `22988`, and the `8`-client passive baseline from `51504` to `45976`
+- deterministic mixed `4`-client pressure with one active steering client over `300ms` now measures `30370` aggregate bytes across `10` snapshots, about `101233` aggregate bytes/sec and about `25308` bytes/sec/client, with the active client receiving `4` snapshots while each passive observer receives `2`

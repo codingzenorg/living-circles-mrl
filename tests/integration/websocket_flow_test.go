@@ -457,6 +457,126 @@ func TestActiveClientKeepsHigherCadenceThanPassiveObserver(t *testing.T) {
 	}
 }
 
+func TestPassiveObserverReceivesOrientationOnlyTransportAndReactivates(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSession())
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	passiveConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial passive websocket: %v", err)
+	}
+	defer passiveConnection.Close()
+
+	activeConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial active websocket: %v", err)
+	}
+	defer activeConnection.Close()
+
+	var passiveInitial transport.Snapshot
+	if err := passiveConnection.ReadJSON(&passiveInitial); err != nil {
+		t.Fatalf("read passive initial snapshot: %v", err)
+	}
+	var activeInitial transport.Snapshot
+	if err := activeConnection.ReadJSON(&activeInitial); err != nil {
+		t.Fatalf("read active initial snapshot: %v", err)
+	}
+	if activeInitial.TransportMode != "active_local_detail" {
+		t.Fatalf("expected active initial transport mode, got %+v", activeInitial)
+	}
+
+	movementTicker := time.NewTicker(transport.DefaultTickEvery)
+	defer movementTicker.Stop()
+	stopSending := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stopSending:
+				return
+			case <-movementTicker.C:
+				_ = activeConnection.WriteJSON(map[string]any{
+					"type": "movement_intent",
+					"direction": map[string]float64{
+						"x": 1,
+						"y": 0,
+					},
+				})
+			}
+		}
+	}()
+	defer close(stopSending)
+
+	_ = passiveConnection.SetReadDeadline(time.Now().Add(2 * time.Second))
+	for {
+		var passiveSnapshot transport.Snapshot
+		if err := passiveConnection.ReadJSON(&passiveSnapshot); err != nil {
+			t.Fatalf("read passive snapshot: %v", err)
+		}
+
+		if passiveSnapshot.Tick == 0 {
+			continue
+		}
+
+		if passiveSnapshot.TransportMode != "observer_orientation_only" {
+			t.Fatalf("expected observer transport mode, got %+v", passiveSnapshot)
+		}
+		if passiveSnapshot.Player != nil {
+			t.Fatalf("expected observer snapshot to omit player detail, got %+v", passiveSnapshot.Player)
+		}
+		if len(passiveSnapshot.AutonomousCircles) != 0 {
+			t.Fatalf("expected observer snapshot to omit autonomous detail, got %d", len(passiveSnapshot.AutonomousCircles))
+		}
+		if len(passiveSnapshot.Foods) != 0 {
+			t.Fatalf("expected observer snapshot to omit food detail, got %d", len(passiveSnapshot.Foods))
+		}
+		if len(passiveSnapshot.MinimapAutonomousCircles) == 0 || len(passiveSnapshot.MinimapFoods) == 0 {
+			t.Fatalf("expected observer snapshot to keep orientation summaries, got %+v", passiveSnapshot)
+		}
+		break
+	}
+
+	if err := passiveConnection.WriteJSON(map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 0,
+			"y": 1,
+		},
+	}); err != nil {
+		t.Fatalf("write passive movement intent: %v", err)
+	}
+
+	_ = passiveConnection.SetReadDeadline(time.Now().Add(2 * time.Second))
+	for {
+		var resumedSnapshot transport.Snapshot
+		if err := passiveConnection.ReadJSON(&resumedSnapshot); err != nil {
+			t.Fatalf("read resumed snapshot: %v", err)
+		}
+
+		if resumedSnapshot.Tick == 0 {
+			continue
+		}
+
+		if resumedSnapshot.TransportMode != "active_local_detail" {
+			continue
+		}
+		if resumedSnapshot.Player == nil {
+			t.Fatalf("expected resumed active snapshot to restore player detail, got %+v", resumedSnapshot)
+		}
+		if len(resumedSnapshot.AutonomousCircles) == 0 {
+			t.Fatalf("expected resumed active snapshot to restore local autonomous detail, got %+v", resumedSnapshot)
+		}
+		return
+	}
+}
+
 func TestClientReceivesCrowdingAwareAutonomousSteering(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		WorldWidth:                          1000,

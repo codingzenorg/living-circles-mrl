@@ -4,10 +4,13 @@
   "title": "WorldSnapshot",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "tick", "world", "player", "autonomous_circles", "interaction", "foods", "foods_fresh", "orientation_fresh", "total_autonomous_circles", "total_foods"],
+  "required": ["type", "transport_mode", "tick", "world", "player", "autonomous_circles", "interaction", "foods", "foods_fresh", "orientation_fresh", "total_autonomous_circles", "total_foods"],
   "properties": {
     "type": {
       "const": "world_snapshot"
+    },
+    "transport_mode": {
+      "enum": ["active_local_detail", "observer_orientation_only"]
     },
     "tick": {
       "type": "integer",
