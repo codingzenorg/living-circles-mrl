@@ -341,6 +341,7 @@ The slice needed these implementation choices not fully specified in the refined
 - the expanded default world now preserves the existing aspect ratio at approximately `10x` the previous total area, while keeping the viewport/minimap model unchanged and increasing the seeded expanded startup population baseline to avoid obvious emptiness
 - orientation refresh transport is now driven by deterministic compact-summary change plus a slower fallback interval, instead of a fixed short cadence alone
 - local viewport food transport is now driven by visible-food change plus a slower fallback interval, while local circle detail still arrives every tick
+- passive observer transport now refreshes on observer-relevant change plus a slower fallback interval, instead of resending the same observer-oriented snapshot whenever the passive cadence timer alone elapses
 - the repository now includes a deterministic multi-client websocket measurement harness for aggregate bytes/sec, per-client bytes/sec, aggregate snapshot count, and observed inter-snapshot gap under bounded local load
 - the multi-client transport harness now also compares deterministic idle and moving-client runs so active-play pressure can be distinguished from passive observer fanout
 - the multi-client transport harness now also measures passive client-count fanout scaling across an explicit count ladder
@@ -384,3 +385,9 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - `8` clients: `45976` aggregate bytes, about `153253` bytes/sec, `301ms` max gap, `16` snapshots
 - under this bounded ladder, orientation-only passive snapshots cut the current post-cadence `4`-client passive baseline from `25752` aggregate bytes to `22988`, and the `8`-client passive baseline from `51504` to `45976`
 - deterministic mixed `4`-client pressure with one active steering client over `300ms` now measures `30370` aggregate bytes across `10` snapshots, about `101233` aggregate bytes/sec and about `25308` bytes/sec/client, with the active client receiving `4` snapshots while each passive observer receives `2`
+- deterministic passive fanout scaling over `300ms` with event-driven calm observer refresh now measures:
+  - `1` client: `13132` aggregate bytes, about `43773` bytes/sec, `101ms` max gap, `4` snapshots
+  - `4` clients: `13336` aggregate bytes, about `44453` bytes/sec, `0ms` max gap, `4` snapshots
+  - `8` clients: `26672` aggregate bytes, about `88907` bytes/sec, `0ms` max gap, `8` snapshots
+- under this bounded calm ladder, event-driven observer refresh reduces the `4`-client passive baseline from `22988` aggregate bytes to `13336`, and the `8`-client passive baseline from `45976` to `26672`
+- deterministic mixed `4`-client pressure with one active steering client over `300ms` now measures `23131` aggregate bytes across `7` snapshots, about `77103` aggregate bytes/sec and about `19276` bytes/sec/client, with the active client receiving `4` snapshots while each passive observer receives `1`

@@ -449,8 +449,8 @@ func TestActiveClientKeepsHigherCadenceThanPassiveObserver(t *testing.T) {
 	if passiveSnapshots >= activeSnapshots {
 		t.Fatalf("expected active cadence to exceed passive cadence, passive=%d active=%d", passiveSnapshots, activeSnapshots)
 	}
-	if passiveSnapshots < 1 {
-		t.Fatalf("expected passive observer to still receive snapshots, got passive=%d active=%d", passiveSnapshots, activeSnapshots)
+	if passiveSnapshots > 1 {
+		t.Fatalf("expected calm passive observer to receive at most one extra snapshot in the short window, got passive=%d active=%d", passiveSnapshots, activeSnapshots)
 	}
 	if activeSnapshots < 3 {
 		t.Fatalf("expected resumed active client to receive near-full cadence, got passive=%d active=%d", passiveSnapshots, activeSnapshots)
@@ -572,6 +572,57 @@ func TestPassiveObserverReceivesOrientationOnlyTransportAndReactivates(t *testin
 		}
 		if len(resumedSnapshot.AutonomousCircles) == 0 {
 			t.Fatalf("expected resumed active snapshot to restore local autonomous detail, got %+v", resumedSnapshot)
+		}
+		return
+	}
+}
+
+func TestPassiveObserverFallsBackAfterCalmObserverWindow(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSession())
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	passiveConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial passive websocket: %v", err)
+	}
+	defer passiveConnection.Close()
+
+	anchorConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial anchor websocket: %v", err)
+	}
+	defer anchorConnection.Close()
+
+	if _, _, err := passiveConnection.ReadMessage(); err != nil {
+		t.Fatalf("read passive initial snapshot: %v", err)
+	}
+	if _, _, err := anchorConnection.ReadMessage(); err != nil {
+		t.Fatalf("read anchor initial snapshot: %v", err)
+	}
+
+	_ = passiveConnection.SetReadDeadline(time.Now().Add(1500 * time.Millisecond))
+	for {
+		var fallbackSnapshot transport.Snapshot
+		if err := passiveConnection.ReadJSON(&fallbackSnapshot); err != nil {
+			t.Fatalf("read fallback observer snapshot: %v", err)
+		}
+
+		if fallbackSnapshot.TransportMode != "observer_orientation_only" {
+			t.Fatalf("expected fallback observer transport mode, got %+v", fallbackSnapshot)
+		}
+		if len(fallbackSnapshot.MinimapAutonomousCircles) == 0 || len(fallbackSnapshot.MinimapFoods) == 0 {
+			t.Fatalf("expected fallback observer snapshot to keep orientation summaries, got %+v", fallbackSnapshot)
+		}
+		if fallbackSnapshot.Tick < transport.DefaultObserverFallbackTicks {
+			continue
 		}
 		return
 	}

@@ -16,6 +16,7 @@ const (
 	DefaultOrientationEveryTicks    = int64(5)
 	DefaultOrientationFallbackTicks = int64(20)
 	DefaultLocalFoodFallbackTicks   = int64(20)
+	DefaultObserverFallbackTicks    = int64(12)
 	DefaultMinimapClusterSize       = 480.0
 )
 
@@ -100,6 +101,27 @@ func OrientationSummarySignature(snapshot Snapshot) string {
 	return builder.String()
 }
 
+func ObserverTransportSignature(snapshot Snapshot) string {
+	var builder strings.Builder
+	builder.WriteString(snapshot.TransportMode)
+	builder.WriteByte('|')
+	if snapshot.Interaction == nil {
+		builder.WriteString("no-interaction")
+		return builder.String()
+	}
+
+	builder.WriteString(snapshot.Interaction.Kind)
+	builder.WriteByte(':')
+	builder.WriteString(snapshot.Interaction.SourceID)
+	builder.WriteByte(':')
+	builder.WriteString(snapshot.Interaction.TargetID)
+	builder.WriteByte(':')
+	builder.WriteString(snapshot.Interaction.ContactOrigin)
+	builder.WriteByte(':')
+	builder.WriteString(snapshot.Interaction.ContactPathKind)
+	return builder.String()
+}
+
 func ShouldRefreshOrientation(lastSignature string, lastRefreshTick, currentTick int64, currentSignature string) bool {
 	if currentTick <= lastRefreshTick {
 		return true
@@ -111,6 +133,19 @@ func ShouldRefreshOrientation(lastSignature string, lastRefreshTick, currentTick
 		return true
 	}
 	return currentTick-lastRefreshTick >= DefaultOrientationFallbackTicks
+}
+
+func ShouldRefreshObserverTransport(lastSignature string, lastRefreshTick, currentTick int64, currentSignature string) bool {
+	if currentTick <= lastRefreshTick {
+		return true
+	}
+	if lastSignature == "" {
+		return true
+	}
+	if currentSignature != lastSignature {
+		return true
+	}
+	return currentTick-lastRefreshTick >= DefaultObserverFallbackTicks
 }
 
 func LocalFoodSignature(snapshot Snapshot) string {

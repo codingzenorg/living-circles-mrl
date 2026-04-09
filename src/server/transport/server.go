@@ -89,6 +89,8 @@ type Server struct {
 	conns               map[*websocket.Conn]*clientConnection
 	lastOrientationSig  string
 	lastOrientationTick int64
+	lastObserverSig     string
+	lastObserverTick    int64
 	lastFoodSig         string
 	lastFoodTick        int64
 	lastBroadcastTick   int64
@@ -154,7 +156,8 @@ func (s *Server) handleWebSocket(writer http.ResponseWriter, request *http.Reque
 	}
 
 	client := s.addConnection(connection)
-	transportSnapshot := BuildViewportSnapshot(s.session.Snapshot(), true)
+	snapshot := s.session.Snapshot()
+	transportSnapshot := BuildViewportSnapshot(snapshot, true)
 	if err := client.WriteJSON(transportSnapshot); err != nil {
 		s.removeConnection(connection)
 		_ = client.Close()
@@ -162,6 +165,7 @@ func (s *Server) handleWebSocket(writer http.ResponseWriter, request *http.Reque
 	}
 	s.recordOrientationRefresh(transportSnapshot)
 	s.recordFoodRefresh(transportSnapshot)
+	s.recordObserverRefresh(BuildObserverSnapshot(snapshot, true))
 
 	go s.readMessages(connection)
 }
@@ -206,6 +210,7 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 	transportSnapshot := BuildViewportSnapshot(snapshot, true)
 	s.recordOrientationRefresh(transportSnapshot)
 	s.recordFoodRefresh(transportSnapshot)
+	s.recordObserverRefresh(BuildObserverSnapshot(snapshot, true))
 	_ = json.NewEncoder(writer).Encode(transportSnapshot)
 }
 
@@ -213,8 +218,10 @@ func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot, force bool) {
 	activeSnapshot := BuildViewportSnapshot(snapshot, true)
 	observerSnapshot := BuildObserverSnapshot(snapshot, true)
 	orientationSignature := OrientationSummarySignature(activeSnapshot)
+	observerSignature := ObserverTransportSignature(observerSnapshot)
 	foodSignature := LocalFoodSignature(activeSnapshot)
 	includeOrientation := s.shouldRefreshOrientation(snapshot.Tick, orientationSignature)
+	includeObserver := s.shouldRefreshObserver(snapshot.Tick, observerSignature)
 	includeFoods := s.shouldRefreshFoods(snapshot.Tick, foodSignature)
 
 	activeTransportSnapshot := activeSnapshot
@@ -252,6 +259,10 @@ func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot, force bool) {
 		}
 		transportSnapshot := activeTransportSnapshot
 		if reducePassiveCadence && !connection.IsActiveAtTick(snapshot.Tick) {
+			if !includeObserver && !force {
+				continue
+			}
+			s.recordObserverRefresh(observerTransportSnapshot)
 			transportSnapshot = observerTransportSnapshot
 		}
 		if err := connection.WriteJSON(transportSnapshot); err != nil {
@@ -327,6 +338,12 @@ func (s *Server) shouldRefreshFoods(currentTick int64, currentSignature string) 
 	return ShouldRefreshLocalFoods(s.lastFoodSig, s.lastFoodTick, currentTick, currentSignature)
 }
 
+func (s *Server) shouldRefreshObserver(currentTick int64, currentSignature string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return ShouldRefreshObserverTransport(s.lastObserverSig, s.lastObserverTick, currentTick, currentSignature)
+}
+
 func (s *Server) recordFoodRefresh(snapshot Snapshot) {
 	if !snapshot.FoodsFresh {
 		return
@@ -336,4 +353,11 @@ func (s *Server) recordFoodRefresh(snapshot Snapshot) {
 	defer s.mu.Unlock()
 	s.lastFoodSig = LocalFoodSignature(snapshot)
 	s.lastFoodTick = snapshot.Tick
+}
+
+func (s *Server) recordObserverRefresh(snapshot Snapshot) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastObserverSig = ObserverTransportSignature(snapshot)
+	s.lastObserverTick = snapshot.Tick
 }

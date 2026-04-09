@@ -3,7 +3,10 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http/httptest"
 	"strings"
 	"sync"
@@ -103,9 +106,6 @@ func MeasureMultiClientTransportWithConfig(session *simulation.Session, config M
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
-	go func() {
-		done <- server.Run(ctx)
-	}()
 
 	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
 
@@ -118,57 +118,81 @@ func MeasureMultiClientTransportWithConfig(session *simulation.Session, config M
 	}
 
 	results := make(chan clientResult, config.ClientCount)
-	var waitGroup sync.WaitGroup
+	type connectedClient struct {
+		index      int
+		connection *websocket.Conn
+		bytesRead  int
+		snapshots  int
+		lastReadAt time.Time
+	}
+	clients := make([]connectedClient, 0, config.ClientCount)
 
 	for clientIndex := range config.ClientCount {
+		connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+		if err != nil {
+			return MultiClientTransportMeasurement{}, err
+		}
+
+		_, payload, err := connection.ReadMessage()
+		if err != nil {
+			_ = connection.Close()
+			return MultiClientTransportMeasurement{}, err
+		}
+
+		clients = append(clients, connectedClient{
+			index:      clientIndex,
+			connection: connection,
+			bytesRead:  len(payload),
+			snapshots:  1,
+			lastReadAt: time.Now(),
+		})
+	}
+
+	go func() {
+		done <- server.Run(ctx)
+	}()
+
+	var waitGroup sync.WaitGroup
+	for _, client := range clients {
 		waitGroup.Add(1)
-		go func(index int) {
+		go func(client connectedClient) {
 			defer waitGroup.Done()
+			defer client.connection.Close()
 
-			connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
-			if err != nil {
-				results <- clientResult{index: index, err: err}
-				return
-			}
-			defer connection.Close()
-
-			if err := connection.SetReadDeadline(time.Now().Add(config.Window + time.Second)); err != nil {
-				results <- clientResult{index: index, err: err}
+			if err := client.connection.SetReadDeadline(time.Now().Add(config.Window + time.Second)); err != nil {
+				results <- clientResult{index: client.index, err: err}
 				return
 			}
 
 			stopSending := make(chan struct{})
-			if index < config.MovingClientCount {
-				if err := sendMovementIntent(connection, direction); err != nil {
-					results <- clientResult{index: index, err: err}
+			if client.index < config.MovingClientCount {
+				if err := sendMovementIntent(client.connection, direction); err != nil {
+					results <- clientResult{index: client.index, err: err}
 					return
 				}
-				go keepSendingMovementIntent(stopSending, connection, direction)
+				go keepSendingMovementIntent(stopSending, client.connection, direction)
 			}
 			defer close(stopSending)
 
-			bytesRead := 0
-			snapshotsRead := 0
+			bytesRead := client.bytesRead
+			snapshotsRead := client.snapshots
 			maxGap := time.Duration(0)
-			var lastSnapshotAt time.Time
-			expectedSnapshots := expectedPassiveObserverSnapshots(expectedTicks, config.ClientCount > 1)
-			if index < config.MovingClientCount {
-				expectedSnapshots = expectedTicks + 1
-			}
+			lastSnapshotAt := client.lastReadAt
 
-			for range expectedSnapshots {
-				_, payload, err := connection.ReadMessage()
+			for {
+				_, payload, err := client.connection.ReadMessage()
 				if err != nil {
-					results <- clientResult{index: index, err: err}
+					if isReadTimeout(err) || isClosedConnection(err) {
+						break
+					}
+					results <- clientResult{index: client.index, err: err}
 					return
 				}
 
 				now := time.Now()
-				if !lastSnapshotAt.IsZero() {
-					gap := now.Sub(lastSnapshotAt)
-					if gap > maxGap {
-						maxGap = gap
-					}
+				gap := now.Sub(lastSnapshotAt)
+				if gap > maxGap {
+					maxGap = gap
 				}
 				lastSnapshotAt = now
 
@@ -177,17 +201,19 @@ func MeasureMultiClientTransportWithConfig(session *simulation.Session, config M
 			}
 
 			results <- clientResult{
-				index:               index,
+				index:               client.index,
 				bytes:               bytesRead,
 				snapshots:           snapshotsRead,
 				maxInterSnapshotGap: maxGap,
 			}
-		}(clientIndex)
+		}(client)
 	}
 
-	waitGroup.Wait()
+	waitUntilTick(session, int64(expectedTicks), config.Window+time.Second)
+
 	cancel()
 	<-done
+	waitGroup.Wait()
 
 	measurement := MultiClientTransportMeasurement{
 		ClientCount:        config.ClientCount,
@@ -240,19 +266,27 @@ func keepSendingMovementIntent(stop <-chan struct{}, connection *websocket.Conn,
 	}
 }
 
-func expectedPassiveObserverSnapshots(expectedTicks int, reducePassiveCadence bool) int {
-	if !reducePassiveCadence {
-		return expectedTicks + 1
-	}
+func isReadTimeout(err error) bool {
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
+}
 
-	snapshots := 1
-	for tick := 1; tick <= expectedTicks; tick++ {
-		if tick%int(DefaultPassiveObserverCadenceTicks) == 0 {
-			snapshots++
+func isClosedConnection(err error) bool {
+	var closeErr *websocket.CloseError
+	return websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) ||
+		errors.As(err, &closeErr) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, io.EOF)
+}
+
+func waitUntilTick(session *simulation.Session, targetTick int64, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if session.Snapshot().Tick >= targetTick {
+			return
 		}
+		time.Sleep(time.Millisecond)
 	}
-
-	return snapshots
 }
 
 func MeasureClientCountFanoutScaling(sessionFactory func() *simulation.Session, clientCounts []int, window time.Duration) (FanoutScalingMeasurement, error) {

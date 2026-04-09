@@ -92,8 +92,8 @@ func TestMultiClientTransportMeasurementIsDeterministic(t *testing.T) {
 	if first.AggregateBytes != second.AggregateBytes {
 		t.Fatalf("expected deterministic aggregate bytes, first=%+v second=%+v", first, second)
 	}
-	if first.MaxInterSnapshotGap <= 0 {
-		t.Fatalf("expected positive max inter-snapshot gap, got %+v", first)
+	if first.AggregateSnapshots > first.ClientCount && first.MaxInterSnapshotGap <= 0 {
+		t.Fatalf("expected positive max inter-snapshot gap once repeated snapshots exist, got %+v", first)
 	}
 }
 
@@ -137,8 +137,8 @@ func TestPassiveObserverTransportMeasurementReducesSnapshotCadence(t *testing.T)
 		}
 	}
 	for index, snapshots := range measurement.PerClientSnapshots {
-		if snapshots < 2 {
-			t.Fatalf("expected passive observer %d to remain orienting and useful, got %+v", index, measurement)
+		if snapshots != 1 {
+			t.Fatalf("expected calm passive observer %d to keep only the initial snapshot inside the bounded window, got %+v", index, measurement)
 		}
 	}
 }
@@ -168,6 +168,12 @@ func TestMultiClientTransportMeasurementReportsTickPressureSignal(t *testing.T) 
 
 	if measurement.ExpectedTickEvery != transport.DefaultTickEvery {
 		t.Fatalf("expected tick cadence %v, got %+v", transport.DefaultTickEvery, measurement)
+	}
+	if measurement.AggregateSnapshots == measurement.ClientCount {
+		if measurement.MaxInterSnapshotGap != 0 {
+			t.Fatalf("expected calm passive observer measurement to report no inter-snapshot gap, got %+v", measurement)
+		}
+		return
 	}
 	if measurement.MaxInterSnapshotGap < measurement.ExpectedTickEvery {
 		t.Fatalf("expected max inter-snapshot gap %v to be at least one tick interval %v", measurement.MaxInterSnapshotGap, measurement.ExpectedTickEvery)
@@ -306,6 +312,12 @@ func TestClientCountFanoutScalingKeepsPerClientPressureInterpretable(t *testing.
 	for _, measurement := range scaling.Measurements {
 		if measurement.ApproxPerClientBytesPerSec <= 0 {
 			t.Fatalf("expected per-client bytes/sec to stay positive, got %+v", measurement)
+		}
+		if measurement.AggregateSnapshots == measurement.ClientCount {
+			if measurement.MaxInterSnapshotGap != 0 {
+				t.Fatalf("expected calm passive scaling measurement to report no inter-snapshot gap, got %+v", measurement)
+			}
+			continue
 		}
 		if measurement.MaxInterSnapshotGap < measurement.ExpectedTickEvery {
 			t.Fatalf("expected max gap %v to be at least one tick interval %v", measurement.MaxInterSnapshotGap, measurement.ExpectedTickEvery)
@@ -530,6 +542,48 @@ func TestOrientationRefreshPolicyTriggersOnCompactSummaryChange(t *testing.T) {
 	}
 }
 
+func TestObserverTransportRefreshPolicySkipsUnchangedSummaryAndFallsBackLater(t *testing.T) {
+	fullSnapshot := simulation.NewSession().Snapshot()
+	observerSnapshot := transport.BuildObserverSnapshot(fullSnapshot, true)
+	signature := transport.ObserverTransportSignature(observerSnapshot)
+
+	if !transport.ShouldRefreshObserverTransport("", 0, 0, signature) {
+		t.Fatal("expected empty prior state to force an initial observer refresh")
+	}
+	if transport.ShouldRefreshObserverTransport(signature, 0, transport.DefaultObserverFallbackTicks-1, signature) {
+		t.Fatal("expected unchanged observer summary to stay stale before the fallback interval")
+	}
+	if !transport.ShouldRefreshObserverTransport(signature, 0, transport.DefaultObserverFallbackTicks, signature) {
+		t.Fatal("expected observer fallback interval to force a refresh")
+	}
+}
+
+func TestObserverTransportRefreshPolicyTriggersOnObserverRelevantChange(t *testing.T) {
+	baseSnapshot := simulation.NewSession().Snapshot()
+	baseObserverSnapshot := transport.BuildObserverSnapshot(baseSnapshot, true)
+	baseSignature := transport.ObserverTransportSignature(baseObserverSnapshot)
+
+	changedSnapshot := baseSnapshot
+	changedSnapshot.Interaction = &simulation.InteractionClassification{
+		Active:   false,
+		Resolved: true,
+		Kind:     "fight_resolved",
+		SourceID: "circle-2",
+		TargetID: "circle-3",
+		WinnerID: "circle-2",
+		LoserID:  "circle-3",
+	}
+	changedObserverSnapshot := transport.BuildObserverSnapshot(changedSnapshot, true)
+	changedSignature := transport.ObserverTransportSignature(changedObserverSnapshot)
+
+	if changedSignature == baseSignature {
+		t.Fatal("expected observer-relevant interaction change to alter observer transport signature")
+	}
+	if !transport.ShouldRefreshObserverTransport(baseSignature, 0, 1, changedSignature) {
+		t.Fatal("expected observer-relevant signature change to force a refresh")
+	}
+}
+
 func TestEventDrivenOrientationAverageCostFallsBelowFixedDualCadenceBaseline(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
 
@@ -727,6 +781,21 @@ func TestEventDrivenLocalFoodAverageCostFallsBelowEventDrivenOrientationBaseline
 	eventDrivenFoodAverageBytesPerSecond := (float64(eventDrivenFoodTotalBytes) / float64(transport.DefaultLocalFoodFallbackTicks)) * (1 / transport.DefaultTickEvery.Seconds())
 	if eventDrivenFoodAverageBytesPerSecond >= baselineAverageBytesPerSecond {
 		t.Fatalf("expected event-driven local-food bytes/sec %v to be below event-driven orientation baseline %v", eventDrivenFoodAverageBytesPerSecond, baselineAverageBytesPerSecond)
+	}
+}
+
+func TestPassiveFanoutScalingDropsBelowObserverOrientationBaseline(t *testing.T) {
+	scaling, err := transport.MeasureClientCountFanoutScaling(simulation.NewSession, []int{1, 4, 8}, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure fanout scaling: %v", err)
+	}
+
+	fourClients := scaling.Measurements[1]
+	if fourClients.AggregateBytes >= 22988 {
+		t.Fatalf("expected 4-client passive aggregate bytes %d to drop below prior observer-orientation baseline 22988", fourClients.AggregateBytes)
+	}
+	if fourClients.AggregateSnapshots >= 8 {
+		t.Fatalf("expected 4-client passive aggregate snapshots %d to drop below prior observer-orientation baseline 8", fourClients.AggregateSnapshots)
 	}
 }
 
