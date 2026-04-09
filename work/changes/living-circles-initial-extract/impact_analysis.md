@@ -2,6 +2,68 @@
 
 ## Change
 
+Reduce passive observer snapshot content so lower-cadence observer ticks stop carrying the same local viewport detail as active play.
+
+## Why This Matters
+
+The new idle-observer cadence slice improved the main passive fanout pressure without hurting the active path:
+
+- single-client cadence stayed unchanged
+- passive `4`-client fanout dropped from `51904` aggregate bytes over `300ms` to `25752`
+- passive `8`-client fanout dropped from `103808` to `51504`
+
+That is a real win, but the remaining passive pressure is now clearer:
+
+- aggregate passive fanout still scales linearly with client count
+- passive observer ticks still carry local viewport detail
+- mixed active/passive runs still spend transport budget on data passive observers do not primarily need
+
+The next pressure is therefore content relevance for passive observers:
+
+- keep active local play detail untouched
+- keep observer cadence reduction already built
+- remove local viewport payload from passive observer ticks while preserving world orientation
+
+## Impacted Areas
+
+### Transport boundary
+
+- transport assembly likely needs two explicit snapshot content modes: active local-detail and passive orientation-only
+- measurement should compare the new passive fanout ladder against the current post-cadence baseline
+
+### Runtime contract
+
+- the contract will likely need an explicit passive observer representation rather than implicit missing local fields
+- the contract change should stay bounded to observer snapshots only
+
+### Browser client
+
+- the browser should continue consuming active local-detail snapshots as-is
+- passive observer snapshots should remain intentionally renderable or ignorable without breaking the active path
+
+### Simulation model
+
+- authoritative simulation remains unchanged
+- only the transport representation differs by observer state
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- how observer-oriented snapshots are represented in the contract
+- which local fields can be omitted entirely for passive observers
+- what minimum orientation data remains necessary for passive usefulness
+
+## Risks If Ignored
+
+- the repo will keep paying for passive local viewport detail that adds little observer value
+- later optimization work may jump to compression or deltas before exhausting this simpler content split
+- passive fanout pressure will stay materially higher than necessary even after cadence differentiation
+
+---
+
+## Change
+
 Make compact orientation refreshes event-driven, with a slower fallback refresh, instead of refreshing them on a fixed short cadence.
 
 ## Why This Matters
