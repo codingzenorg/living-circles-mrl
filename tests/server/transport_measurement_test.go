@@ -206,6 +206,76 @@ func TestMovingMultiClientTransportKeepsBoundedTickPressure(t *testing.T) {
 	}
 }
 
+func TestClientCountFanoutScalingMeasurementIsDeterministic(t *testing.T) {
+	first, err := transport.MeasureClientCountFanoutScaling(simulation.NewSession, []int{1, 4, 8}, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure first fanout scaling: %v", err)
+	}
+
+	second, err := transport.MeasureClientCountFanoutScaling(simulation.NewSession, []int{1, 4, 8}, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure second fanout scaling: %v", err)
+	}
+
+	if len(first.Measurements) != len(second.Measurements) {
+		t.Fatalf("expected same measurement count, first=%+v second=%+v", first, second)
+	}
+	for index := range first.Measurements {
+		if first.Measurements[index].AggregateBytes != second.Measurements[index].AggregateBytes {
+			t.Fatalf("expected deterministic aggregate bytes at index %d, first=%+v second=%+v", index, first.Measurements[index], second.Measurements[index])
+		}
+		if first.Measurements[index].AggregateSnapshots != second.Measurements[index].AggregateSnapshots {
+			t.Fatalf("expected deterministic aggregate snapshots at index %d, first=%+v second=%+v", index, first.Measurements[index], second.Measurements[index])
+		}
+	}
+}
+
+func TestClientCountFanoutScalingIncreasesAggregateBytesWithClientCount(t *testing.T) {
+	scaling, err := transport.MeasureClientCountFanoutScaling(simulation.NewSession, []int{1, 4, 8}, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure fanout scaling: %v", err)
+	}
+
+	if len(scaling.Measurements) != 3 {
+		t.Fatalf("expected 3 scaling measurements, got %+v", scaling)
+	}
+	oneClient := scaling.Measurements[0]
+	fourClients := scaling.Measurements[1]
+	eightClients := scaling.Measurements[2]
+
+	if fourClients.AggregateBytes <= oneClient.AggregateBytes {
+		t.Fatalf("expected 4-client aggregate bytes %d to exceed 1-client aggregate bytes %d", fourClients.AggregateBytes, oneClient.AggregateBytes)
+	}
+	if eightClients.AggregateBytes <= fourClients.AggregateBytes {
+		t.Fatalf("expected 8-client aggregate bytes %d to exceed 4-client aggregate bytes %d", eightClients.AggregateBytes, fourClients.AggregateBytes)
+	}
+	if fourClients.ApproxAggregateBytesPerSec <= oneClient.ApproxAggregateBytesPerSec {
+		t.Fatalf("expected 4-client aggregate bytes/sec %v to exceed 1-client aggregate bytes/sec %v", fourClients.ApproxAggregateBytesPerSec, oneClient.ApproxAggregateBytesPerSec)
+	}
+	if eightClients.ApproxAggregateBytesPerSec <= fourClients.ApproxAggregateBytesPerSec {
+		t.Fatalf("expected 8-client aggregate bytes/sec %v to exceed 4-client aggregate bytes/sec %v", eightClients.ApproxAggregateBytesPerSec, fourClients.ApproxAggregateBytesPerSec)
+	}
+}
+
+func TestClientCountFanoutScalingKeepsPerClientPressureInterpretable(t *testing.T) {
+	scaling, err := transport.MeasureClientCountFanoutScaling(simulation.NewSession, []int{1, 4, 8}, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure fanout scaling: %v", err)
+	}
+
+	for _, measurement := range scaling.Measurements {
+		if measurement.ApproxPerClientBytesPerSec <= 0 {
+			t.Fatalf("expected per-client bytes/sec to stay positive, got %+v", measurement)
+		}
+		if measurement.MaxInterSnapshotGap < measurement.ExpectedTickEvery {
+			t.Fatalf("expected max gap %v to be at least one tick interval %v", measurement.MaxInterSnapshotGap, measurement.ExpectedTickEvery)
+		}
+		if measurement.MaxInterSnapshotGap > 3*measurement.ExpectedTickEvery {
+			t.Fatalf("expected max gap %v to stay within bounded local pressure window", measurement.MaxInterSnapshotGap)
+		}
+	}
+}
+
 func TestViewportTransportSnapshotKeepsMinimapOrientationWhileCullingLocalDetail(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
 	transportSnapshot := transport.BuildViewportSnapshot(fullSnapshot, true)

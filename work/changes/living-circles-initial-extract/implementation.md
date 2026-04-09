@@ -343,6 +343,7 @@ The slice needed these implementation choices not fully specified in the refined
 - local viewport food transport is now driven by visible-food change plus a slower fallback interval, while local circle detail still arrives every tick
 - the repository now includes a deterministic multi-client websocket measurement harness for aggregate bytes/sec, per-client bytes/sec, aggregate snapshot count, and observed inter-snapshot gap under bounded local load
 - the multi-client transport harness now also compares deterministic idle and moving-client runs so active-play pressure can be distinguished from passive observer fanout
+- the multi-client transport harness now also measures passive client-count fanout scaling across an explicit count ladder
 
 These keep the loop deterministic and prevent energy drift while staying aligned with energy as the constraining movement resource.
 
@@ -362,3 +363,8 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - idle: `51904` aggregate bytes, about `173013` aggregate bytes/sec, `100ms` max gap
   - one moving client: `51892` aggregate bytes, about `172973` aggregate bytes/sec, `101ms` max gap
 - under this bounded case, active movement changes the transport profile only slightly, which suggests the current dominant cost is still broad snapshot fanout rather than a large movement-specific throughput spike
+- deterministic passive fanout scaling over `300ms` measured:
+  - `1` client: `12976` aggregate bytes, about `43253` bytes/sec, `103ms` max gap, `4` snapshots
+  - `4` clients: `51904` aggregate bytes, about `173013` bytes/sec, `100ms` max gap, `16` snapshots
+  - `8` clients: `103808` aggregate bytes, about `346027` bytes/sec, `100ms` max gap, `32` snapshots
+- under this bounded ladder, aggregate output scales almost linearly with passive client count while per-client throughput stays flat, which confirms fanout itself as the clearest current transport pressure

@@ -33,6 +33,13 @@ type MultiClientTransportMeasurement struct {
 	ExpectedTickEvery          time.Duration
 }
 
+type FanoutScalingMeasurement struct {
+	ClientCounts      []int
+	Measurements      []MultiClientTransportMeasurement
+	Window            time.Duration
+	ExpectedTickEvery time.Duration
+}
+
 type MultiClientTransportConfig struct {
 	ClientCount       int
 	Window            time.Duration
@@ -205,4 +212,36 @@ func MeasureMultiClientTransportWithConfig(session *simulation.Session, config M
 	measurement.ApproxPerClientBytesPerSec = measurement.ApproxAggregateBytesPerSec / float64(config.ClientCount)
 
 	return measurement, nil
+}
+
+func MeasureClientCountFanoutScaling(sessionFactory func() *simulation.Session, clientCounts []int, window time.Duration) (FanoutScalingMeasurement, error) {
+	if sessionFactory == nil {
+		return FanoutScalingMeasurement{}, fmt.Errorf("sessionFactory must not be nil")
+	}
+	if len(clientCounts) == 0 {
+		return FanoutScalingMeasurement{}, fmt.Errorf("clientCounts must not be empty")
+	}
+	if window <= 0 {
+		return FanoutScalingMeasurement{}, fmt.Errorf("window must be positive")
+	}
+
+	measurements := make([]MultiClientTransportMeasurement, 0, len(clientCounts))
+	for _, clientCount := range clientCounts {
+		if clientCount <= 0 {
+			return FanoutScalingMeasurement{}, fmt.Errorf("clientCount must be positive")
+		}
+		measurement, err := MeasureMultiClientTransport(sessionFactory(), clientCount, window)
+		if err != nil {
+			return FanoutScalingMeasurement{}, err
+		}
+		measurements = append(measurements, measurement)
+	}
+
+	copyCounts := append([]int(nil), clientCounts...)
+	return FanoutScalingMeasurement{
+		ClientCounts:      copyCounts,
+		Measurements:      measurements,
+		Window:            window,
+		ExpectedTickEvery: DefaultTickEvery,
+	}, nil
 }
