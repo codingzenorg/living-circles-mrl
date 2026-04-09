@@ -2,6 +2,70 @@
 
 ## Change
 
+Make passive observer transport event-driven so orientation-only observer snapshots stop repeating on calm ticks when observer-relevant state has not changed.
+
+## Why This Matters
+
+The latest observer-transport slice already cut passive fanout by removing local viewport detail:
+
+- passive `4`-client fanout dropped from `25752` aggregate bytes over `300ms` to `22988`
+- passive `8`-client fanout dropped from `51504` to `45976`
+- the active single-client path stayed unchanged
+
+That is a bounded win, but the remaining passive pressure is now clearer:
+
+- passive fanout still scales linearly with client count
+- passive observers still receive repeated orientation-only snapshots on calm worlds
+- the remaining waste is now refresh relevance, not local content shape
+
+The next pressure is therefore event-driven passive observer refresh:
+
+- keep the current active local-detail path untouched
+- keep the current observer-oriented snapshot shape untouched
+- skip passive observer sends when observer-relevant state is unchanged
+- retain a slower fallback refresh so passive observers do not drift indefinitely
+
+## Impacted Areas
+
+### Transport boundary
+
+- the server needs a deterministic observer-refresh signature derived from the current observer-oriented snapshot
+- passive observer send policy should evolve from fixed reduced cadence to change-driven plus slower fallback
+- transport measurement should compare the new passive baseline against the current observer-orientation baseline
+
+### Runtime contract
+
+- the current explicit observer transport mode may already be sufficient
+- this slice should avoid another contract-shape change unless a real gap appears
+
+### Browser client
+
+- the passive observer browser path should continue to reuse the last valid observer-oriented state between refreshes
+- active-client behavior should remain unchanged
+
+### Simulation model
+
+- authoritative simulation remains unchanged
+- only passive observer send policy changes
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- what counts as observer-relevant change
+- how long the passive fallback refresh may be delayed safely
+- whether interaction changes must always force a passive observer refresh
+
+## Risks If Ignored
+
+- the repo will keep paying for repeated passive observer snapshots that add no new orientation value
+- later transport work may jump to deltas or compression before exhausting this simpler refresh-policy win
+- passive fanout pressure will remain higher than necessary even after cadence and content differentiation
+
+---
+
+## Change
+
 Reduce passive observer snapshot content so lower-cadence observer ticks stop carrying the same local viewport detail as active play.
 
 ## Why This Matters
