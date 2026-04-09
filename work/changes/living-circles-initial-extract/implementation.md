@@ -2,7 +2,7 @@
 
 ## Slice
 
-`docs/slices/initial_local_transport_precision_reduction.md`
+`docs/slices/initial_idle_observer_transport_cadence_reduction.md`
 
 ## Implemented Shape
 
@@ -368,3 +368,10 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - `4` clients: `51904` aggregate bytes, about `173013` bytes/sec, `100ms` max gap, `16` snapshots
   - `8` clients: `103808` aggregate bytes, about `346027` bytes/sec, `100ms` max gap, `32` snapshots
 - under this bounded ladder, aggregate output scales almost linearly with passive client count while per-client throughput stays flat, which confirms fanout itself as the clearest current transport pressure
+- idle-observer cadence reduction now applies only when there is real observer fanout, so the single-client path keeps the prior cadence while passive multi-client observers receive deterministic lower-cadence snapshots
+- deterministic passive fanout scaling over `300ms` with the new cadence policy now measures:
+  - `1` client: `12976` aggregate bytes, about `43253` bytes/sec, `101ms` max gap, `4` snapshots
+  - `4` clients: `25752` aggregate bytes, about `85840` bytes/sec, `301ms` max gap, `8` snapshots
+  - `8` clients: `51504` aggregate bytes, about `171680` bytes/sec, `300ms` max gap, `16` snapshots
+- under this bounded ladder, passive aggregate fanout now drops by roughly half at `4` and `8` clients while keeping single-client cadence unchanged
+- deterministic mixed `4`-client pressure with one active steering client over `300ms` now measures `32284` aggregate bytes across `10` snapshots, about `107613` aggregate bytes/sec and about `26903` bytes/sec/client, with the active client receiving `4` snapshots while each passive observer receives `2`

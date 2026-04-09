@@ -16,6 +16,8 @@ import (
 const websocketPath = "/ws"
 
 const DefaultTickEvery = 100 * time.Millisecond
+const DefaultRecentMovementIntentTicks = int64(40)
+const DefaultPassiveObserverCadenceTicks = int64(3)
 
 type movementIntentMessage struct {
 	Type      string            `json:"type"`
@@ -23,8 +25,13 @@ type movementIntentMessage struct {
 }
 
 type clientConnection struct {
-	conn    *websocket.Conn
+	conn *websocket.Conn
+
 	writeMu sync.Mutex
+	stateMu sync.Mutex
+
+	hasRecentMovementIntent bool
+	lastMovementIntentTick  int64
 }
 
 func (c *clientConnection) WriteJSON(value any) error {
@@ -39,6 +46,39 @@ func (c *clientConnection) Close() error {
 	return c.conn.Close()
 }
 
+func (c *clientConnection) RecordMovementIntent(currentTick int64) {
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+
+	c.hasRecentMovementIntent = true
+	c.lastMovementIntentTick = currentTick
+}
+
+func (c *clientConnection) IsActiveAtTick(currentTick int64) bool {
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+
+	if !c.hasRecentMovementIntent {
+		return false
+	}
+
+	return currentTick-c.lastMovementIntentTick <= DefaultRecentMovementIntentTicks
+}
+
+func (c *clientConnection) ShouldReceiveSnapshot(currentTick int64, reducePassiveCadence bool, force bool) bool {
+	if force {
+		return true
+	}
+	if !reducePassiveCadence {
+		return true
+	}
+	if c.IsActiveAtTick(currentTick) {
+		return true
+	}
+
+	return currentTick%DefaultPassiveObserverCadenceTicks == 0
+}
+
 type Server struct {
 	mux       *http.ServeMux
 	session   *simulation.Session
@@ -51,6 +91,7 @@ type Server struct {
 	lastOrientationTick int64
 	lastFoodSig         string
 	lastFoodTick        int64
+	lastBroadcastTick   int64
 }
 
 func NewServer() *Server {
@@ -90,7 +131,7 @@ func (s *Server) Run(ctx context.Context) error {
 			s.closeConnections()
 			return nil
 		case <-ticker.C:
-			s.broadcastSnapshot(s.session.Advance())
+			s.broadcastSnapshot(s.session.Advance(), false)
 		}
 	}
 }
@@ -147,6 +188,7 @@ func (s *Server) readMessages(connection *websocket.Conn) {
 		}
 
 		s.session.ApplyIntent(message.Direction)
+		s.recordMovementIntent(connection)
 	}
 }
 
@@ -158,7 +200,7 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 	}
 
 	snapshot := s.session.Reset()
-	s.broadcastSnapshot(snapshot)
+	s.broadcastSnapshot(snapshot, true)
 
 	writer.Header().Set("Content-Type", "application/json")
 	transportSnapshot := BuildViewportSnapshot(snapshot, true)
@@ -167,7 +209,7 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 	_ = json.NewEncoder(writer).Encode(transportSnapshot)
 }
 
-func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot) {
+func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot, force bool) {
 	orientationSnapshot := BuildViewportSnapshot(snapshot, true)
 	orientationSignature := OrientationSummarySignature(orientationSnapshot)
 	foodSignature := LocalFoodSignature(orientationSnapshot)
@@ -189,14 +231,20 @@ func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot) {
 		s.recordFoodRefresh(orientationSnapshot)
 	}
 
+	s.recordBroadcastTick(snapshot.Tick)
+
 	s.mu.Lock()
 	connections := make([]*clientConnection, 0, len(s.conns))
 	for _, connection := range s.conns {
 		connections = append(connections, connection)
 	}
 	s.mu.Unlock()
+	reducePassiveCadence := len(connections) > 1
 
 	for _, connection := range connections {
+		if !connection.ShouldReceiveSnapshot(snapshot.Tick, reducePassiveCadence, force) {
+			continue
+		}
 		if err := connection.WriteJSON(transportSnapshot); err != nil {
 			if !errors.Is(err, websocket.ErrCloseSent) {
 				s.removeConnection(connection.conn)
@@ -214,6 +262,18 @@ func (s *Server) addConnection(connection *websocket.Conn) *clientConnection {
 	return client
 }
 
+func (s *Server) recordMovementIntent(connection *websocket.Conn) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	client := s.conns[connection]
+	if client == nil {
+		return
+	}
+
+	client.RecordMovementIntent(s.lastBroadcastTick)
+}
+
 func (s *Server) removeConnection(connection *websocket.Conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -227,6 +287,12 @@ func (s *Server) closeConnections() {
 		_ = connection.Close()
 		delete(s.conns, key)
 	}
+}
+
+func (s *Server) recordBroadcastTick(tick int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastBroadcastTick = tick
 }
 
 func (s *Server) shouldRefreshOrientation(currentTick int64, currentSignature string) bool {

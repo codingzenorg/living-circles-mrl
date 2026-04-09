@@ -132,28 +132,31 @@ func MeasureMultiClientTransportWithConfig(session *simulation.Session, config M
 			}
 			defer connection.Close()
 
-			deadline := time.Now().Add(config.Window + 2*time.Second)
-			if err := connection.SetReadDeadline(deadline); err != nil {
+			if err := connection.SetReadDeadline(time.Now().Add(config.Window + time.Second)); err != nil {
 				results <- clientResult{index: index, err: err}
 				return
 			}
 
+			stopSending := make(chan struct{})
 			if index < config.MovingClientCount {
-				if err := connection.WriteJSON(movementIntentMessage{
-					Type:      "movement_intent",
-					Direction: direction,
-				}); err != nil {
+				if err := sendMovementIntent(connection, direction); err != nil {
 					results <- clientResult{index: index, err: err}
 					return
 				}
+				go keepSendingMovementIntent(stopSending, connection, direction)
 			}
+			defer close(stopSending)
 
 			bytesRead := 0
 			snapshotsRead := 0
 			maxGap := time.Duration(0)
 			var lastSnapshotAt time.Time
+			expectedSnapshots := expectedPassiveObserverSnapshots(expectedTicks, config.ClientCount > 1)
+			if index < config.MovingClientCount {
+				expectedSnapshots = expectedTicks + 1
+			}
 
-			for range expectedTicks + 1 {
+			for range expectedSnapshots {
 				_, payload, err := connection.ReadMessage()
 				if err != nil {
 					results <- clientResult{index: index, err: err}
@@ -212,6 +215,44 @@ func MeasureMultiClientTransportWithConfig(session *simulation.Session, config M
 	measurement.ApproxPerClientBytesPerSec = measurement.ApproxAggregateBytesPerSec / float64(config.ClientCount)
 
 	return measurement, nil
+}
+
+func sendMovementIntent(connection *websocket.Conn, direction simulation.Vector) error {
+	return connection.WriteJSON(movementIntentMessage{
+		Type:      "movement_intent",
+		Direction: direction,
+	})
+}
+
+func keepSendingMovementIntent(stop <-chan struct{}, connection *websocket.Conn, direction simulation.Vector) {
+	ticker := time.NewTicker(DefaultTickEvery)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			if err := sendMovementIntent(connection, direction); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func expectedPassiveObserverSnapshots(expectedTicks int, reducePassiveCadence bool) int {
+	if !reducePassiveCadence {
+		return expectedTicks + 1
+	}
+
+	snapshots := 1
+	for tick := 1; tick <= expectedTicks; tick++ {
+		if tick%int(DefaultPassiveObserverCadenceTicks) == 0 {
+			snapshots++
+		}
+	}
+
+	return snapshots
 }
 
 func MeasureClientCountFanoutScaling(sessionFactory func() *simulation.Session, clientCounts []int, window time.Duration) (FanoutScalingMeasurement, error) {

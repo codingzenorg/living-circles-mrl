@@ -8,6 +8,10 @@ import (
 	"github.com/codingzen/living-circles-mrl/src/server/transport"
 )
 
+func expectedFullCadenceSnapshots(window time.Duration) int {
+	return int(window/transport.DefaultTickEvery) + 1
+}
+
 func TestDefaultExpandedSnapshotTransportMeasurementIsDeterministic(t *testing.T) {
 	first, err := transport.MeasureSnapshotTransport(simulation.NewSession().Snapshot(), transport.DefaultTickEvery)
 	if err != nil {
@@ -120,6 +124,42 @@ func TestMultiClientTransportMeasurementScalesAggregateBytesAbovePerClientBytes(
 	}
 }
 
+func TestPassiveObserverTransportMeasurementReducesSnapshotCadence(t *testing.T) {
+	window := 300 * time.Millisecond
+	measurement, err := transport.MeasureMultiClientTransport(simulation.NewSession(), 2, window)
+	if err != nil {
+		t.Fatalf("measure passive observer pair transport: %v", err)
+	}
+
+	for index, snapshots := range measurement.PerClientSnapshots {
+		if snapshots >= expectedFullCadenceSnapshots(window) {
+			t.Fatalf("expected passive observer %d snapshots to stay below full cadence, got %+v", index, measurement)
+		}
+	}
+	for index, snapshots := range measurement.PerClientSnapshots {
+		if snapshots < 2 {
+			t.Fatalf("expected passive observer %d to remain orienting and useful, got %+v", index, measurement)
+		}
+	}
+}
+
+func TestMovingClientTransportMeasurementKeepsFullCadence(t *testing.T) {
+	window := 300 * time.Millisecond
+	measurement, err := transport.MeasureMultiClientTransportWithConfig(simulation.NewSession(), transport.MultiClientTransportConfig{
+		ClientCount:       1,
+		Window:            window,
+		MovingClientCount: 1,
+		MovementDirection: simulation.Vector{X: 1, Y: 0},
+	})
+	if err != nil {
+		t.Fatalf("measure active client transport: %v", err)
+	}
+
+	if measurement.PerClientSnapshots[0] < int(window/transport.DefaultTickEvery) {
+		t.Fatalf("expected moving client to stay near full cadence, got %+v", measurement)
+	}
+}
+
 func TestMultiClientTransportMeasurementReportsTickPressureSignal(t *testing.T) {
 	measurement, err := transport.MeasureMultiClientTransport(simulation.NewSession(), 4, 300*time.Millisecond)
 	if err != nil {
@@ -132,7 +172,7 @@ func TestMultiClientTransportMeasurementReportsTickPressureSignal(t *testing.T) 
 	if measurement.MaxInterSnapshotGap < measurement.ExpectedTickEvery {
 		t.Fatalf("expected max inter-snapshot gap %v to be at least one tick interval %v", measurement.MaxInterSnapshotGap, measurement.ExpectedTickEvery)
 	}
-	if measurement.MaxInterSnapshotGap > 3*measurement.ExpectedTickEvery {
+	if measurement.MaxInterSnapshotGap > 4*measurement.ExpectedTickEvery {
 		t.Fatalf("expected max inter-snapshot gap %v to stay within bounded local pressure window", measurement.MaxInterSnapshotGap)
 	}
 }
@@ -201,7 +241,7 @@ func TestMovingMultiClientTransportKeepsBoundedTickPressure(t *testing.T) {
 	if measurement.MaxInterSnapshotGap < measurement.ExpectedTickEvery {
 		t.Fatalf("expected moving max inter-snapshot gap %v to be at least one tick interval %v", measurement.MaxInterSnapshotGap, measurement.ExpectedTickEvery)
 	}
-	if measurement.MaxInterSnapshotGap > 3*measurement.ExpectedTickEvery {
+	if measurement.MaxInterSnapshotGap > 4*measurement.ExpectedTickEvery {
 		t.Fatalf("expected moving max inter-snapshot gap %v to stay within bounded local pressure window", measurement.MaxInterSnapshotGap)
 	}
 }
@@ -270,9 +310,24 @@ func TestClientCountFanoutScalingKeepsPerClientPressureInterpretable(t *testing.
 		if measurement.MaxInterSnapshotGap < measurement.ExpectedTickEvery {
 			t.Fatalf("expected max gap %v to be at least one tick interval %v", measurement.MaxInterSnapshotGap, measurement.ExpectedTickEvery)
 		}
-		if measurement.MaxInterSnapshotGap > 3*measurement.ExpectedTickEvery {
+		if measurement.MaxInterSnapshotGap > 4*measurement.ExpectedTickEvery {
 			t.Fatalf("expected max gap %v to stay within bounded local pressure window", measurement.MaxInterSnapshotGap)
 		}
+	}
+}
+
+func TestClientCountFanoutScalingDropsBelowPreviousPassiveBaseline(t *testing.T) {
+	scaling, err := transport.MeasureClientCountFanoutScaling(simulation.NewSession, []int{1, 4, 8}, 300*time.Millisecond)
+	if err != nil {
+		t.Fatalf("measure fanout scaling: %v", err)
+	}
+
+	fourClients := scaling.Measurements[1]
+	if fourClients.AggregateBytes >= 51904 {
+		t.Fatalf("expected 4-client passive aggregate bytes %d to drop below prior baseline 51904", fourClients.AggregateBytes)
+	}
+	if fourClients.AggregateSnapshots >= 16 {
+		t.Fatalf("expected 4-client passive aggregate snapshots %d to drop below prior baseline 16", fourClients.AggregateSnapshots)
 	}
 }
 

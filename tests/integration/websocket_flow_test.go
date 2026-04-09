@@ -16,6 +16,26 @@ import (
 	"github.com/codingzen/living-circles-mrl/src/server/transport"
 )
 
+func countSnapshotsWithinWindow(t *testing.T, connection *websocket.Conn, window time.Duration) int {
+	t.Helper()
+
+	deadline := time.Now().Add(window)
+	if err := connection.SetReadDeadline(deadline); err != nil {
+		t.Fatalf("set read deadline: %v", err)
+	}
+
+	count := 0
+	for {
+		_, _, err := connection.ReadMessage()
+		if err != nil {
+			break
+		}
+		count++
+	}
+
+	return count
+}
+
 func promotedChildPosition(ownerID, childID string, x, y float64, tick int64) (float64, float64) {
 	angle := promotedChildAngle(ownerID, childID, tick)
 	orbitRadius := simulation.DefaultPlayerRadius + simulation.DefaultAttachedChildOrbitGap + simulation.DefaultAttachedChildRadius
@@ -371,6 +391,72 @@ func TestClientReceivesCrowdingEnergyPressureInClusteredWorld(t *testing.T) {
 	}
 }
 
+func TestActiveClientKeepsHigherCadenceThanPassiveObserver(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSession())
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	passiveConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer passiveConnection.Close()
+
+	activeConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial active websocket: %v", err)
+	}
+	defer activeConnection.Close()
+
+	if _, _, err := passiveConnection.ReadMessage(); err != nil {
+		t.Fatalf("read passive initial snapshot: %v", err)
+	}
+	if _, _, err := activeConnection.ReadMessage(); err != nil {
+		t.Fatalf("read active initial snapshot: %v", err)
+	}
+
+	movementTicker := time.NewTicker(transport.DefaultTickEvery)
+	defer movementTicker.Stop()
+	stopSending := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stopSending:
+				return
+			case <-movementTicker.C:
+				_ = activeConnection.WriteJSON(map[string]any{
+					"type": "movement_intent",
+					"direction": map[string]float64{
+						"x": 1,
+						"y": 0,
+					},
+				})
+			}
+		}
+	}()
+	defer close(stopSending)
+
+	passiveSnapshots := countSnapshotsWithinWindow(t, passiveConnection, 350*time.Millisecond)
+	activeSnapshots := countSnapshotsWithinWindow(t, activeConnection, 350*time.Millisecond)
+
+	if passiveSnapshots >= activeSnapshots {
+		t.Fatalf("expected active cadence to exceed passive cadence, passive=%d active=%d", passiveSnapshots, activeSnapshots)
+	}
+	if passiveSnapshots < 1 {
+		t.Fatalf("expected passive observer to still receive snapshots, got passive=%d active=%d", passiveSnapshots, activeSnapshots)
+	}
+	if activeSnapshots < 3 {
+		t.Fatalf("expected resumed active client to receive near-full cadence, got passive=%d active=%d", passiveSnapshots, activeSnapshots)
+	}
+}
+
 func TestClientReceivesCrowdingAwareAutonomousSteering(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		WorldWidth:                          1000,
@@ -411,6 +497,15 @@ func TestClientReceivesCrowdingAwareAutonomousSteering(t *testing.T) {
 	var initial transport.Snapshot
 	if err := connection.ReadJSON(&initial); err != nil {
 		t.Fatalf("read initial snapshot: %v", err)
+	}
+	if err := connection.WriteJSON(map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 0,
+			"y": 0,
+		},
+	}); err != nil {
+		t.Fatalf("write zero movement intent: %v", err)
 	}
 
 	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
@@ -658,6 +753,15 @@ func TestClientReceivesChildTriggeredReproductionBeforeParentBodiesOverlap(t *te
 		t.Fatalf("dial websocket: %v", err)
 	}
 	defer connection.Close()
+	if err := connection.WriteJSON(map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 0,
+			"y": 0,
+		},
+	}); err != nil {
+		t.Fatalf("write zero movement intent: %v", err)
+	}
 
 	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
 
