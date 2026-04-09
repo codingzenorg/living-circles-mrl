@@ -4080,3 +4080,18 @@ That points to a bounded measurement slice:
 - compare deterministic idle and moving multi-client runs
 - report the delta in aggregate bytes/sec, per-client bytes/sec, and inter-snapshot gap
 - leave protocol shape and gameplay behavior unchanged
+## Pressure: Client-Count Fanout Scaling Measurement
+
+The idle-versus-moving comparison now suggests that movement is not the clearest remaining transport pressure in the current bounded setup. The stronger remaining question is how broad passive snapshot fanout scales as client count increases.
+
+The new pressure is:
+
+- determine whether aggregate server output grows acceptably as passive observer count rises
+- make per-client stability versus aggregate fanout cost explicit
+- justify or reject future fanout-oriented optimization from measured scaling rather than from one fixed multi-client point
+
+That points to a bounded measurement slice:
+
+- compare several explicit passive client counts under the same deterministic world and window
+- record aggregate bytes/sec, per-client bytes/sec, and cadence pressure at each count
+- leave protocol shape and gameplay behavior unchanged
