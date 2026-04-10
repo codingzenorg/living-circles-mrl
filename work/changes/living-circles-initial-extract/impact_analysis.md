@@ -2,6 +2,66 @@
 
 ## Change
 
+Reduce the remaining active-path payload fanout by thinning local autonomous-circle detail inside active snapshots while keeping player-critical responsiveness unchanged.
+
+## Why This Matters
+
+The recent measurements now make the active-path situation much clearer:
+
+- idle second browsers now truly reach the passive path
+- the two-active-client case doubles aggregate payload compared with one active client
+- the timing gap stays effectively flat near one tick
+
+That means the remaining two-browser slowdown is currently better explained by active payload fanout than by immediate tick-loop collapse.
+
+The next pressure is therefore not another passive-path change and not a scheduling rescue for a collapsing tick loop. It is to remove cost from one active payload family while protecting the player-critical path.
+
+Local autonomous-circle detail is the cleanest next target:
+
+- it is meaningful, but less critical than player detail and interaction detail
+- it is likely to contain repeated local state across adjacent ticks
+- it can be refreshed less often or on change plus fallback while the client reuses the last valid local autonomous set
+
+## Impacted Areas
+
+### Transport boundary
+
+- active snapshot assembly may need an explicit freshness rule for local autonomous detail
+- measurement should compare the post-change one-active and two-active baselines against the current `8942` and `17884` byte readings
+
+### Runtime contract
+
+- the current active snapshot shape may stay mostly intact
+- a small freshness field may be needed if active local autonomous detail becomes optional on some ticks
+
+### Browser client
+
+- the client should continue rendering player-centric motion and interaction continuously
+- the browser may reuse the last valid local autonomous set between fresh autonomous refreshes
+
+### Simulation model
+
+- authoritative simulation remains unchanged
+- only active transport representation and cadence for local autonomous detail change
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- whether local autonomous detail should be change-driven, lower-cadence, or both
+- how often fallback refresh should still happen
+- how to preserve active play readability while cutting active fanout cost
+
+## Risks If Ignored
+
+- the repo may keep carrying an avoidable active payload family at full cadence
+- later transport work may jump to heavier mechanisms before exhausting this simpler active-path reduction
+- the remaining two-browser slowdown pressure will stay only partially addressed
+
+---
+
+## Change
+
 Measure server tick and broadcast pressure explicitly for the remaining two-active-client slowdown after passive idle churn has been removed from the baseline.
 
 ## Why This Matters
