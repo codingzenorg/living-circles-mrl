@@ -4296,3 +4296,18 @@ That points to a bounded transport slice:
 - reduce active orientation-support payload or cadence while keeping local active detail unchanged
 - preserve the current passive path
 - remeasure the active baseline and active fanout ladder after the change
+## Pressure: Active Orientation Usability Measurement
+
+The active orientation-support reduction succeeded at the transport level. That is good, but the next uncertainty is no longer bytes alone. The remaining question is whether the cheaper active orientation path is still good enough for actual movement-time orientation in the viewport/minimap experience.
+
+The new pressure is:
+
+- validate the usability of the reduced active orientation path before cutting more
+- make active orientation freshness versus staleness explicit under movement
+- choose the next step from evidence rather than from bytes alone
+
+That points to a bounded measurement slice:
+
+- record deterministic active orientation freshness under movement
+- preserve the current transport and client behavior unchanged
+- use the result to decide whether to keep, tune, or revisit the optimization
