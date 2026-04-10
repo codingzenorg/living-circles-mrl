@@ -4281,3 +4281,18 @@ That points to a bounded measurement slice:
 - compare the serialized size of the current active payload with major detail families removed or isolated
 - record the resulting breakdown in the implementation artifact
 - leave protocol shape and gameplay behavior unchanged
+## Pressure: Active Orientation Support Reduction
+
+The active payload breakdown now makes the dominant cost family explicit: orientation support is materially larger than player, local food, or local autonomous detail in the current default active snapshot.
+
+The new pressure is:
+
+- reduce active transport cost by targeting the actual dominant active payload family
+- preserve active local responsiveness while lowering whole-world orientation support cost
+- avoid a broader transport redesign before this direct optimization is tried
+
+That points to a bounded transport slice:
+
+- reduce active orientation-support payload or cadence while keeping local active detail unchanged
+- preserve the current passive path
+- remeasure the active baseline and active fanout ladder after the change
