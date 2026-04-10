@@ -2,6 +2,64 @@
 
 ## Change
 
+Reassess the observed two-browser slowdown after idle-intent suppression made the passive-client transport path reachable for truly idle browsers.
+
+## Why This Matters
+
+The repo now has a concrete mitigation for a likely cause of the user-observed slowdown:
+
+- idle browsers no longer resend neutral `0,0` intents every `100ms`
+- unchanged repeated movement directions are suppressed
+- one explicit stop intent still preserves active control semantics
+
+That means the previous two-browser slowdown evidence is now stale as a decision baseline. The main question is no longer whether neutral idle intent churn was a plausible cause. It is whether removing that churn materially improves ordinary two-browser responsiveness.
+
+The next pressure is therefore reassessment, not immediate new optimization:
+
+- reuse the current transport behavior as built
+- compare the idle-second-browser case against the prior evidence
+- determine whether the remaining pressure is still primarily active fanout or server tick/broadcast load
+
+## Impacted Areas
+
+### Runtime evidence path
+
+- the repository should record a new post-mitigation two-browser responsiveness reading
+- the earlier observation should remain as pre-fix evidence, not as the current baseline
+
+### Transport measurement
+
+- existing measurement helpers may be sufficient, but they should now be interpreted against the new client sender behavior
+- the most useful distinction is likely active-plus-idle versus active-plus-active
+
+### Browser client
+
+- runtime behavior should remain unchanged in this slice
+- the newly built sender behavior becomes the baseline under observation
+
+### Simulation model
+
+- authoritative simulation remains unchanged
+- this is a measurement and decision slice, not a gameplay slice
+
+## Recommended Decision Pressure
+
+The next implementation-facing decision should explicitly choose:
+
+- whether the two-browser slowdown is now materially reduced
+- whether the remaining pressure is still passive-client related
+- whether the next mitigation should instead target active fanout or tick/broadcast pressure
+
+## Risks If Ignored
+
+- the repo may optimize further against pre-fix evidence that is no longer representative
+- subsequent transport work could solve the wrong remaining bottleneck
+- real progress from the idle-intent suppression slice would remain unverified
+
+---
+
+## Change
+
 Make passive observer transport event-driven so orientation-only observer snapshots stop repeating on calm ticks when observer-relevant state has not changed.
 
 ## Why This Matters
