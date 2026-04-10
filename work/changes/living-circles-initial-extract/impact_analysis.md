@@ -4236,3 +4236,18 @@ That points to a bounded transport slice:
 - keep active clients at the current cadence
 - lower the cadence for passive observers with no recent movement intent
 - measure the passive fanout ladder again after the change
+## Pressure: Coarse Observer State Signature
+
+The new event-driven passive observer path proves that calm repeated observer snapshots can be removed aggressively. That is useful, but it also exposes a new coherence gap: passive observers now mainly refresh on explicit interaction or fallback, which means broader whole-world state changes can remain stale longer than necessary.
+
+The new pressure is:
+
+- passive observer refresh should still react to meaningful coarse whole-world state change
+- ordinary minimap drift should not restore the old passive refresh churn
+- passive fanout should remain materially below the prior observer-orientation baseline
+
+That points to a bounded transport slice:
+
+- refine the observer refresh signature to include coarse observer-relevant state, not exact minimap motion
+- preserve the current observer-oriented snapshot shape
+- remeasure passive fanout after the signature change
