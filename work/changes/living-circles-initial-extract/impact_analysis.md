@@ -4341,3 +4341,18 @@ That points to a bounded measurement slice:
 - compare a few major client render families against the full render baseline
 - record the dominant render families in the implementation artifact
 - leave transport and gameplay behavior unchanged
+## Pressure: World Render Subcomponent Measurement
+
+The browser now exposes a rolling major-family render breakdown, which is enough to show whether `world`, `overlay`, `support`, or `minimap` dominates. That is useful, but one broad family can still hide the real next optimization target.
+
+The new pressure is:
+
+- make the `world` render bucket actionable if it remains the broadest meaningful family
+- avoid optimizing the wrong world-draw subsystem
+- keep default runtime behavior unchanged while gathering clearer browser-side evidence
+
+That points to a bounded measurement slice:
+
+- split the `world` render family into a few major subfamilies
+- record the dominant world-draw subfamilies in the implementation artifact
+- leave transport and gameplay behavior unchanged
