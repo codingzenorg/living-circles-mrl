@@ -105,6 +105,10 @@ func ObserverTransportSignature(snapshot Snapshot) string {
 	var builder strings.Builder
 	builder.WriteString(snapshot.TransportMode)
 	builder.WriteByte('|')
+	builder.WriteString(strconv.Itoa(snapshot.TotalAutonomousCircles))
+	builder.WriteByte(':')
+	builder.WriteString(observerFoodStateBucket(snapshot.TotalFoods))
+	builder.WriteByte('|')
 	if snapshot.Interaction == nil {
 		builder.WriteString("no-interaction")
 		return builder.String()
@@ -146,6 +150,17 @@ func ShouldRefreshObserverTransport(lastSignature string, lastRefreshTick, curre
 		return true
 	}
 	return currentTick-lastRefreshTick >= DefaultObserverFallbackTicks
+}
+
+func observerFoodStateBucket(totalFoods int) string {
+	switch {
+	case totalFoods <= 2:
+		return "scarce"
+	case totalFoods <= 8:
+		return "thin"
+	default:
+		return "abundant"
+	}
 }
 
 func LocalFoodSignature(snapshot Snapshot) string {

@@ -584,6 +584,44 @@ func TestObserverTransportRefreshPolicyTriggersOnObserverRelevantChange(t *testi
 	}
 }
 
+func TestObserverTransportRefreshPolicyTriggersOnCoarseFoodOrPopulationChange(t *testing.T) {
+	baseSnapshot := simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                800,
+		WorldHeight:               600,
+		UseExpandedPopulation:     false,
+		PlayerShape:               simulation.DefaultPlayerShape,
+		AutonomousShape:           simulation.DefaultPlayerShape,
+		SecondaryAutonomousShape:  simulation.DefaultAutoShape,
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          simulation.DefaultPlayerEnergy,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+	}).Snapshot()
+	baseObserverSnapshot := transport.BuildObserverSnapshot(baseSnapshot, true)
+	baseSignature := transport.ObserverTransportSignature(baseObserverSnapshot)
+
+	foodChanged := baseSnapshot
+	foodChanged.Foods = append([]simulation.Food(nil), baseSnapshot.Foods[1:]...)
+	foodChangedObserverSnapshot := transport.BuildObserverSnapshot(foodChanged, true)
+	foodChangedSignature := transport.ObserverTransportSignature(foodChangedObserverSnapshot)
+	if foodChangedSignature == baseSignature {
+		t.Fatal("expected coarse food-count change to alter observer transport signature")
+	}
+	if !transport.ShouldRefreshObserverTransport(baseSignature, 0, 1, foodChangedSignature) {
+		t.Fatal("expected coarse food-count change to force an observer refresh")
+	}
+
+	populationChanged := baseSnapshot
+	populationChanged.AutonomousCircles = append([]simulation.AutonomousCircle(nil), baseSnapshot.AutonomousCircles[1:]...)
+	populationChangedObserverSnapshot := transport.BuildObserverSnapshot(populationChanged, true)
+	populationChangedSignature := transport.ObserverTransportSignature(populationChangedObserverSnapshot)
+	if populationChangedSignature == baseSignature {
+		t.Fatal("expected coarse autonomous-count change to alter observer transport signature")
+	}
+	if !transport.ShouldRefreshObserverTransport(baseSignature, 0, 1, populationChangedSignature) {
+		t.Fatal("expected coarse autonomous-count change to force an observer refresh")
+	}
+}
+
 func TestEventDrivenOrientationAverageCostFallsBelowFixedDualCadenceBaseline(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
 

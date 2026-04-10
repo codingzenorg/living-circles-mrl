@@ -628,6 +628,91 @@ func TestPassiveObserverFallsBackAfterCalmObserverWindow(t *testing.T) {
 	}
 }
 
+func TestPassiveObserverRefreshesOnCoarseFoodCountChange(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:                800,
+		WorldHeight:               600,
+		UseExpandedPopulation:     false,
+		PlayerShape:               simulation.DefaultPlayerShape,
+		AutonomousShape:           simulation.DefaultPlayerShape,
+		SecondaryAutonomousShape:  simulation.DefaultAutoShape,
+		PlayerEnergy:              simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:          simulation.DefaultPlayerEnergy,
+		SecondaryAutonomousEnergy: simulation.DefaultPlayerEnergy,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	passiveConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial passive websocket: %v", err)
+	}
+	defer passiveConnection.Close()
+
+	activeConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial active websocket: %v", err)
+	}
+	defer activeConnection.Close()
+
+	var passiveInitial transport.Snapshot
+	if err := passiveConnection.ReadJSON(&passiveInitial); err != nil {
+		t.Fatalf("read passive initial snapshot: %v", err)
+	}
+	if _, _, err := activeConnection.ReadMessage(); err != nil {
+		t.Fatalf("read active initial snapshot: %v", err)
+	}
+
+	movementTicker := time.NewTicker(transport.DefaultTickEvery)
+	defer movementTicker.Stop()
+	stopSending := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stopSending:
+				return
+			case <-movementTicker.C:
+				_ = activeConnection.WriteJSON(map[string]any{
+					"type": "movement_intent",
+					"direction": map[string]float64{
+						"x": 1,
+						"y": 0,
+					},
+				})
+			}
+		}
+	}()
+	defer close(stopSending)
+
+	_ = passiveConnection.SetReadDeadline(time.Now().Add(2 * time.Second))
+	for {
+		var passiveSnapshot transport.Snapshot
+		if err := passiveConnection.ReadJSON(&passiveSnapshot); err != nil {
+			t.Fatalf("read passive coarse-change snapshot: %v", err)
+		}
+		if passiveSnapshot.Tick == 0 {
+			continue
+		}
+		if passiveSnapshot.TransportMode != "observer_orientation_only" {
+			t.Fatalf("expected observer transport mode, got %+v", passiveSnapshot)
+		}
+		if passiveSnapshot.TotalFoods >= passiveInitial.TotalFoods {
+			continue
+		}
+		if len(passiveSnapshot.MinimapAutonomousCircles) == 0 || len(passiveSnapshot.MinimapFoods) == 0 {
+			t.Fatalf("expected coarse-change observer snapshot to keep orientation summaries, got %+v", passiveSnapshot)
+		}
+		return
+	}
+}
+
 func TestClientReceivesCrowdingAwareAutonomousSteering(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		WorldWidth:                          1000,

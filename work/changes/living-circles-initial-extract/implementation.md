@@ -342,6 +342,7 @@ The slice needed these implementation choices not fully specified in the refined
 - orientation refresh transport is now driven by deterministic compact-summary change plus a slower fallback interval, instead of a fixed short cadence alone
 - local viewport food transport is now driven by visible-food change plus a slower fallback interval, while local circle detail still arrives every tick
 - passive observer transport now refreshes on observer-relevant change plus a slower fallback interval, instead of resending the same observer-oriented snapshot whenever the passive cadence timer alone elapses
+- passive observer transport now uses a coarse observer state signature: interaction changes still refresh immediately, food state now refreshes by coarse abundance bucket instead of exact minimap motion, and population loss still refreshes by total autonomous count
 - the repository now includes a deterministic multi-client websocket measurement harness for aggregate bytes/sec, per-client bytes/sec, aggregate snapshot count, and observed inter-snapshot gap under bounded local load
 - the multi-client transport harness now also compares deterministic idle and moving-client runs so active-play pressure can be distinguished from passive observer fanout
 - the multi-client transport harness now also measures passive client-count fanout scaling across an explicit count ladder
@@ -391,3 +392,4 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - `8` clients: `26672` aggregate bytes, about `88907` bytes/sec, `0ms` max gap, `8` snapshots
 - under this bounded calm ladder, event-driven observer refresh reduces the `4`-client passive baseline from `22988` aggregate bytes to `13336`, and the `8`-client passive baseline from `45976` to `26672`
 - deterministic mixed `4`-client pressure with one active steering client over `300ms` now measures `23131` aggregate bytes across `7` snapshots, about `77103` aggregate bytes/sec and about `19276` bytes/sec/client, with the active client receiving `4` snapshots while each passive observer receives `1`
+- the coarse observer signature keeps the current calm passive baseline unchanged in the bounded expanded-world ladder, while restoring passive refresh on deterministic small-world food-count change and autonomous-count change before fallback
