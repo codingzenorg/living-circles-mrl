@@ -75,6 +75,7 @@ const CROWDING_THRESHOLD = 2;
 const CROWDING_CUE_DISTANCE = 260;
 const FOOD_OPPORTUNITY_RADIUS = 170;
 const FOOD_CUE_DISTANCE = 260;
+const NPC_LABEL_DISTANCE = 190;
 const SCARCITY_THRESHOLD = 1;
 const INTENT_CUE_DISTANCE = 260;
 const MIN_MOVEMENT_FOR_INTENT = 1.5;
@@ -770,7 +771,9 @@ function draw(snapshot) {
 
   const labelsStartedAt = nowMs();
   for (const circle of snapshot.autonomous_circles) {
-    drawCircleLabel(circle);
+    if (shouldRenderNpcLabel(circle, snapshot.player, circles, foods)) {
+      drawCircleLabel(circle);
+    }
   }
 
   if (snapshot.player) {
@@ -1210,13 +1213,31 @@ function drawCircle(circle, isPlayer, player, circles, foods) {
   }
 
   drawAttachedChildren(circle, color);
+}
 
-  context.fillStyle = "#e4f3f8";
-  context.font = "16px Georgia";
-  const children = childCount(circle);
-  const label = isPlayer
-    ? displayName(circle.id)
-    : displayName(circle.id);
+function shouldRenderNpcLabel(circle, player, circles, foods) {
+  if (!player) {
+    return false;
+  }
+
+  const relationToPlayer = playerRiskState(circle, player, latestSnapshot?.interaction);
+  if (relationToPlayer !== "neutral") {
+    return true;
+  }
+
+  if (distanceBetween(circle, player) <= NPC_LABEL_DISTANCE) {
+    return true;
+  }
+
+  if (inferAutonomyIntent(circle, circles, foods, player)) {
+    return true;
+  }
+
+  if (hasContinuityReserve(circle) || shouldRenderCrowdingCue(circle, circles, player)) {
+    return true;
+  }
+
+  return false;
 }
 
 function drawCircleLabel(circle) {

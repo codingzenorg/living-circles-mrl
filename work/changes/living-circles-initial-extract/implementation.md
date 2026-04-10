@@ -425,3 +425,5 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 - the broad `world` render bucket is now also split into rolling subfamilies: `frame`, `food`, `circles`, and `labels`
 - the existing render-pressure indicator tooltip now exposes both the top-level family breakdown and the narrower world-draw breakdown
 - this keeps the current viewport behavior unchanged while making any future world-draw optimization target more precise
+- player identity now remains always visible on the play surface, while NPC labels render only when they are locally relevant by nearby distance, risk/opportunity state, inferred intent, continuity reserve, or crowding cue
+- detailed NPC identity and state still remain fully available in the support panels, so canvas labeling is lighter without losing the main information path
