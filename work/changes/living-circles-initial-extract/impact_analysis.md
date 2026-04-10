@@ -2,6 +2,64 @@
 
 ## Change
 
+Replace the current fixed active-orientation cadence with a change-driven refresh policy plus deterministic fallback, so the still-dominant active orientation payload is sent when needed rather than every short timer interval.
+
+## Why This Matters
+
+The latest post-reduction reassessment refreshed the current active-path evidence:
+
+- full active payload now measures `3357` bytes
+- without orientation support it drops to `1200` bytes
+- orientation support is still the dominant remaining active payload family
+
+That means the next active responsiveness win should still target orientation support. The current code path, however, still refreshes active orientation on a fixed `3`-tick cadence. That is now the clearest avoidable pressure:
+
+- active local detail already stays responsive
+- the client already caches the last valid active orientation summary
+- yet the server can still resend active orientation support just because a short timer elapsed, even when the compact summary has not materially changed
+
+The next pressure is therefore a narrow refresh-policy change, not another broad transport redesign.
+
+## Impacted Areas
+
+### Active transport boundary
+
+- active orientation refresh should use summary change plus fallback instead of the current short fixed cadence
+- the existing compact orientation summary and `orientation_fresh` signal should remain in place
+
+### Browser client
+
+- the browser should continue reusing cached active orientation support between fresh ticks
+- local active play and minimap orientation should remain readable
+
+### Transport measurement
+
+- one-active and two-active baselines should be remeasured after the change
+- the result should be compared against the current `3357` active payload and the current `17008` two-active aggregate reading
+
+### Passive observer path
+
+- passive observer behavior should remain unchanged
+- this slice targets only the active orientation path
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- how to derive the active orientation refresh signature
+- what fallback interval still keeps orientation usable
+- whether the resulting reduction is enough to justify stopping or whether another active payload family should be targeted next
+
+## Risks If Ignored
+
+- the repo may keep resending the still-dominant active payload family on a short timer even after identifying it as the main remaining cost
+- later active-path optimization could jump to a less important family first
+- the current active responsiveness pressure would remain only partially addressed
+
+---
+
+## Change
+
 Remeasure the active transport payload composition after the recent active-path reductions so the next optimization target is chosen from current evidence rather than from stale pre-reduction numbers.
 
 ## Why This Matters
