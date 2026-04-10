@@ -34,6 +34,14 @@ type ActiveTransportComponentMeasurement struct {
 	DominantComponent  string
 }
 
+type ActiveOrientationUsabilityMeasurement struct {
+	Window                    time.Duration
+	TotalSnapshots            int
+	FreshOrientationSnapshots int
+	StaleOrientationSnapshots int
+	ExpectedTickEvery         time.Duration
+}
+
 type MultiClientTransportMeasurement struct {
 	ClientCount                int
 	Window                     time.Duration
@@ -137,12 +145,176 @@ func MeasureActiveTransportComponents(snapshot simulation.Snapshot) (ActiveTrans
 	}, nil
 }
 
+func MeasureActiveOrientationUsability(session *simulation.Session, window time.Duration, direction simulation.Vector) (ActiveOrientationUsabilityMeasurement, error) {
+	if session == nil {
+		return ActiveOrientationUsabilityMeasurement{}, fmt.Errorf("session must not be nil")
+	}
+	if window <= 0 {
+		return ActiveOrientationUsabilityMeasurement{}, fmt.Errorf("window must be positive")
+	}
+	if direction.X == 0 && direction.Y == 0 {
+		direction = simulation.Vector{X: 1, Y: 0}
+	}
+
+	measurement, err := MeasureMultiClientTransportSnapshots(session, MultiClientTransportConfig{
+		ClientCount:       1,
+		Window:            window,
+		MovingClientCount: 1,
+		MovementDirection: direction,
+	})
+	if err != nil {
+		return ActiveOrientationUsabilityMeasurement{}, err
+	}
+
+	result := ActiveOrientationUsabilityMeasurement{
+		Window:            window,
+		ExpectedTickEvery: DefaultTickEvery,
+	}
+	for _, snapshot := range measurement[0] {
+		result.TotalSnapshots++
+		if snapshot.OrientationFresh {
+			result.FreshOrientationSnapshots++
+		} else {
+			result.StaleOrientationSnapshots++
+		}
+	}
+	return result, nil
+}
+
 func MeasureMultiClientTransport(session *simulation.Session, clientCount int, window time.Duration) (MultiClientTransportMeasurement, error) {
 	return MeasureMultiClientTransportWithConfig(session, MultiClientTransportConfig{
 		ClientCount:       clientCount,
 		Window:            window,
 		MovingClientCount: 0,
 	})
+}
+
+func MeasureMultiClientTransportSnapshots(session *simulation.Session, config MultiClientTransportConfig) ([][]Snapshot, error) {
+	if session == nil {
+		return nil, fmt.Errorf("session must not be nil")
+	}
+	if config.ClientCount <= 0 {
+		return nil, fmt.Errorf("clientCount must be positive")
+	}
+	if config.Window <= 0 {
+		return nil, fmt.Errorf("window must be positive")
+	}
+	if config.MovingClientCount < 0 || config.MovingClientCount > config.ClientCount {
+		return nil, fmt.Errorf("movingClientCount must be between 0 and clientCount")
+	}
+	direction := config.MovementDirection
+	if direction.X == 0 && direction.Y == 0 {
+		direction = simulation.Vector{X: 1, Y: 0}
+	}
+
+	expectedTicks := int(config.Window / DefaultTickEvery)
+	if expectedTicks <= 0 {
+		return nil, fmt.Errorf("window must span at least one tick")
+	}
+
+	server := NewServerWithSession(session)
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+
+	type clientSnapshots struct {
+		index     int
+		snapshots []Snapshot
+		err       error
+	}
+
+	results := make(chan clientSnapshots, config.ClientCount)
+	type connectedClient struct {
+		index      int
+		connection *websocket.Conn
+		initial    Snapshot
+	}
+	clients := make([]connectedClient, 0, config.ClientCount)
+
+	for clientIndex := range config.ClientCount {
+		connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		var snapshot Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			_ = connection.Close()
+			return nil, err
+		}
+
+		clients = append(clients, connectedClient{
+			index:      clientIndex,
+			connection: connection,
+			initial:    snapshot,
+		})
+	}
+
+	go func() {
+		done <- server.Run(ctx)
+	}()
+
+	var waitGroup sync.WaitGroup
+	for _, client := range clients {
+		waitGroup.Add(1)
+		go func(client connectedClient) {
+			defer waitGroup.Done()
+			defer client.connection.Close()
+
+			if err := client.connection.SetReadDeadline(time.Now().Add(config.Window + time.Second)); err != nil {
+				results <- clientSnapshots{index: client.index, err: err}
+				return
+			}
+
+			stopSending := make(chan struct{})
+			if client.index < config.MovingClientCount {
+				if err := sendMovementIntent(client.connection, direction); err != nil {
+					results <- clientSnapshots{index: client.index, err: err}
+					return
+				}
+				go keepSendingMovementIntent(stopSending, client.connection, direction)
+			}
+			defer close(stopSending)
+
+			snapshots := make([]Snapshot, 0, expectedTicks+1)
+			snapshots = append(snapshots, client.initial)
+			for {
+				var snapshot Snapshot
+				if err := client.connection.ReadJSON(&snapshot); err != nil {
+					if isReadTimeout(err) || isClosedConnection(err) {
+						break
+					}
+					results <- clientSnapshots{index: client.index, err: err}
+					return
+				}
+				snapshots = append(snapshots, snapshot)
+			}
+
+			results <- clientSnapshots{index: client.index, snapshots: snapshots}
+		}(client)
+	}
+
+	waitUntilTick(session, int64(expectedTicks), config.Window+time.Second)
+
+	cancel()
+	<-done
+	waitGroup.Wait()
+
+	perClient := make([][]Snapshot, config.ClientCount)
+	for range config.ClientCount {
+		result := <-results
+		if result.err != nil {
+			return nil, result.err
+		}
+		perClient[result.index] = append(perClient[result.index], result.snapshots...)
+	}
+
+	return perClient, nil
 }
 
 func MeasureMultiClientTransportWithConfig(session *simulation.Session, config MultiClientTransportConfig) (MultiClientTransportMeasurement, error) {

@@ -83,6 +83,42 @@ func TestActiveTransportComponentMeasurementReportsDominantComponent(t *testing.
 	}
 }
 
+func TestActiveOrientationUsabilityMeasurementIsDeterministic(t *testing.T) {
+	first, err := transport.MeasureActiveOrientationUsability(simulation.NewSession(), 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure first active orientation usability: %v", err)
+	}
+
+	second, err := transport.MeasureActiveOrientationUsability(simulation.NewSession(), 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure second active orientation usability: %v", err)
+	}
+
+	if first != second {
+		t.Fatalf("expected deterministic active orientation usability measurement, first=%+v second=%+v", first, second)
+	}
+}
+
+func TestActiveOrientationUsabilityMeasurementShowsFreshAndStaleTicks(t *testing.T) {
+	measurement, err := transport.MeasureActiveOrientationUsability(simulation.NewSession(), 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure active orientation usability: %v", err)
+	}
+
+	if measurement.TotalSnapshots < 4 {
+		t.Fatalf("expected full active snapshot cadence, got %+v", measurement)
+	}
+	if measurement.FreshOrientationSnapshots <= 0 {
+		t.Fatalf("expected at least one fresh orientation snapshot, got %+v", measurement)
+	}
+	if measurement.StaleOrientationSnapshots <= 0 {
+		t.Fatalf("expected at least one stale orientation snapshot, got %+v", measurement)
+	}
+	if measurement.FreshOrientationSnapshots+measurement.StaleOrientationSnapshots != measurement.TotalSnapshots {
+		t.Fatalf("expected fresh+stale counts to match total snapshots, got %+v", measurement)
+	}
+}
+
 func TestLargerWorldScenarioTransportMeasurementExceedsDefaultExpandedBaseline(t *testing.T) {
 	defaultMeasurement, err := transport.MeasureSnapshotTransport(simulation.NewSession().Snapshot(), transport.DefaultTickEvery)
 	if err != nil {
