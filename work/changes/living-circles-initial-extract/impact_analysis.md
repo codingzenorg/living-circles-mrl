@@ -4326,3 +4326,18 @@ That points to a bounded measurement slice:
 - instrument one or two bounded client render-pressure metrics
 - record the result during ordinary active movement
 - leave transport and gameplay behavior unchanged
+## Pressure: Client Render Component Measurement
+
+The browser now exposes a live render-pressure metric, which is enough to make draw pressure visible but not enough to choose the next client optimization target. The remaining gap is component attribution.
+
+The new pressure is:
+
+- identify which major client render families dominate draw work
+- avoid optimizing the wrong browser-side subsystem
+- keep default runtime behavior unchanged while gathering that evidence
+
+That points to a bounded measurement slice:
+
+- compare a few major client render families against the full render baseline
+- record the dominant render families in the implementation artifact
+- leave transport and gameplay behavior unchanged
