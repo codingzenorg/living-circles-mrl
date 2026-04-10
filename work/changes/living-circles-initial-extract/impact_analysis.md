@@ -4371,3 +4371,18 @@ That points to a bounded client slice:
 - keep the player label always visible
 - reduce non-player label drawing under one simple deterministic rule
 - leave transport, gameplay, and support-panel behavior unchanged
+## Pressure: Overlay Render Subcomponent Measurement
+
+The browser now exposes total render pressure, major-family breakdown, and narrower world-draw subfamilies. That makes the remaining `overlay` bucket the next unresolved broad client render family.
+
+The new pressure is:
+
+- make the `overlay` render bucket actionable if it remains materially expensive
+- avoid optimizing the wrong overlay subsystem
+- keep default runtime behavior unchanged while gathering clearer browser-side evidence
+
+That points to a bounded measurement slice:
+
+- split the `overlay` render family into a few major subfamilies
+- record the dominant overlay-draw subfamilies in the implementation artifact
+- leave transport and gameplay behavior unchanged
