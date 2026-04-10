@@ -4416,3 +4416,18 @@ That points to a bounded client slice:
 - keep the current offscreen cue vocabulary
 - reduce offscreen marker work under one simple deterministic rule
 - leave transport, gameplay, minimap, and non-offscreen overlays unchanged
+## Pressure: Cue Overlay Render Cost Reduction
+
+The browser now exposes narrower overlay render families, and both glow and offscreen work have already been reduced. That makes cue overlays the next repeated overlay family that can likely be narrowed without changing gameplay or transport.
+
+The new pressure is:
+
+- reduce repeated cue draw work without removing local meaning
+- preserve the readability of heading, intent, and lineage semantics
+- avoid a broader minimap, camera, or transport redesign before this bounded overlay family is narrowed
+
+That points to a bounded client slice:
+
+- keep the current cue vocabulary
+- reduce cue overlay work under one simple deterministic rule
+- leave transport, gameplay, minimap, and non-cue overlays unchanged
