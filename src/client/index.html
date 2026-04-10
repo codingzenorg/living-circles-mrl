@@ -106,7 +106,7 @@
 
       .hud {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto auto auto;
+        grid-template-columns: minmax(0, 1fr) auto auto auto auto;
         gap: 8px;
         margin: 0 0 10px;
         align-items: center;
@@ -480,6 +480,7 @@ go run ./src/server/cmd/livingcircles</pre>
           <div class="chip" id="status">Connecting...</div>
           <div class="chip" id="energy">Energy: --</div>
           <div class="chip" id="tick">Tick: --</div>
+          <div class="chip" id="render-pressure">Render: --</div>
           <button class="control" id="reset" type="button">Restart World</button>
         </div>
         <div class="legend">

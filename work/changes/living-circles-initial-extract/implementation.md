@@ -347,6 +347,7 @@ The slice needed these implementation choices not fully specified in the refined
 - the transport measurement helpers now also measure deterministic active payload component cost across the current major active-detail families without changing runtime behavior
 - active clients now keep local detail every tick while whole-world orientation support refreshes at a lower deterministic cadence, relying on the existing client-side minimap cache between fresh orientation ticks
 - the measurement helpers now also record active orientation freshness versus staleness over a bounded movement window without changing runtime behavior
+- the browser client now records a rolling live draw-duration metric and surfaces it in the HUD as a bounded render-pressure indicator during ordinary play
 - the repository now includes a deterministic multi-client websocket measurement harness for aggregate bytes/sec, per-client bytes/sec, aggregate snapshot count, and observed inter-snapshot gap under bounded local load
 - the multi-client transport harness now also compares deterministic idle and moving-client runs so active-play pressure can be distinguished from passive observer fanout
 - the multi-client transport harness now also measures passive client-count fanout scaling across an explicit count ladder
@@ -417,3 +418,4 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 - under this bounded ladder, reducing active orientation support cuts the `1`-client active baseline from `13129` bytes to `8942` and the `4`-client active baseline from `52516` to `35768` while keeping full active snapshot cadence
 - deterministic active orientation usability over a `300ms` movement window now measures `4` total active snapshots with `2` fresh and `2` stale orientation snapshots at the current optimized cadence
 - under that bounded movement window, active local detail remained continuous while orientation support was stale on half the snapshots
+- client render pressure is now measured live in the browser as rolling average and max draw duration over recent draws, which makes viewport rendering pressure explicit without changing transport or gameplay behavior

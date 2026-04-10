@@ -8,6 +8,7 @@ const playStageNode = document.querySelector(".play-stage");
 const statusNode = document.getElementById("status");
 const energyNode = document.getElementById("energy");
 const tickNode = document.getElementById("tick");
+const renderPressureNode = document.getElementById("render-pressure");
 const detailsNode = document.getElementById("details");
 const playerCardNode = document.getElementById("player-card");
 const npcCardNode = document.getElementById("npc-card");
@@ -26,6 +27,11 @@ let cachedLocalFoods = [];
 const pressedKeys = new Set();
 let activeSocket = null;
 let senderIntervalId = null;
+let renderPressure = {
+  samples: 0,
+  avgMs: 0,
+  maxMs: 0,
+};
 
 const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown", "w", "a", "s", "d"]);
 const CROWDING_RADIUS = 120;
@@ -440,6 +446,25 @@ function renderNpcCard(circles) {
   `).join("");
 }
 
+function recordRenderPressure(durationMs) {
+  const clampedDuration = Math.max(0, durationMs);
+  const windowSize = 30;
+  const previousSamples = renderPressure.samples;
+  const nextSamples = Math.min(windowSize, previousSamples + 1);
+  const carriedWeight = nextSamples === windowSize ? windowSize - 1 : previousSamples;
+  const nextAverage = ((renderPressure.avgMs * carriedWeight) + clampedDuration) / nextSamples;
+  const nextMax = previousSamples >= windowSize
+    ? Math.max(clampedDuration, renderPressure.maxMs * 0.92)
+    : Math.max(renderPressure.maxMs, clampedDuration);
+
+  renderPressure = {
+    samples: nextSamples,
+    avgMs: nextAverage,
+    maxMs: nextMax,
+  };
+  renderPressureNode.textContent = `Render ${nextAverage.toFixed(1)}ms · max ${nextMax.toFixed(1)}ms`;
+}
+
 function pushEventLog(message) {
   if (!message) {
     return;
@@ -579,6 +604,7 @@ function cameraRect(snapshot, viewport) {
 }
 
 function draw(snapshot) {
+  const drawStartedAt = performance.now();
   const observerTransport = isObserverTransport(snapshot);
   const foods = localFoods(snapshot);
   const circles = snapshot.player ? [snapshot.player, ...snapshot.autonomous_circles] : [...snapshot.autonomous_circles];
@@ -665,6 +691,7 @@ function draw(snapshot) {
   drawOffscreenAwareness(snapshot, camera);
   context.restore();
   drawMinimap(snapshot, camera);
+  recordRenderPressure(performance.now() - drawStartedAt);
 }
 
 function drawPlayerHeadingCue(player) {
