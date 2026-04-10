@@ -4431,3 +4431,18 @@ That points to a bounded client slice:
 - keep the current cue vocabulary
 - reduce cue overlay work under one simple deterministic rule
 - leave transport, gameplay, minimap, and non-cue overlays unchanged
+## Pressure: Recent Effect Overlay Render Cost Reduction
+
+The browser now exposes narrower overlay render families, and glow, offscreen, and cue work have already been reduced. That makes recent-effect afterglow the remaining repeated overlay family that can likely be narrowed without changing gameplay or transport.
+
+The new pressure is:
+
+- reduce repeated recent-effect draw work without removing outcome visibility
+- preserve the readability of recent fights, reproduction, and continuity outcomes
+- avoid a broader transport, minimap, or camera redesign before this bounded overlay family is narrowed
+
+That points to a bounded client slice:
+
+- keep the current recent-effect cue vocabulary
+- reduce recent-effect overlay work under one simple deterministic rule
+- leave transport, gameplay, minimap, and non-recent-effect overlays unchanged
