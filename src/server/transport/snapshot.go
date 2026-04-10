@@ -10,14 +10,15 @@ import (
 )
 
 const (
-	DefaultViewportInterestWidth    = 1200.0
-	DefaultViewportInterestHeight   = 840.0
-	DefaultViewportInterestMargin   = 180.0
-	DefaultOrientationEveryTicks    = int64(5)
-	DefaultOrientationFallbackTicks = int64(20)
-	DefaultLocalFoodFallbackTicks   = int64(20)
-	DefaultObserverFallbackTicks    = int64(12)
-	DefaultMinimapClusterSize       = 480.0
+	DefaultViewportInterestWidth     = 1200.0
+	DefaultViewportInterestHeight    = 840.0
+	DefaultViewportInterestMargin    = 180.0
+	DefaultOrientationEveryTicks     = int64(5)
+	DefaultOrientationFallbackTicks  = int64(20)
+	DefaultLocalAutonomousEveryTicks = int64(2)
+	DefaultLocalFoodFallbackTicks    = int64(20)
+	DefaultObserverFallbackTicks     = int64(12)
+	DefaultMinimapClusterSize        = 480.0
 )
 
 type MinimapAutonomousCircle struct {
@@ -40,6 +41,7 @@ type Snapshot struct {
 	World                    simulation.Bounds                     `json:"world"`
 	Player                   *simulation.PlayerCircle              `json:"player"`
 	AutonomousCircles        []simulation.AutonomousCircle         `json:"autonomous_circles"`
+	AutonomousFresh          bool                                  `json:"autonomous_fresh"`
 	Interaction              *simulation.InteractionClassification `json:"interaction"`
 	Foods                    []simulation.Food                     `json:"foods"`
 	FoodsFresh               bool                                  `json:"foods_fresh"`
@@ -59,6 +61,7 @@ func BuildObserverSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 	observerSnapshot.TransportMode = "observer_orientation_only"
 	observerSnapshot.Player = nil
 	observerSnapshot.AutonomousCircles = []simulation.AutonomousCircle{}
+	observerSnapshot.AutonomousFresh = false
 	observerSnapshot.Foods = []simulation.Food{}
 	observerSnapshot.FoodsFresh = false
 	return observerSnapshot
@@ -161,6 +164,35 @@ func observerFoodStateBucket(totalFoods int) string {
 	default:
 		return "abundant"
 	}
+}
+
+func LocalAutonomousSignature(snapshot Snapshot) string {
+	var builder strings.Builder
+	builder.WriteString(strconv.Itoa(snapshot.TotalAutonomousCircles))
+
+	for _, circle := range snapshot.AutonomousCircles {
+		builder.WriteByte('|')
+		builder.WriteString(circle.ID)
+		builder.WriteByte(':')
+		builder.WriteString(circle.Shape)
+		builder.WriteByte(':')
+		builder.WriteString(strconv.Itoa(len(circle.AttachedChildren)))
+	}
+
+	return builder.String()
+}
+
+func ShouldRefreshLocalAutonomous(lastSignature string, lastRefreshTick, currentTick int64, currentSignature string) bool {
+	if currentTick <= lastRefreshTick {
+		return true
+	}
+	if lastSignature == "" {
+		return true
+	}
+	if currentSignature != lastSignature {
+		return true
+	}
+	return currentTick-lastRefreshTick >= DefaultLocalAutonomousEveryTicks
 }
 
 func LocalFoodSignature(snapshot Snapshot) string {
@@ -308,6 +340,7 @@ func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 		World:                    snapshot.World,
 		Player:                   roundedPlayer(snapshot.Player, reducePrecision),
 		AutonomousCircles:        roundedAutonomousCircles(localAutonomous, reducePrecision),
+		AutonomousFresh:          true,
 		Interaction:              roundedInteraction(snapshot.Interaction, reducePrecision),
 		Foods:                    roundedFoods(localFoods, reducePrecision),
 		FoodsFresh:               true,

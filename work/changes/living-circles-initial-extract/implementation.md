@@ -450,10 +450,16 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 - idle browser clients now suppress unchanged neutral movement intents and unchanged repeated movement intents; the sender loop emits only on effective direction change, including one explicit stop intent when movement returns to neutral
 - this keeps active movement behavior intact while making the intended passive-client transport path reachable for truly idle browsers
 - post-idle-intent two-client reassessment is now explicit over the same bounded `300ms` window:
-  - one active browser plus one idle browser now measures `12276` aggregate bytes across `5` snapshots with per-client snapshots `[4 1]`, about `40920` bytes/sec aggregate
+  - one active browser plus one idle browser now measures `11862` aggregate bytes across `5` snapshots with per-client snapshots `[4 1]`, about `39540` bytes/sec aggregate
   - two active browsers measure `17884` aggregate bytes across `8` snapshots with per-client snapshots `[4 4]`, about `59613` bytes/sec aggregate
   - this confirms the idle path is now actually reachable for the second browser and that the remaining two-client pressure is more plausibly the active path than passive idle churn
 - two-active tick/broadcast pressure is now explicit over the same bounded `300ms` window:
-  - one active client measures `8942` aggregate bytes across `4` snapshots with a max inter-snapshot gap of about `101.0ms`
-  - two active clients measure `17884` aggregate bytes across `8` snapshots with a max inter-snapshot gap of about `101.8ms`
+  - one active client measures `9038` aggregate bytes across `4` snapshots with a max inter-snapshot gap of about `101.6ms`
+  - two active clients measure `17008` aggregate bytes across `8` snapshots with a max inter-snapshot gap of about `102.0ms`
   - aggregate payload nearly doubles while the bounded timing gap stays effectively flat at about one tick, so the current two-active pressure reads more like active payload fanout than an immediate tick-loop collapse
+- active local autonomous detail now refreshes on a short fallback cadence plus coarse local-autonomous state change instead of riding every active tick by default
+- active clients reuse the last valid local autonomous set between fresh autonomous refreshes, while player detail, interaction detail, and passive transport behavior remain unchanged
+- under the same bounded `300ms` active window:
+  - one active client remains effectively unchanged at `9038` aggregate bytes across `4` snapshots with a max inter-snapshot gap of about `101.6ms`
+  - two active clients now measure `17008` aggregate bytes across `8` snapshots with a max inter-snapshot gap of about `102.0ms`
+  - this keeps the single-client path effectively intact while dropping the concurrent two-active baseline below the prior `17884` reading without introducing additional tick-pressure drift

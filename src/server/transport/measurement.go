@@ -72,13 +72,13 @@ type TwoClientResponsivenessMeasurement struct {
 }
 
 type TwoActiveTickBroadcastPressureMeasurement struct {
-	Window                   time.Duration
-	ExpectedTickEvery        time.Duration
-	OneActive                MultiClientTransportMeasurement
-	TwoActive                MultiClientTransportMeasurement
-	GapIncrease              time.Duration
-	TimingPressureBounded    bool
-	PayloadPressureDominant  bool
+	Window                  time.Duration
+	ExpectedTickEvery       time.Duration
+	OneActive               MultiClientTransportMeasurement
+	TwoActive               MultiClientTransportMeasurement
+	GapIncrease             time.Duration
+	TimingPressureBounded   bool
+	PayloadPressureDominant bool
 }
 
 type MultiClientTransportConfig struct {

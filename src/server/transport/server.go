@@ -86,13 +86,15 @@ type Server struct {
 	tickEvery time.Duration
 	upgrader  websocket.Upgrader
 
-	mu                sync.Mutex
-	conns             map[*websocket.Conn]*clientConnection
-	lastObserverSig   string
-	lastObserverTick  int64
-	lastFoodSig       string
-	lastFoodTick      int64
-	lastBroadcastTick int64
+	mu                 sync.Mutex
+	conns              map[*websocket.Conn]*clientConnection
+	lastObserverSig    string
+	lastObserverTick   int64
+	lastAutonomousSig  string
+	lastAutonomousTick int64
+	lastFoodSig        string
+	lastFoodTick       int64
+	lastBroadcastTick  int64
 }
 
 func NewServer() *Server {
@@ -162,6 +164,7 @@ func (s *Server) handleWebSocket(writer http.ResponseWriter, request *http.Reque
 		_ = client.Close()
 		return
 	}
+	s.recordAutonomousRefresh(transportSnapshot)
 	s.recordFoodRefresh(transportSnapshot)
 	s.recordObserverRefresh(BuildObserverSnapshot(snapshot, true))
 
@@ -206,18 +209,30 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 
 	writer.Header().Set("Content-Type", "application/json")
 	transportSnapshot := BuildViewportSnapshot(snapshot, true)
+	s.recordAutonomousRefresh(transportSnapshot)
 	s.recordFoodRefresh(transportSnapshot)
 	s.recordObserverRefresh(BuildObserverSnapshot(snapshot, true))
 	_ = json.NewEncoder(writer).Encode(transportSnapshot)
 }
 
 func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot, force bool) {
+	s.mu.Lock()
+	connections := make([]*clientConnection, 0, len(s.conns))
+	for _, connection := range s.conns {
+		connections = append(connections, connection)
+	}
+	s.mu.Unlock()
+	reducePassiveCadence := len(connections) > 1
+	reduceActiveAutonomousCadence := len(connections) > 1
+
 	activeSnapshot := BuildViewportSnapshot(snapshot, true)
 	observerSnapshot := BuildObserverSnapshot(snapshot, true)
 	observerSignature := ObserverTransportSignature(observerSnapshot)
+	autonomousSignature := LocalAutonomousSignature(activeSnapshot)
 	foodSignature := LocalFoodSignature(activeSnapshot)
 	includeOrientation := force || snapshot.Tick%DefaultActiveOrientationEveryTicks == 0
 	includeObserver := s.shouldRefreshObserver(snapshot.Tick, observerSignature)
+	includeAutonomous := force || !reduceActiveAutonomousCadence || s.shouldRefreshLocalAutonomous(snapshot.Tick, autonomousSignature)
 	includeFoods := s.shouldRefreshFoods(snapshot.Tick, foodSignature)
 
 	activeTransportSnapshot := activeSnapshot
@@ -232,6 +247,12 @@ func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot, force bool) {
 		observerTransportSnapshot.MinimapAutonomousCircles = nil
 		observerTransportSnapshot.MinimapFoods = nil
 	}
+	if !includeAutonomous {
+		activeTransportSnapshot.AutonomousFresh = false
+		activeTransportSnapshot.AutonomousCircles = nil
+	} else {
+		s.recordAutonomousRefresh(activeSnapshot)
+	}
 	if !includeFoods {
 		activeTransportSnapshot.FoodsFresh = false
 		activeTransportSnapshot.Foods = nil
@@ -240,14 +261,6 @@ func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot, force bool) {
 	}
 
 	s.recordBroadcastTick(snapshot.Tick)
-
-	s.mu.Lock()
-	connections := make([]*clientConnection, 0, len(s.conns))
-	for _, connection := range s.conns {
-		connections = append(connections, connection)
-	}
-	s.mu.Unlock()
-	reducePassiveCadence := len(connections) > 1
 
 	for _, connection := range connections {
 		if !connection.ShouldReceiveSnapshot(snapshot.Tick, reducePassiveCadence, force) {
@@ -317,6 +330,12 @@ func (s *Server) shouldRefreshFoods(currentTick int64, currentSignature string) 
 	return ShouldRefreshLocalFoods(s.lastFoodSig, s.lastFoodTick, currentTick, currentSignature)
 }
 
+func (s *Server) shouldRefreshLocalAutonomous(currentTick int64, currentSignature string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return ShouldRefreshLocalAutonomous(s.lastAutonomousSig, s.lastAutonomousTick, currentTick, currentSignature)
+}
+
 func (s *Server) shouldRefreshObserver(currentTick int64, currentSignature string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -332,6 +351,17 @@ func (s *Server) recordFoodRefresh(snapshot Snapshot) {
 	defer s.mu.Unlock()
 	s.lastFoodSig = LocalFoodSignature(snapshot)
 	s.lastFoodTick = snapshot.Tick
+}
+
+func (s *Server) recordAutonomousRefresh(snapshot Snapshot) {
+	if !snapshot.AutonomousFresh {
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastAutonomousSig = LocalAutonomousSignature(snapshot)
+	s.lastAutonomousTick = snapshot.Tick
 }
 
 func (s *Server) recordObserverRefresh(snapshot Snapshot) {

@@ -570,8 +570,11 @@ func TestPassiveObserverReceivesOrientationOnlyTransportAndReactivates(t *testin
 		if resumedSnapshot.Player == nil {
 			t.Fatalf("expected resumed active snapshot to restore player detail, got %+v", resumedSnapshot)
 		}
+		if !resumedSnapshot.AutonomousFresh {
+			continue
+		}
 		if len(resumedSnapshot.AutonomousCircles) == 0 {
-			t.Fatalf("expected resumed active snapshot to restore local autonomous detail, got %+v", resumedSnapshot)
+			t.Fatalf("expected resumed active snapshot to restore fresh local autonomous detail, got %+v", resumedSnapshot)
 		}
 		return
 	}
@@ -2326,6 +2329,124 @@ func TestTransportLocalFoodDetailRefreshesAtLowerCadence(t *testing.T) {
 	}
 	if !sawStaleBeforeRefresh {
 		t.Fatal("expected to observe at least one stale-food tick before a later refresh")
+	}
+}
+
+func TestActiveTransportOmitsLocalAutonomousDetailUntilFallbackRefresh(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
+		WorldWidth:            simulation.DefaultExpandedWorldWidth,
+		WorldHeight:           simulation.DefaultExpandedWorldHeight,
+		PlayerShape:           simulation.DefaultPlayerShape,
+		AutonomousShape:       simulation.DefaultAutoShape,
+		PlayerEnergy:          simulation.DefaultPlayerEnergy,
+		AutonomousEnergy:      simulation.DefaultPlayerEnergy,
+		ExpandedFoodCount:     simulation.DefaultExpandedFoodCount,
+		UseExpandedPopulation: true,
+	}))
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	connection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial websocket: %v", err)
+	}
+	defer connection.Close()
+	peerConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial peer websocket: %v", err)
+	}
+	defer peerConnection.Close()
+
+	var initial transport.Snapshot
+	if err := connection.ReadJSON(&initial); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+	if _, _, err := peerConnection.ReadMessage(); err != nil {
+		t.Fatalf("read peer initial snapshot: %v", err)
+	}
+	if !initial.AutonomousFresh {
+		t.Fatal("expected initial snapshot local autonomous detail to be fresh")
+	}
+	if len(initial.AutonomousCircles) == 0 {
+		t.Fatal("expected initial snapshot to include local autonomous detail")
+	}
+
+	movementTicker := time.NewTicker(transport.DefaultTickEvery)
+	defer movementTicker.Stop()
+	stopSending := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stopSending:
+				return
+			case <-movementTicker.C:
+				_ = connection.WriteJSON(map[string]any{
+					"type": "movement_intent",
+					"direction": map[string]float64{
+						"x": 1,
+						"y": 0,
+					},
+				})
+				_ = peerConnection.WriteJSON(map[string]any{
+					"type": "movement_intent",
+					"direction": map[string]float64{
+						"x": 1,
+						"y": 0,
+					},
+				})
+			}
+		}
+	}()
+	defer close(stopSending)
+
+	_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	sawStale := false
+	sawRefresh := false
+	sawStaleBeforeRefresh := false
+	for range transport.DefaultLocalAutonomousEveryTicks + 3 {
+		var snapshot transport.Snapshot
+		if err := connection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read snapshot: %v", err)
+		}
+		if snapshot.Tick == 0 || snapshot.TransportMode != "active_local_detail" {
+			continue
+		}
+
+		if snapshot.AutonomousFresh {
+			if snapshot.AutonomousCircles == nil {
+				t.Fatalf("expected tick %d to include local autonomous detail when autonomous detail is fresh", snapshot.Tick)
+			}
+			if sawStale {
+				sawStaleBeforeRefresh = true
+			}
+			sawRefresh = true
+			if snapshot.Tick >= transport.DefaultLocalAutonomousEveryTicks {
+				break
+			}
+			continue
+		}
+		if snapshot.AutonomousCircles != nil {
+			t.Fatalf("expected stale-autonomous tick %d to omit local autonomous detail", snapshot.Tick)
+		}
+		sawStale = true
+	}
+
+	if !sawStale {
+		t.Fatal("expected at least one stale-autonomous tick")
+	}
+	if !sawRefresh {
+		t.Fatal("expected to observe a later local-autonomous refresh tick")
+	}
+	if !sawStaleBeforeRefresh {
+		t.Fatal("expected to observe at least one stale-autonomous tick before a later refresh")
 	}
 }
 

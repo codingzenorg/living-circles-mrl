@@ -22,7 +22,7 @@ test("world snapshot schema remains explicit and parseable", async () => {
   const schema = JSON.parse(file);
 
   assert.equal(schema.properties.type.const, MESSAGE_TYPES.worldSnapshot);
-  assert.deepEqual(schema.required, ["type", "transport_mode", "tick", "world", "player", "autonomous_circles", "interaction", "foods", "foods_fresh", "orientation_fresh", "total_autonomous_circles", "total_foods"]);
+  assert.deepEqual(schema.required, ["type", "transport_mode", "tick", "world", "player", "autonomous_circles", "autonomous_fresh", "interaction", "foods", "foods_fresh", "orientation_fresh", "total_autonomous_circles", "total_foods"]);
   assert.deepEqual(schema.properties.transport_mode.enum, ["active_local_detail", "observer_orientation_only"]);
   assert.deepEqual(schema.properties.player.anyOf[1].required, ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "attached_children"]);
   assert.deepEqual(schema.properties.autonomous_circles.items.required, ["id", "lineage_id", "generation", "shape", "x", "y", "radius", "energy", "attached_children"]);
@@ -58,6 +58,7 @@ test("world snapshot schema remains explicit and parseable", async () => {
   assert.equal(schema.properties.interaction.anyOf[1].properties.target_reserve_component.type, "number");
   assert.equal(schema.properties.interaction.anyOf[1].properties.reproduction_threshold.type, "number");
   assert.equal(schema.properties.interaction.anyOf[1].properties.reproduction_cost.type, "number");
+  assert.equal(schema.properties.autonomous_fresh.type, "boolean");
   assert.equal(schema.properties.foods_fresh.type, "boolean");
   assert.equal(schema.properties.orientation_fresh.type, "boolean");
   assert.deepEqual(schema.properties.foods.anyOf[0].items.required, ["id", "x", "y", "radius"]);

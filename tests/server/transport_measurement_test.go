@@ -218,6 +218,17 @@ func TestTwoActiveTickBroadcastPressureMeasurementKeepsTimingBoundedWhilePayload
 	}
 }
 
+func TestTwoActiveTickBroadcastPressureMeasurementDropsBelowPriorBaseline(t *testing.T) {
+	measurement, err := transport.MeasureTwoActiveTickBroadcastPressure(simulation.NewSession, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure two-active tick pressure: %v", err)
+	}
+
+	if measurement.TwoActive.AggregateBytes >= 17884 {
+		t.Fatalf("expected two-active aggregate bytes %d to drop below prior baseline 17884", measurement.TwoActive.AggregateBytes)
+	}
+}
+
 func TestLargerWorldScenarioTransportMeasurementExceedsDefaultExpandedBaseline(t *testing.T) {
 	defaultMeasurement, err := transport.MeasureSnapshotTransport(simulation.NewSession().Snapshot(), transport.DefaultTickEvery)
 	if err != nil {
@@ -1016,6 +1027,46 @@ func TestEventDrivenLocalFoodAverageCostFallsBelowEventDrivenOrientationBaseline
 	eventDrivenFoodAverageBytesPerSecond := (float64(eventDrivenFoodTotalBytes) / float64(transport.DefaultLocalFoodFallbackTicks)) * (1 / transport.DefaultTickEvery.Seconds())
 	if eventDrivenFoodAverageBytesPerSecond >= baselineAverageBytesPerSecond {
 		t.Fatalf("expected event-driven local-food bytes/sec %v to be below event-driven orientation baseline %v", eventDrivenFoodAverageBytesPerSecond, baselineAverageBytesPerSecond)
+	}
+}
+
+func TestViewportSnapshotMarksAutonomousDetailFreshByDefault(t *testing.T) {
+	transportSnapshot := transport.BuildViewportSnapshot(simulation.NewSession().Snapshot(), true)
+
+	if !transportSnapshot.AutonomousFresh {
+		t.Fatalf("expected viewport snapshot autonomous detail to be fresh by default, got %+v", transportSnapshot)
+	}
+	if len(transportSnapshot.AutonomousCircles) == 0 {
+		t.Fatalf("expected viewport snapshot to include local autonomous detail when fresh, got %+v", transportSnapshot)
+	}
+}
+
+func TestLocalAutonomousRefreshFallsBackOnShortCadenceAndStateChange(t *testing.T) {
+	baseSnapshot := transport.BuildViewportSnapshot(simulation.NewSession().Snapshot(), true)
+	baseSignature := transport.LocalAutonomousSignature(baseSnapshot)
+
+	if !transport.ShouldRefreshLocalAutonomous("", 0, 1, baseSignature) {
+		t.Fatal("expected initial autonomous refresh to be required")
+	}
+	if transport.ShouldRefreshLocalAutonomous(baseSignature, 1, 2, baseSignature) {
+		t.Fatal("expected unchanged autonomous detail not to refresh before fallback cadence")
+	}
+	if !transport.ShouldRefreshLocalAutonomous(baseSignature, 1, 3, baseSignature) {
+		t.Fatal("expected unchanged autonomous detail to refresh at fallback cadence")
+	}
+
+	changedSnapshot := baseSnapshot
+	if len(changedSnapshot.AutonomousCircles) == 0 {
+		t.Fatal("expected local autonomous detail to be present in baseline snapshot")
+	}
+	changedSnapshot.AutonomousCircles = append([]simulation.AutonomousCircle{}, changedSnapshot.AutonomousCircles...)
+	changedSnapshot.AutonomousCircles[0].AttachedChildren = append(changedSnapshot.AutonomousCircles[0].AttachedChildren, simulation.AttachedChild{ID: "synthetic-child"})
+	changedSignature := transport.LocalAutonomousSignature(changedSnapshot)
+	if changedSignature == baseSignature {
+		t.Fatal("expected changed local autonomous detail to change signature")
+	}
+	if !transport.ShouldRefreshLocalAutonomous(baseSignature, 1, 2, changedSignature) {
+		t.Fatal("expected changed local autonomous detail to force refresh")
 	}
 }
 

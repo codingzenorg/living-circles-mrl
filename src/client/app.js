@@ -24,6 +24,7 @@ let lastInteractionSignature = null;
 let previousCamera = null;
 let cachedMinimapAutonomousCircles = [];
 let cachedMinimapFoods = [];
+let cachedLocalAutonomousCircles = [];
 let cachedLocalFoods = [];
 const pressedKeys = new Set();
 let activeSocket = null;
@@ -1348,6 +1349,11 @@ async function resetWorld() {
     }
 
     const snapshot = await response.json();
+    if (snapshot.autonomous_fresh ?? true) {
+      cachedLocalAutonomousCircles = snapshot.autonomous_circles ?? [];
+    } else {
+      snapshot.autonomous_circles = cachedLocalAutonomousCircles;
+    }
     if (snapshot.foods_fresh ?? true) {
       cachedLocalFoods = snapshot.foods ?? [];
     } else {
@@ -1417,11 +1423,20 @@ function connect() {
       snapshot.minimap_foods = cachedMinimapFoods;
     }
     if (isObserverTransport(snapshot)) {
+      cachedLocalAutonomousCircles = [];
+      snapshot.autonomous_circles = [];
       snapshot.foods = [];
-    } else if (snapshot.foods_fresh ?? true) {
-      cachedLocalFoods = snapshot.foods ?? [];
     } else {
-      snapshot.foods = cachedLocalFoods;
+      if (snapshot.autonomous_fresh ?? true) {
+        cachedLocalAutonomousCircles = snapshot.autonomous_circles ?? [];
+      } else {
+        snapshot.autonomous_circles = cachedLocalAutonomousCircles;
+      }
+      if (snapshot.foods_fresh ?? true) {
+        cachedLocalFoods = snapshot.foods ?? [];
+      } else {
+        snapshot.foods = cachedLocalFoods;
+      }
     }
 
     latestSnapshot = snapshot;
@@ -1433,6 +1448,10 @@ function connect() {
       activeSocket = null;
     }
     lastSentDirection = null;
+    cachedLocalAutonomousCircles = [];
+    cachedLocalFoods = [];
+    cachedMinimapAutonomousCircles = [];
+    cachedMinimapFoods = [];
     setStatus("Disconnected");
     setTimeout(connect, 1000);
   });
