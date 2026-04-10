@@ -435,3 +435,5 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 - minimap, player heading cue, transport, and gameplay behavior remain unchanged
 - cue overlay work is now narrower: NPC intent cues and lineage links only render inside a tighter nearby player neighborhood, while the player heading cue remains unchanged
 - glow, offscreen awareness, minimap, transport, and gameplay behavior remain unchanged
+- recent-effect afterglow is now lighter: effect persistence is shorter and the rendered glow radius is smaller, while the same recent fight, reproduction, and continuity outcome vocabulary remains visible
+- glow, offscreen awareness, cue overlays, minimap, transport, and gameplay behavior remain unchanged

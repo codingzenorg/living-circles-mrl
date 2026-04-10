@@ -102,7 +102,7 @@ const FOOD_PLAYER_GLOW_RADIUS = 96;
 const FOOD_SLOT_GLOW_RADIUS = 34;
 const INTENT_CUE_DISTANCE = 260;
 const MIN_MOVEMENT_FOR_INTENT = 1.5;
-const AFTERGLOW_TTL = 10;
+const AFTERGLOW_TTL = 7;
 const VIEWPORT_MIN_WIDTH = 640;
 const VIEWPORT_MIN_HEIGHT = 420;
 const VIEWPORT_BOTTOM_MARGIN = 24;
@@ -1032,7 +1032,7 @@ function drawMinimap(snapshot, camera) {
 function drawRecentEffects() {
   for (const effect of recentEffects) {
     const progress = effect.ttl / AFTERGLOW_TTL;
-    const radius = 24 + (1 - progress) * 18;
+    const radius = 18 + (1 - progress) * 14;
     const gradient = context.createRadialGradient(effect.x, effect.y, 6, effect.x, effect.y, radius);
     gradient.addColorStop(0, effect.glow);
     gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
@@ -1045,7 +1045,7 @@ function drawRecentEffects() {
     context.globalAlpha = progress;
     context.lineWidth = 2.5;
     context.beginPath();
-    context.arc(effect.x, effect.y, radius - 6, 0, Math.PI * 2);
+    context.arc(effect.x, effect.y, radius - 5, 0, Math.PI * 2);
     context.stroke();
     context.globalAlpha = 1;
   }
