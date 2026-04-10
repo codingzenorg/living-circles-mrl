@@ -206,6 +206,22 @@ func TestMovingClientTransportMeasurementKeepsFullCadence(t *testing.T) {
 	}
 }
 
+func TestMovingClientTransportMeasurementDropsBelowPriorActiveBaseline(t *testing.T) {
+	measurement, err := transport.MeasureMultiClientTransportWithConfig(simulation.NewSession(), transport.MultiClientTransportConfig{
+		ClientCount:       1,
+		Window:            300 * time.Millisecond,
+		MovingClientCount: 1,
+		MovementDirection: simulation.Vector{X: 1, Y: 0},
+	})
+	if err != nil {
+		t.Fatalf("measure active client transport: %v", err)
+	}
+
+	if measurement.AggregateBytes >= 13129 {
+		t.Fatalf("expected optimized active aggregate bytes %d to drop below prior baseline 13129", measurement.AggregateBytes)
+	}
+}
+
 func TestMultiClientTransportMeasurementReportsTickPressureSignal(t *testing.T) {
 	measurement, err := transport.MeasureMultiClientTransport(simulation.NewSession(), 4, 300*time.Millisecond)
 	if err != nil {
@@ -950,6 +966,18 @@ func TestActiveClientFanoutScalingKeepsPerClientPressureBounded(t *testing.T) {
 		if measurement.MaxInterSnapshotGap > 4*measurement.ExpectedTickEvery {
 			t.Fatalf("expected active max gap %v to stay within bounded local pressure window", measurement.MaxInterSnapshotGap)
 		}
+	}
+}
+
+func TestActiveClientFanoutScalingDropsBelowPriorBaseline(t *testing.T) {
+	scaling, err := transport.MeasureActiveClientFanoutScaling(simulation.NewSession, []int{1, 2, 4}, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure active fanout scaling: %v", err)
+	}
+
+	fourClients := scaling.Measurements[2]
+	if fourClients.AggregateBytes >= 52516 {
+		t.Fatalf("expected 4-active-client aggregate bytes %d to drop below prior baseline 52516", fourClients.AggregateBytes)
 	}
 }
 

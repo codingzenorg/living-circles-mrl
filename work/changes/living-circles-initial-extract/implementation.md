@@ -345,6 +345,7 @@ The slice needed these implementation choices not fully specified in the refined
 - passive observer transport now uses a coarse observer state signature: interaction changes still refresh immediately, food state now refreshes by coarse abundance bucket instead of exact minimap motion, and population loss still refreshes by total autonomous count
 - the transport measurement harness now also measures deterministic active-client fanout scaling across an explicit moving-client ladder
 - the transport measurement helpers now also measure deterministic active payload component cost across the current major active-detail families without changing runtime behavior
+- active clients now keep local detail every tick while whole-world orientation support refreshes at a lower deterministic cadence, relying on the existing client-side minimap cache between fresh orientation ticks
 - the repository now includes a deterministic multi-client websocket measurement harness for aggregate bytes/sec, per-client bytes/sec, aggregate snapshot count, and observed inter-snapshot gap under bounded local load
 - the multi-client transport harness now also compares deterministic idle and moving-client runs so active-play pressure can be distinguished from passive observer fanout
 - the multi-client transport harness now also measures passive client-count fanout scaling across an explicit count ladder
@@ -408,3 +409,8 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - without orientation support: `1176` bytes
   - without interaction detail: `3333` bytes in the current no-interaction baseline
 - under this bounded breakdown, orientation support is the dominant serialized active payload family in the current default snapshot
+- deterministic optimized active transport over `300ms` now measures:
+  - `1` active client: `8942` aggregate bytes, about `29807` bytes/sec, `102ms` max gap, `4` snapshots
+  - `2` active clients: `17884` aggregate bytes, about `59613` bytes/sec, `102ms` max gap, `8` snapshots
+  - `4` active clients: `35768` aggregate bytes, about `119227` bytes/sec, `102ms` max gap, `16` snapshots
+- under this bounded ladder, reducing active orientation support cuts the `1`-client active baseline from `13129` bytes to `8942` and the `4`-client active baseline from `52516` to `35768` while keeping full active snapshot cadence

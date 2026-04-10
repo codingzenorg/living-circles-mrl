@@ -628,6 +628,74 @@ func TestPassiveObserverFallsBackAfterCalmObserverWindow(t *testing.T) {
 	}
 }
 
+func TestActiveClientKeepsLocalDetailWhileOrientationRefreshBecomesSparse(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSession())
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	activeConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial active websocket: %v", err)
+	}
+	defer activeConnection.Close()
+
+	if _, _, err := activeConnection.ReadMessage(); err != nil {
+		t.Fatalf("read initial snapshot: %v", err)
+	}
+
+	movementTicker := time.NewTicker(transport.DefaultTickEvery)
+	defer movementTicker.Stop()
+	stopSending := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stopSending:
+				return
+			case <-movementTicker.C:
+				_ = activeConnection.WriteJSON(map[string]any{
+					"type": "movement_intent",
+					"direction": map[string]float64{
+						"x": 1,
+						"y": 0,
+					},
+				})
+			}
+		}
+	}()
+	defer close(stopSending)
+
+	_ = activeConnection.SetReadDeadline(time.Now().Add(2 * time.Second))
+	sawStaleOrientation := false
+	sawFreshOrientation := false
+	for {
+		var snapshot transport.Snapshot
+		if err := activeConnection.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read active snapshot: %v", err)
+		}
+		if snapshot.Tick == 0 || snapshot.TransportMode != "active_local_detail" {
+			continue
+		}
+		if snapshot.Player == nil {
+			t.Fatalf("expected active snapshot to keep player detail, got %+v", snapshot)
+		}
+		if snapshot.OrientationFresh {
+			sawFreshOrientation = true
+		} else {
+			sawStaleOrientation = true
+		}
+		if sawFreshOrientation && sawStaleOrientation {
+			return
+		}
+	}
+}
+
 func TestPassiveObserverRefreshesOnCoarseFoodCountChange(t *testing.T) {
 	server := transport.NewServerWithSession(simulation.NewSessionWithConfig(simulation.Config{
 		WorldWidth:                800,

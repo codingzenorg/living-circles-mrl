@@ -18,6 +18,7 @@ const websocketPath = "/ws"
 const DefaultTickEvery = 100 * time.Millisecond
 const DefaultRecentMovementIntentTicks = int64(40)
 const DefaultPassiveObserverCadenceTicks = int64(3)
+const DefaultActiveOrientationEveryTicks = int64(3)
 
 type movementIntentMessage struct {
 	Type      string            `json:"type"`
@@ -85,15 +86,13 @@ type Server struct {
 	tickEvery time.Duration
 	upgrader  websocket.Upgrader
 
-	mu                  sync.Mutex
-	conns               map[*websocket.Conn]*clientConnection
-	lastOrientationSig  string
-	lastOrientationTick int64
-	lastObserverSig     string
-	lastObserverTick    int64
-	lastFoodSig         string
-	lastFoodTick        int64
-	lastBroadcastTick   int64
+	mu                sync.Mutex
+	conns             map[*websocket.Conn]*clientConnection
+	lastObserverSig   string
+	lastObserverTick  int64
+	lastFoodSig       string
+	lastFoodTick      int64
+	lastBroadcastTick int64
 }
 
 func NewServer() *Server {
@@ -163,7 +162,6 @@ func (s *Server) handleWebSocket(writer http.ResponseWriter, request *http.Reque
 		_ = client.Close()
 		return
 	}
-	s.recordOrientationRefresh(transportSnapshot)
 	s.recordFoodRefresh(transportSnapshot)
 	s.recordObserverRefresh(BuildObserverSnapshot(snapshot, true))
 
@@ -208,7 +206,6 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 
 	writer.Header().Set("Content-Type", "application/json")
 	transportSnapshot := BuildViewportSnapshot(snapshot, true)
-	s.recordOrientationRefresh(transportSnapshot)
 	s.recordFoodRefresh(transportSnapshot)
 	s.recordObserverRefresh(BuildObserverSnapshot(snapshot, true))
 	_ = json.NewEncoder(writer).Encode(transportSnapshot)
@@ -217,10 +214,9 @@ func (s *Server) handleReset(writer http.ResponseWriter, request *http.Request) 
 func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot, force bool) {
 	activeSnapshot := BuildViewportSnapshot(snapshot, true)
 	observerSnapshot := BuildObserverSnapshot(snapshot, true)
-	orientationSignature := OrientationSummarySignature(activeSnapshot)
 	observerSignature := ObserverTransportSignature(observerSnapshot)
 	foodSignature := LocalFoodSignature(activeSnapshot)
-	includeOrientation := s.shouldRefreshOrientation(snapshot.Tick, orientationSignature)
+	includeOrientation := force || snapshot.Tick%DefaultActiveOrientationEveryTicks == 0
 	includeObserver := s.shouldRefreshObserver(snapshot.Tick, observerSignature)
 	includeFoods := s.shouldRefreshFoods(snapshot.Tick, foodSignature)
 
@@ -230,11 +226,11 @@ func (s *Server) broadcastSnapshot(snapshot simulation.Snapshot, force bool) {
 		activeTransportSnapshot.OrientationFresh = false
 		activeTransportSnapshot.MinimapAutonomousCircles = nil
 		activeTransportSnapshot.MinimapFoods = nil
+	}
+	if !includeObserver {
 		observerTransportSnapshot.OrientationFresh = false
 		observerTransportSnapshot.MinimapAutonomousCircles = nil
 		observerTransportSnapshot.MinimapFoods = nil
-	} else {
-		s.recordOrientationRefresh(activeSnapshot)
 	}
 	if !includeFoods {
 		activeTransportSnapshot.FoodsFresh = false
@@ -313,23 +309,6 @@ func (s *Server) recordBroadcastTick(tick int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lastBroadcastTick = tick
-}
-
-func (s *Server) shouldRefreshOrientation(currentTick int64, currentSignature string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return ShouldRefreshOrientation(s.lastOrientationSig, s.lastOrientationTick, currentTick, currentSignature)
-}
-
-func (s *Server) recordOrientationRefresh(snapshot Snapshot) {
-	if !snapshot.OrientationFresh {
-		return
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.lastOrientationSig = OrientationSummarySignature(snapshot)
-	s.lastOrientationTick = snapshot.Tick
 }
 
 func (s *Server) shouldRefreshFoods(currentTick int64, currentSignature string) bool {
