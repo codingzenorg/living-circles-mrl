@@ -463,3 +463,7 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - one active client remains effectively unchanged at `9038` aggregate bytes across `4` snapshots with a max inter-snapshot gap of about `101.6ms`
   - two active clients now measure `17008` aggregate bytes across `8` snapshots with a max inter-snapshot gap of about `102.0ms`
   - this keeps the single-client path effectively intact while dropping the concurrent two-active baseline below the prior `17884` reading without introducing additional tick-pressure drift
+- active player-detail precision reduction was probed as a bounded candidate rather than landed as a runtime change:
+  - the current active snapshot already rounds wire floats to integer precision
+  - an additional player-only coarse snap candidate produced the same `3357` byte active payload as the current baseline
+  - so this repo state does not justify a runtime player-precision change yet; that target is not currently worth pursuing

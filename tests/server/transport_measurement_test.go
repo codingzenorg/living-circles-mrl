@@ -83,6 +83,36 @@ func TestActiveTransportComponentMeasurementReportsDominantComponent(t *testing.
 	}
 }
 
+func TestActivePlayerPrecisionCandidateMeasurementIsDeterministic(t *testing.T) {
+	first, err := transport.MeasureActivePlayerPrecisionCandidate(simulation.NewSession().Snapshot())
+	if err != nil {
+		t.Fatalf("measure first active player precision candidate: %v", err)
+	}
+
+	second, err := transport.MeasureActivePlayerPrecisionCandidate(simulation.NewSession().Snapshot())
+	if err != nil {
+		t.Fatalf("measure second active player precision candidate: %v", err)
+	}
+
+	if first != second {
+		t.Fatalf("expected deterministic active player precision candidate measurement, first=%+v second=%+v", first, second)
+	}
+}
+
+func TestActivePlayerPrecisionCandidateShowsNoMeaningfulPayloadReduction(t *testing.T) {
+	measurement, err := transport.MeasureActivePlayerPrecisionCandidate(simulation.NewSession().Snapshot())
+	if err != nil {
+		t.Fatalf("measure active player precision candidate: %v", err)
+	}
+
+	if measurement.Candidate.PayloadBytes != measurement.Base.PayloadBytes {
+		t.Fatalf("expected player-only coarse precision candidate to keep the same payload size in the current baseline, got %+v", measurement)
+	}
+	if measurement.Worthwhile {
+		t.Fatalf("expected player-only coarse precision candidate not to be worthwhile in the current baseline, got %+v", measurement)
+	}
+}
+
 func TestActiveOrientationUsabilityMeasurementIsDeterministic(t *testing.T) {
 	first, err := transport.MeasureActiveOrientationUsability(simulation.NewSession(), 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
 	if err != nil {

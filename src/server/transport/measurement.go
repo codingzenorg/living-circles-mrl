@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http/httptest"
 	"strings"
@@ -32,6 +33,12 @@ type ActiveTransportComponentMeasurement struct {
 	WithoutOrientation SnapshotTransportMeasurement
 	WithoutInteraction SnapshotTransportMeasurement
 	DominantComponent  string
+}
+
+type ActivePlayerPrecisionCandidateMeasurement struct {
+	Base       SnapshotTransportMeasurement
+	Candidate  SnapshotTransportMeasurement
+	Worthwhile bool
 }
 
 type ActiveOrientationUsabilityMeasurement struct {
@@ -164,6 +171,37 @@ func MeasureActiveTransportComponents(snapshot simulation.Snapshot) (ActiveTrans
 	}, nil
 }
 
+func MeasureActivePlayerPrecisionCandidate(snapshot simulation.Snapshot) (ActivePlayerPrecisionCandidateMeasurement, error) {
+	baseSnapshot := BuildViewportSnapshot(snapshot, true)
+
+	base, err := MeasureSnapshotTransport(baseSnapshot, DefaultTickEvery)
+	if err != nil {
+		return ActivePlayerPrecisionCandidateMeasurement{}, err
+	}
+
+	candidateSnapshot := baseSnapshot
+	if candidateSnapshot.Player != nil {
+		copy := *candidateSnapshot.Player
+		copy.X = coarsePlayerTransportFloat(copy.X)
+		copy.Y = coarsePlayerTransportFloat(copy.Y)
+		copy.Radius = coarsePlayerTransportFloat(copy.Radius)
+		copy.Energy = coarsePlayerTransportFloat(copy.Energy)
+		copy.AttachedChildren = coarseRoundedChildren(copy.AttachedChildren)
+		candidateSnapshot.Player = &copy
+	}
+
+	candidate, err := MeasureSnapshotTransport(candidateSnapshot, DefaultTickEvery)
+	if err != nil {
+		return ActivePlayerPrecisionCandidateMeasurement{}, err
+	}
+
+	return ActivePlayerPrecisionCandidateMeasurement{
+		Base:       base,
+		Candidate:  candidate,
+		Worthwhile: candidate.PayloadBytes < base.PayloadBytes,
+	}, nil
+}
+
 func MeasureActiveOrientationUsability(session *simulation.Session, window time.Duration, direction simulation.Vector) (ActiveOrientationUsabilityMeasurement, error) {
 	if session == nil {
 		return ActiveOrientationUsabilityMeasurement{}, fmt.Errorf("session must not be nil")
@@ -198,6 +236,22 @@ func MeasureActiveOrientationUsability(session *simulation.Session, window time.
 		}
 	}
 	return result, nil
+}
+
+func coarsePlayerTransportFloat(value float64) float64 {
+	return math.Round(value/4) * 4
+}
+
+func coarseRoundedChildren(children []simulation.AttachedChild) []simulation.AttachedChild {
+	rounded := make([]simulation.AttachedChild, 0, len(children))
+	for _, child := range children {
+		copy := child
+		copy.X = coarsePlayerTransportFloat(copy.X)
+		copy.Y = coarsePlayerTransportFloat(copy.Y)
+		copy.Radius = coarsePlayerTransportFloat(copy.Radius)
+		rounded = append(rounded, copy)
+	}
+	return rounded
 }
 
 func MeasureTwoClientResponsiveness(sessionFactory func() *simulation.Session, window time.Duration, direction simulation.Vector) (TwoClientResponsivenessMeasurement, error) {
