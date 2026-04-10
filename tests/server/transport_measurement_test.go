@@ -837,6 +837,76 @@ func TestPassiveFanoutScalingDropsBelowObserverOrientationBaseline(t *testing.T)
 	}
 }
 
+func TestActiveClientFanoutScalingMeasurementIsDeterministic(t *testing.T) {
+	first, err := transport.MeasureActiveClientFanoutScaling(simulation.NewSession, []int{1, 2, 4}, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure first active fanout scaling: %v", err)
+	}
+
+	second, err := transport.MeasureActiveClientFanoutScaling(simulation.NewSession, []int{1, 2, 4}, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure second active fanout scaling: %v", err)
+	}
+
+	if len(first.Measurements) != len(second.Measurements) {
+		t.Fatalf("expected same active measurement count, first=%+v second=%+v", first, second)
+	}
+	for index := range first.Measurements {
+		if first.Measurements[index].AggregateBytes != second.Measurements[index].AggregateBytes {
+			t.Fatalf("expected deterministic active aggregate bytes at index %d, first=%+v second=%+v", index, first.Measurements[index], second.Measurements[index])
+		}
+		if first.Measurements[index].AggregateSnapshots != second.Measurements[index].AggregateSnapshots {
+			t.Fatalf("expected deterministic active aggregate snapshots at index %d, first=%+v second=%+v", index, first.Measurements[index], second.Measurements[index])
+		}
+	}
+}
+
+func TestActiveClientFanoutScalingIncreasesAggregateBytesWithClientCount(t *testing.T) {
+	scaling, err := transport.MeasureActiveClientFanoutScaling(simulation.NewSession, []int{1, 2, 4}, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure active fanout scaling: %v", err)
+	}
+
+	if len(scaling.Measurements) != 3 {
+		t.Fatalf("expected 3 active scaling measurements, got %+v", scaling)
+	}
+	oneClient := scaling.Measurements[0]
+	twoClients := scaling.Measurements[1]
+	fourClients := scaling.Measurements[2]
+
+	if twoClients.AggregateBytes <= oneClient.AggregateBytes {
+		t.Fatalf("expected 2-active-client aggregate bytes %d to exceed 1-active-client aggregate bytes %d", twoClients.AggregateBytes, oneClient.AggregateBytes)
+	}
+	if fourClients.AggregateBytes <= twoClients.AggregateBytes {
+		t.Fatalf("expected 4-active-client aggregate bytes %d to exceed 2-active-client aggregate bytes %d", fourClients.AggregateBytes, twoClients.AggregateBytes)
+	}
+	if twoClients.ApproxAggregateBytesPerSec <= oneClient.ApproxAggregateBytesPerSec {
+		t.Fatalf("expected 2-active-client aggregate bytes/sec %v to exceed 1-active-client aggregate bytes/sec %v", twoClients.ApproxAggregateBytesPerSec, oneClient.ApproxAggregateBytesPerSec)
+	}
+	if fourClients.ApproxAggregateBytesPerSec <= twoClients.ApproxAggregateBytesPerSec {
+		t.Fatalf("expected 4-active-client aggregate bytes/sec %v to exceed 2-active-client aggregate bytes/sec %v", fourClients.ApproxAggregateBytesPerSec, twoClients.ApproxAggregateBytesPerSec)
+	}
+}
+
+func TestActiveClientFanoutScalingKeepsPerClientPressureBounded(t *testing.T) {
+	scaling, err := transport.MeasureActiveClientFanoutScaling(simulation.NewSession, []int{1, 2, 4}, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure active fanout scaling: %v", err)
+	}
+
+	for _, measurement := range scaling.Measurements {
+		if measurement.ApproxPerClientBytesPerSec <= 0 {
+			t.Fatalf("expected active per-client bytes/sec to stay positive, got %+v", measurement)
+		}
+		if measurement.MaxInterSnapshotGap < measurement.ExpectedTickEvery {
+			t.Fatalf("expected active max gap %v to be at least one tick interval %v", measurement.MaxInterSnapshotGap, measurement.ExpectedTickEvery)
+		}
+		if measurement.MaxInterSnapshotGap > 4*measurement.ExpectedTickEvery {
+			t.Fatalf("expected active max gap %v to stay within bounded local pressure window", measurement.MaxInterSnapshotGap)
+		}
+	}
+}
+
 func TestCompactMinimapSummaryReducesOrientationRefreshPayloadBelowExactSummary(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
 

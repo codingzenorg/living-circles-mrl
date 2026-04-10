@@ -320,3 +320,43 @@ func MeasureClientCountFanoutScaling(sessionFactory func() *simulation.Session, 
 		ExpectedTickEvery: DefaultTickEvery,
 	}, nil
 }
+
+func MeasureActiveClientFanoutScaling(sessionFactory func() *simulation.Session, clientCounts []int, window time.Duration, direction simulation.Vector) (FanoutScalingMeasurement, error) {
+	if sessionFactory == nil {
+		return FanoutScalingMeasurement{}, fmt.Errorf("sessionFactory must not be nil")
+	}
+	if len(clientCounts) == 0 {
+		return FanoutScalingMeasurement{}, fmt.Errorf("clientCounts must not be empty")
+	}
+	if window <= 0 {
+		return FanoutScalingMeasurement{}, fmt.Errorf("window must be positive")
+	}
+	if direction.X == 0 && direction.Y == 0 {
+		direction = simulation.Vector{X: 1, Y: 0}
+	}
+
+	measurements := make([]MultiClientTransportMeasurement, 0, len(clientCounts))
+	for _, clientCount := range clientCounts {
+		if clientCount <= 0 {
+			return FanoutScalingMeasurement{}, fmt.Errorf("clientCount must be positive")
+		}
+		measurement, err := MeasureMultiClientTransportWithConfig(sessionFactory(), MultiClientTransportConfig{
+			ClientCount:       clientCount,
+			Window:            window,
+			MovingClientCount: clientCount,
+			MovementDirection: direction,
+		})
+		if err != nil {
+			return FanoutScalingMeasurement{}, err
+		}
+		measurements = append(measurements, measurement)
+	}
+
+	copyCounts := append([]int(nil), clientCounts...)
+	return FanoutScalingMeasurement{
+		ClientCounts:      copyCounts,
+		Measurements:      measurements,
+		Window:            window,
+		ExpectedTickEvery: DefaultTickEvery,
+	}, nil
+}
