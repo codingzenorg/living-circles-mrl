@@ -68,6 +68,24 @@ let renderWorldComponentPressure = {
     avgMs: 0,
   },
 };
+let renderOverlayComponentPressure = {
+  glows: {
+    samples: 0,
+    avgMs: 0,
+  },
+  offscreen: {
+    samples: 0,
+    avgMs: 0,
+  },
+  effects: {
+    samples: 0,
+    avgMs: 0,
+  },
+  cues: {
+    samples: 0,
+    avgMs: 0,
+  },
+};
 
 const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown", "w", "a", "s", "d"]);
 const CROWDING_RADIUS = 120;
@@ -535,6 +553,12 @@ function recordRenderPressure(durationMs, componentDurations = null) {
       circles: nextRollingAverage(renderWorldComponentPressure.circles, componentDurations.worldCircles ?? 0),
       labels: nextRollingAverage(renderWorldComponentPressure.labels, componentDurations.worldLabels ?? 0),
     };
+    renderOverlayComponentPressure = {
+      glows: nextRollingAverage(renderOverlayComponentPressure.glows, componentDurations.overlayGlows ?? 0),
+      offscreen: nextRollingAverage(renderOverlayComponentPressure.offscreen, componentDurations.overlayOffscreen ?? 0),
+      effects: nextRollingAverage(renderOverlayComponentPressure.effects, componentDurations.overlayEffects ?? 0),
+      cues: nextRollingAverage(renderOverlayComponentPressure.cues, componentDurations.overlayCues ?? 0),
+    };
   }
 
   const componentAverages = Object.entries(renderComponentPressure).map(([name, metric]) => ({
@@ -555,9 +579,12 @@ function recordRenderPressure(durationMs, componentDurations = null) {
   const worldBreakdown = Object.entries(renderWorldComponentPressure)
     .map(([name, metric]) => `${name[0].toUpperCase()} ${metric.avgMs.toFixed(1)}`)
     .join(" · ");
+  const overlayBreakdown = Object.entries(renderOverlayComponentPressure)
+    .map(([name, metric]) => `${name[0].toUpperCase()} ${metric.avgMs.toFixed(1)}`)
+    .join(" · ");
 
   renderPressureNode.textContent = `Render ${nextAverage.toFixed(1)}ms · ${dominant.name} ${dominant.avgMs.toFixed(1)}ms`;
-  renderPressureNode.title = `max ${nextMax.toFixed(1)}ms\n${breakdownSummary}\nworld ${worldBreakdown}`;
+  renderPressureNode.title = `max ${nextMax.toFixed(1)}ms\n${breakdownSummary}\nworld ${worldBreakdown}\noverlay ${overlayBreakdown}`;
 }
 
 function pushEventLog(message) {
@@ -709,6 +736,10 @@ function draw(snapshot) {
     worldFood: 0,
     worldCircles: 0,
     worldLabels: 0,
+    overlayGlows: 0,
+    overlayOffscreen: 0,
+    overlayEffects: 0,
+    overlayCues: 0,
   };
   const observerTransport = isObserverTransport(snapshot);
   const foods = localFoods(snapshot);
@@ -783,21 +814,33 @@ function draw(snapshot) {
   componentDurations.world = nowMs() - worldStartedAt;
 
   const overlayStartedAt = nowMs();
+  const overlayEffectsStartedAt = nowMs();
   drawRecentEffects();
+  componentDurations.overlayEffects = nowMs() - overlayEffectsStartedAt;
+
+  const overlayGlowsStartedAt = nowMs();
   drawCrowdingZones(circles, snapshot.player);
   drawFoodZones(foods, snapshot.player);
+  componentDurations.overlayGlows = nowMs() - overlayGlowsStartedAt;
+
+  const overlayCuesStartedAt = nowMs();
   drawLineageLinks(circles, snapshot.interaction);
 
   if (snapshot.player) {
     drawPlayerHeadingCue(snapshot.player);
   }
+  componentDurations.overlayCues = nowMs() - overlayCuesStartedAt;
+
   previousAutonomousById = new Map(snapshot.autonomous_circles.map((circle) => [circle.id, { x: circle.x, y: circle.y }]));
   previousPlayerPosition = snapshot.player ? { x: snapshot.player.x, y: snapshot.player.y } : null;
   recentEffects = recentEffects
     .map((effect) => ({ ...effect, ttl: effect.ttl - 1 }))
     .filter((effect) => effect.ttl > 0);
+
+  const overlayOffscreenStartedAt = nowMs();
   drawOffscreenFoodAwareness(snapshot, camera);
   drawOffscreenAwareness(snapshot, camera);
+  componentDurations.overlayOffscreen = nowMs() - overlayOffscreenStartedAt;
   componentDurations.overlay = nowMs() - overlayStartedAt;
   context.restore();
 
