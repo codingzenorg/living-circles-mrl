@@ -443,3 +443,7 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - dominant world subfamilies: labels about `0.4ms` and circles about `0.3ms`
   - dominant overlay subfamilies: glows about `0.2ms` and offscreen awareness about `0.2ms`
 - under that post-reduction read, the render path is materially calmer than before and the current optimization track no longer has one obviously large remaining overlay hotspot; if client render work continues, the most defensible next target is world-side label/circle drawing rather than more overlay trimming by default
+- two-client responsiveness measurement now has explicit bounded evidence:
+  - server-side deterministic transport tests still show the intended policy split, with passive observers below full cadence and active movers near full cadence
+  - the current single-client live browser read shows render pressure around `3.4ms`, with `world` still dominant at about `1.8ms`, which is not by itself enough to explain the observed two-browser slowdown
+  - taken together with the user-observed slowdown when opening a second browser, the likeliest current pressure source is concurrent server-side tick/broadcast load or active fanout under real local multi-client use, rather than a single-client browser render bottleneck
