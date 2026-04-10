@@ -96,6 +96,7 @@ const FOOD_CUE_DISTANCE = 260;
 const NPC_LABEL_DISTANCE = 190;
 const SCARCITY_THRESHOLD = 1;
 const GLOW_CUE_DISTANCE = 220;
+const CUE_RENDER_DISTANCE = 220;
 const CROWDING_GLOW_RADIUS = 72;
 const FOOD_PLAYER_GLOW_RADIUS = 96;
 const FOOD_SLOT_GLOW_RADIUS = 34;
@@ -831,7 +832,7 @@ function draw(snapshot) {
   componentDurations.overlayGlows = nowMs() - overlayGlowsStartedAt;
 
   const overlayCuesStartedAt = nowMs();
-  drawLineageLinks(circles, snapshot.interaction);
+  drawLineageLinks(circles, snapshot.interaction, snapshot.player);
 
   if (snapshot.player) {
     drawPlayerHeadingCue(snapshot.player);
@@ -1109,6 +1110,10 @@ function drawFoodZones(foods, player) {
 }
 
 function drawIntentCue(circle, intent) {
+  if (latestSnapshot?.player && distanceBetween(circle, latestSnapshot.player) > CUE_RENDER_DISTANCE) {
+    return;
+  }
+
   const previous = previousAutonomousById.get(circle.id);
   if (!previous) {
     return;
@@ -1152,9 +1157,13 @@ function drawIntentCue(circle, intent) {
   }
 }
 
-function drawLineageLinks(circles, interaction) {
+function drawLineageLinks(circles, interaction, player) {
   for (const circle of circles) {
     if (!hasContinuityReserve(circle)) {
+      continue;
+    }
+
+    if (player && distanceBetween(circle, player) > CUE_RENDER_DISTANCE) {
       continue;
     }
 

@@ -433,3 +433,5 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 - non-glow overlays, support panels, transport, and gameplay behavior remain unchanged
 - offscreen awareness work is now narrower: both circle and food edge markers use a tighter qualifying distance and lower per-frame marker limits
 - minimap, player heading cue, transport, and gameplay behavior remain unchanged
+- cue overlay work is now narrower: NPC intent cues and lineage links only render inside a tighter nearby player neighborhood, while the player heading cue remains unchanged
+- glow, offscreen awareness, minimap, transport, and gameplay behavior remain unchanged
