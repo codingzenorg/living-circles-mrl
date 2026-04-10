@@ -4356,3 +4356,18 @@ That points to a bounded measurement slice:
 - split the `world` render family into a few major subfamilies
 - record the dominant world-draw subfamilies in the implementation artifact
 - leave transport and gameplay behavior unchanged
+## Pressure: Label Render Cost Reduction
+
+The browser now exposes explicit world-draw subfamilies, which makes label cost a direct optimization target instead of a vague suspicion. Labels are a pure client-side presentation cost and are less central to moment-to-moment play than circles, foods, and local motion cues.
+
+The new pressure is:
+
+- reduce repeated world-label draw work without changing gameplay or transport
+- keep the player’s own identity obvious on the play surface
+- rely more on the existing support panels for detailed NPC identity
+
+That points to a bounded client slice:
+
+- keep the player label always visible
+- reduce non-player label drawing under one simple deterministic rule
+- leave transport, gameplay, and support-panel behavior unchanged
