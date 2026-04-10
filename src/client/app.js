@@ -50,6 +50,24 @@ let renderComponentPressure = {
     avgMs: 0,
   },
 };
+let renderWorldComponentPressure = {
+  frame: {
+    samples: 0,
+    avgMs: 0,
+  },
+  food: {
+    samples: 0,
+    avgMs: 0,
+  },
+  circles: {
+    samples: 0,
+    avgMs: 0,
+  },
+  labels: {
+    samples: 0,
+    avgMs: 0,
+  },
+};
 
 const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown", "w", "a", "s", "d"]);
 const CROWDING_RADIUS = 120;
@@ -510,6 +528,12 @@ function recordRenderPressure(durationMs, componentDurations = null) {
       support: nextRollingAverage(renderComponentPressure.support, componentDurations.support ?? 0),
       minimap: nextRollingAverage(renderComponentPressure.minimap, componentDurations.minimap ?? 0),
     };
+    renderWorldComponentPressure = {
+      frame: nextRollingAverage(renderWorldComponentPressure.frame, componentDurations.worldFrame ?? 0),
+      food: nextRollingAverage(renderWorldComponentPressure.food, componentDurations.worldFood ?? 0),
+      circles: nextRollingAverage(renderWorldComponentPressure.circles, componentDurations.worldCircles ?? 0),
+      labels: nextRollingAverage(renderWorldComponentPressure.labels, componentDurations.worldLabels ?? 0),
+    };
   }
 
   const componentAverages = Object.entries(renderComponentPressure).map(([name, metric]) => ({
@@ -527,9 +551,12 @@ function recordRenderPressure(durationMs, componentDurations = null) {
   const breakdownSummary = componentAverages
     .map((entry) => `${abbreviated[entry.name]} ${entry.avgMs.toFixed(1)}`)
     .join(" · ");
+  const worldBreakdown = Object.entries(renderWorldComponentPressure)
+    .map(([name, metric]) => `${name[0].toUpperCase()} ${metric.avgMs.toFixed(1)}`)
+    .join(" · ");
 
   renderPressureNode.textContent = `Render ${nextAverage.toFixed(1)}ms · ${dominant.name} ${dominant.avgMs.toFixed(1)}ms`;
-  renderPressureNode.title = `max ${nextMax.toFixed(1)}ms\n${breakdownSummary}`;
+  renderPressureNode.title = `max ${nextMax.toFixed(1)}ms\n${breakdownSummary}\nworld ${worldBreakdown}`;
 }
 
 function pushEventLog(message) {
@@ -677,6 +704,10 @@ function draw(snapshot) {
     overlay: 0,
     support: 0,
     minimap: 0,
+    worldFrame: 0,
+    worldFood: 0,
+    worldCircles: 0,
+    worldLabels: 0,
   };
   const observerTransport = isObserverTransport(snapshot);
   const foods = localFoods(snapshot);
@@ -698,13 +729,16 @@ function draw(snapshot) {
   context.save();
   context.translate(-camera.x, -camera.y);
 
+  const frameStartedAt = nowMs();
   context.fillStyle = "rgba(6, 22, 30, 0.9)";
   context.fillRect(camera.x, camera.y, viewport.width, viewport.height);
 
   context.strokeStyle = "rgba(127, 174, 188, 0.28)";
   context.lineWidth = 2;
   context.strokeRect(1, 1, snapshot.world.width - 2, snapshot.world.height - 2);
+  componentDurations.worldFrame = nowMs() - frameStartedAt;
 
+  const foodStartedAt = nowMs();
   for (const food of foods) {
     const nearbyOpportunity = snapshot.player && distanceBetween(food, snapshot.player) <= FOOD_CUE_DISTANCE;
     if (nearbyOpportunity) {
@@ -722,7 +756,9 @@ function draw(snapshot) {
     context.arc(food.x, food.y, food.radius, 0, Math.PI * 2);
     context.fill();
   }
+  componentDurations.worldFood = nowMs() - foodStartedAt;
 
+  const circlesStartedAt = nowMs();
   for (const circle of snapshot.autonomous_circles) {
     drawCircle(circle, false, snapshot.player, circles, foods);
   }
@@ -730,6 +766,17 @@ function draw(snapshot) {
   if (snapshot.player) {
     drawCircle(snapshot.player, true, snapshot.player, circles, foods);
   }
+  componentDurations.worldCircles = nowMs() - circlesStartedAt;
+
+  const labelsStartedAt = nowMs();
+  for (const circle of snapshot.autonomous_circles) {
+    drawCircleLabel(circle);
+  }
+
+  if (snapshot.player) {
+    drawCircleLabel(snapshot.player);
+  }
+  componentDurations.worldLabels = nowMs() - labelsStartedAt;
   componentDurations.world = nowMs() - worldStartedAt;
 
   const overlayStartedAt = nowMs();
@@ -1170,6 +1217,12 @@ function drawCircle(circle, isPlayer, player, circles, foods) {
   const label = isPlayer
     ? displayName(circle.id)
     : displayName(circle.id);
+}
+
+function drawCircleLabel(circle) {
+  context.fillStyle = "#e4f3f8";
+  context.font = "16px Georgia";
+  const label = displayName(circle.id);
   context.fillText(label, circle.x - 28, circle.y - circle.radius - 10);
 }
 

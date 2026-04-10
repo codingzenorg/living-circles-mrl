@@ -422,3 +422,6 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 - client render pressure is now also broken into rolling major render families: `world`, `overlay`, `minimap`, and `support`
 - the HUD now shows the current dominant render family and exposes the rolling family breakdown through the existing render-pressure indicator
 - this keeps default runtime behavior unchanged while making the next client render optimization target evidence-backed during ordinary play
+- the broad `world` render bucket is now also split into rolling subfamilies: `frame`, `food`, `circles`, and `labels`
+- the existing render-pressure indicator tooltip now exposes both the top-level family breakdown and the narrower world-draw breakdown
+- this keeps the current viewport behavior unchanged while making any future world-draw optimization target more precise
