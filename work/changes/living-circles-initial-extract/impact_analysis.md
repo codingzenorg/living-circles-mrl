@@ -4461,3 +4461,18 @@ That points to a bounded measurement slice:
 - reuse the existing live render instrumentation
 - record the current dominant top-level and subfamily render buckets
 - leave transport, gameplay, and visual behavior unchanged
+## Pressure: Two-Client Responsiveness Measurement
+
+The repository now has direct runtime evidence that opening a second browser session makes the simulation and player movement feel slower. That is stronger than the earlier optimization pressures because it is already observable in ordinary use.
+
+The new pressure is:
+
+- turn the observed two-client slowdown into explicit evidence
+- determine whether the current bottleneck looks more like tick/broadcast pressure, active fanout, browser rendering, or a combination
+- avoid continuing optimization work from stale assumptions
+
+That points to a bounded measurement slice:
+
+- run a two-client responsiveness measurement against the current build
+- record bounded server-side and client-side signals relevant to the slowdown
+- leave transport, gameplay, and visual behavior unchanged

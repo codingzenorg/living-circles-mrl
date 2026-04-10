@@ -28,3 +28,13 @@ Capture the architecture-facing signal from the source material as well: the int
 - do not define slice implementation details
 - treat agar.io as a validation baseline, not as a feature-parity target
 - record the client/server architecture signal without prematurely freezing detailed runtime contracts
+
+## Current Runtime Evidence
+
+A new local runtime signal now matters for the loop:
+
+- opening a second browser session against the demo caused visible slowdown
+- the simulation itself appeared slower
+- player movement also felt slower in ordinary play
+
+This means concurrent responsiveness is now an explicit observed pressure, not just a hypothetical optimization concern.

@@ -120,6 +120,7 @@ The agar.io documents should be treated as reference material for evaluation and
 - The degree of autonomy for non-player circles is implied by emergence, but the movement policy for autonomous circles is still unspecified.
 - Determinism is presented as optional but valuable. The target model should decide whether replayability and reproducibility are part of the intended core.
 - The extracted architecture is JavaScript canvas client plus authoritative Go server over WebSocket, but the repository still needs an explicit architectural decision on how strongly that should shape the initial pack and directory structure.
+- Real concurrent responsiveness is now an observed runtime risk: opening a second browser session against the local demo caused visible slowdown in both the simulation and player movement, so multi-client responsiveness should be treated as an explicit evaluation and refinement concern rather than only an inferred transport concern.
 
 ## Source Evidence
 
