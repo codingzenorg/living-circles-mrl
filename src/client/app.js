@@ -1,4 +1,5 @@
 import { CONTRACT_VERSION, createMovementIntent, MESSAGE_TYPES } from "/shared_contracts/messages/protocol.js";
+import { shouldSendMovementIntent } from "/input_sender.js";
 
 const canvas = document.getElementById("world");
 const context = canvas.getContext("2d");
@@ -27,6 +28,7 @@ let cachedLocalFoods = [];
 const pressedKeys = new Set();
 let activeSocket = null;
 let senderIntervalId = null;
+let lastSentDirection = null;
 let renderPressure = {
   samples: 0,
   avgMs: 0,
@@ -1381,7 +1383,12 @@ function ensureSenderLoop() {
     }
 
     const direction = currentDirection();
+    if (!shouldSendMovementIntent(lastSentDirection, direction)) {
+      return;
+    }
+
     activeSocket.send(JSON.stringify(createMovementIntent(direction.x, direction.y)));
+    lastSentDirection = { x: direction.x, y: direction.y };
   }, 100);
 }
 
@@ -1389,6 +1396,7 @@ function connect() {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   const socket = new WebSocket(`${protocol}://${window.location.host}/ws`);
   activeSocket = socket;
+  lastSentDirection = null;
 
   socket.addEventListener("open", () => {
     setStatus("Connected");
@@ -1424,6 +1432,7 @@ function connect() {
     if (activeSocket === socket) {
       activeSocket = null;
     }
+    lastSentDirection = null;
     setStatus("Disconnected");
     setTimeout(connect, 1000);
   });
