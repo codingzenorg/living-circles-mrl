@@ -453,3 +453,7 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - one active browser plus one idle browser now measures `12276` aggregate bytes across `5` snapshots with per-client snapshots `[4 1]`, about `40920` bytes/sec aggregate
   - two active browsers measure `17884` aggregate bytes across `8` snapshots with per-client snapshots `[4 4]`, about `59613` bytes/sec aggregate
   - this confirms the idle path is now actually reachable for the second browser and that the remaining two-client pressure is more plausibly the active path than passive idle churn
+- two-active tick/broadcast pressure is now explicit over the same bounded `300ms` window:
+  - one active client measures `8942` aggregate bytes across `4` snapshots with a max inter-snapshot gap of about `101.0ms`
+  - two active clients measure `17884` aggregate bytes across `8` snapshots with a max inter-snapshot gap of about `101.8ms`
+  - aggregate payload nearly doubles while the bounded timing gap stays effectively flat at about one tick, so the current two-active pressure reads more like active payload fanout than an immediate tick-loop collapse

@@ -167,6 +167,57 @@ func TestTwoClientResponsivenessMeasurementDistinguishesIdleSecondClientFromTwoA
 	}
 }
 
+func TestTwoActiveTickBroadcastPressureMeasurementIsDeterministic(t *testing.T) {
+	first, err := transport.MeasureTwoActiveTickBroadcastPressure(simulation.NewSession, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure first two-active tick pressure: %v", err)
+	}
+
+	second, err := transport.MeasureTwoActiveTickBroadcastPressure(simulation.NewSession, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure second two-active tick pressure: %v", err)
+	}
+
+	if first.Window != second.Window || first.ExpectedTickEvery != second.ExpectedTickEvery {
+		t.Fatalf("expected deterministic window and tick cadence, first=%+v second=%+v", first, second)
+	}
+	if first.TimingPressureBounded != second.TimingPressureBounded || first.PayloadPressureDominant != second.PayloadPressureDominant {
+		t.Fatalf("expected deterministic pressure flags, first=%+v second=%+v", first, second)
+	}
+	if first.OneActive.AggregateBytes != second.OneActive.AggregateBytes || first.OneActive.AggregateSnapshots != second.OneActive.AggregateSnapshots {
+		t.Fatalf("expected deterministic one-active timing measurement, first=%+v second=%+v", first, second)
+	}
+	if first.TwoActive.AggregateBytes != second.TwoActive.AggregateBytes || first.TwoActive.AggregateSnapshots != second.TwoActive.AggregateSnapshots {
+		t.Fatalf("expected deterministic two-active timing measurement, first=%+v second=%+v", first, second)
+	}
+	if first.OneActive.MaxInterSnapshotGap < first.ExpectedTickEvery || second.OneActive.MaxInterSnapshotGap < second.ExpectedTickEvery {
+		t.Fatalf("expected one-active gap to stay at least one tick interval, first=%+v second=%+v", first, second)
+	}
+	if first.TwoActive.MaxInterSnapshotGap < first.ExpectedTickEvery || second.TwoActive.MaxInterSnapshotGap < second.ExpectedTickEvery {
+		t.Fatalf("expected two-active gap to stay at least one tick interval, first=%+v second=%+v", first, second)
+	}
+}
+
+func TestTwoActiveTickBroadcastPressureMeasurementKeepsTimingBoundedWhilePayloadRises(t *testing.T) {
+	measurement, err := transport.MeasureTwoActiveTickBroadcastPressure(simulation.NewSession, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure two-active tick pressure: %v", err)
+	}
+
+	if measurement.TwoActive.AggregateBytes <= measurement.OneActive.AggregateBytes {
+		t.Fatalf("expected two-active aggregate bytes %d to exceed one-active aggregate bytes %d", measurement.TwoActive.AggregateBytes, measurement.OneActive.AggregateBytes)
+	}
+	if !measurement.TimingPressureBounded {
+		t.Fatalf("expected two-active timing pressure to stay bounded, got %+v", measurement)
+	}
+	if !measurement.PayloadPressureDominant {
+		t.Fatalf("expected payload pressure to dominate over additional timing drift in this bounded case, got %+v", measurement)
+	}
+	if measurement.TwoActive.MaxInterSnapshotGap < measurement.ExpectedTickEvery {
+		t.Fatalf("expected two-active max inter-snapshot gap %v to stay at least one tick interval %v", measurement.TwoActive.MaxInterSnapshotGap, measurement.ExpectedTickEvery)
+	}
+}
+
 func TestLargerWorldScenarioTransportMeasurementExceedsDefaultExpandedBaseline(t *testing.T) {
 	defaultMeasurement, err := transport.MeasureSnapshotTransport(simulation.NewSession().Snapshot(), transport.DefaultTickEvery)
 	if err != nil {

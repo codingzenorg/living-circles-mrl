@@ -71,6 +71,16 @@ type TwoClientResponsivenessMeasurement struct {
 	ActivePathPreserved bool
 }
 
+type TwoActiveTickBroadcastPressureMeasurement struct {
+	Window                   time.Duration
+	ExpectedTickEvery        time.Duration
+	OneActive                MultiClientTransportMeasurement
+	TwoActive                MultiClientTransportMeasurement
+	GapIncrease              time.Duration
+	TimingPressureBounded    bool
+	PayloadPressureDominant  bool
+}
+
 type MultiClientTransportConfig struct {
 	ClientCount       int
 	Window            time.Duration
@@ -228,6 +238,55 @@ func MeasureTwoClientResponsiveness(sessionFactory func() *simulation.Session, w
 		TwoActive:           twoActive,
 		IdlePathReachable:   len(oneActiveOneIdle.PerClientSnapshots) >= 2 && oneActiveOneIdle.PerClientSnapshots[1] < oneActiveOneIdle.PerClientSnapshots[0],
 		ActivePathPreserved: len(oneActiveOneIdle.PerClientSnapshots) >= 1 && oneActiveOneIdle.PerClientSnapshots[0] >= int(window/DefaultTickEvery),
+	}
+
+	return measurement, nil
+}
+
+func MeasureTwoActiveTickBroadcastPressure(sessionFactory func() *simulation.Session, window time.Duration, direction simulation.Vector) (TwoActiveTickBroadcastPressureMeasurement, error) {
+	if sessionFactory == nil {
+		return TwoActiveTickBroadcastPressureMeasurement{}, fmt.Errorf("sessionFactory must not be nil")
+	}
+	if window <= 0 {
+		return TwoActiveTickBroadcastPressureMeasurement{}, fmt.Errorf("window must be positive")
+	}
+	if direction.X == 0 && direction.Y == 0 {
+		direction = simulation.Vector{X: 1, Y: 0}
+	}
+
+	oneActive, err := MeasureMultiClientTransportWithConfig(sessionFactory(), MultiClientTransportConfig{
+		ClientCount:       1,
+		Window:            window,
+		MovingClientCount: 1,
+		MovementDirection: direction,
+	})
+	if err != nil {
+		return TwoActiveTickBroadcastPressureMeasurement{}, err
+	}
+
+	twoActive, err := MeasureMultiClientTransportWithConfig(sessionFactory(), MultiClientTransportConfig{
+		ClientCount:       2,
+		Window:            window,
+		MovingClientCount: 2,
+		MovementDirection: direction,
+	})
+	if err != nil {
+		return TwoActiveTickBroadcastPressureMeasurement{}, err
+	}
+
+	gapIncrease := twoActive.MaxInterSnapshotGap - oneActive.MaxInterSnapshotGap
+	if gapIncrease < 0 {
+		gapIncrease = 0
+	}
+
+	measurement := TwoActiveTickBroadcastPressureMeasurement{
+		Window:                  window,
+		ExpectedTickEvery:       DefaultTickEvery,
+		OneActive:               oneActive,
+		TwoActive:               twoActive,
+		GapIncrease:             gapIncrease,
+		TimingPressureBounded:   twoActive.MaxInterSnapshotGap <= 2*DefaultTickEvery,
+		PayloadPressureDominant: twoActive.AggregateBytes > oneActive.AggregateBytes && twoActive.MaxInterSnapshotGap <= oneActive.MaxInterSnapshotGap+DefaultTickEvery/10,
 	}
 
 	return measurement, nil
