@@ -119,6 +119,54 @@ func TestActiveOrientationUsabilityMeasurementShowsFreshAndStaleTicks(t *testing
 	}
 }
 
+func TestTwoClientResponsivenessMeasurementIsDeterministic(t *testing.T) {
+	first, err := transport.MeasureTwoClientResponsiveness(simulation.NewSession, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure first two-client responsiveness: %v", err)
+	}
+
+	second, err := transport.MeasureTwoClientResponsiveness(simulation.NewSession, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure second two-client responsiveness: %v", err)
+	}
+
+	if first.Window != second.Window || first.ExpectedTickEvery != second.ExpectedTickEvery {
+		t.Fatalf("expected deterministic window and tick cadence, first=%+v second=%+v", first, second)
+	}
+	if first.IdlePathReachable != second.IdlePathReachable || first.ActivePathPreserved != second.ActivePathPreserved {
+		t.Fatalf("expected deterministic path flags, first=%+v second=%+v", first, second)
+	}
+	if first.OneActiveOneIdle.AggregateBytes != second.OneActiveOneIdle.AggregateBytes || first.OneActiveOneIdle.AggregateSnapshots != second.OneActiveOneIdle.AggregateSnapshots {
+		t.Fatalf("expected deterministic one-active-one-idle measurement, first=%+v second=%+v", first, second)
+	}
+	if first.TwoActive.AggregateBytes != second.TwoActive.AggregateBytes || first.TwoActive.AggregateSnapshots != second.TwoActive.AggregateSnapshots {
+		t.Fatalf("expected deterministic two-active measurement, first=%+v second=%+v", first, second)
+	}
+}
+
+func TestTwoClientResponsivenessMeasurementDistinguishesIdleSecondClientFromTwoActiveClients(t *testing.T) {
+	measurement, err := transport.MeasureTwoClientResponsiveness(simulation.NewSession, 300*time.Millisecond, simulation.Vector{X: 1, Y: 0})
+	if err != nil {
+		t.Fatalf("measure two-client responsiveness: %v", err)
+	}
+
+	if !measurement.IdlePathReachable {
+		t.Fatalf("expected idle path to be reachable in one-active-one-idle case, got %+v", measurement)
+	}
+	if !measurement.ActivePathPreserved {
+		t.Fatalf("expected active path to stay preserved in one-active-one-idle case, got %+v", measurement)
+	}
+	if measurement.OneActiveOneIdle.AggregateBytes >= measurement.TwoActive.AggregateBytes {
+		t.Fatalf("expected one-active-one-idle aggregate bytes %d to stay below two-active aggregate bytes %d", measurement.OneActiveOneIdle.AggregateBytes, measurement.TwoActive.AggregateBytes)
+	}
+	if measurement.OneActiveOneIdle.PerClientSnapshots[1] >= measurement.TwoActive.PerClientSnapshots[1] {
+		t.Fatalf("expected idle second client snapshots %d to stay below active second client snapshots %d", measurement.OneActiveOneIdle.PerClientSnapshots[1], measurement.TwoActive.PerClientSnapshots[1])
+	}
+	if measurement.OneActiveOneIdle.PerClientSnapshots[0] < int(measurement.Window/transport.DefaultTickEvery) {
+		t.Fatalf("expected active client to keep near-full cadence in one-active-one-idle case, got %+v", measurement)
+	}
+}
+
 func TestLargerWorldScenarioTransportMeasurementExceedsDefaultExpandedBaseline(t *testing.T) {
 	defaultMeasurement, err := transport.MeasureSnapshotTransport(simulation.NewSession().Snapshot(), transport.DefaultTickEvery)
 	if err != nil {

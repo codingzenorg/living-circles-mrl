@@ -62,6 +62,15 @@ type FanoutScalingMeasurement struct {
 	ExpectedTickEvery time.Duration
 }
 
+type TwoClientResponsivenessMeasurement struct {
+	Window              time.Duration
+	ExpectedTickEvery   time.Duration
+	OneActiveOneIdle    MultiClientTransportMeasurement
+	TwoActive           MultiClientTransportMeasurement
+	IdlePathReachable   bool
+	ActivePathPreserved bool
+}
+
 type MultiClientTransportConfig struct {
 	ClientCount       int
 	Window            time.Duration
@@ -179,6 +188,49 @@ func MeasureActiveOrientationUsability(session *simulation.Session, window time.
 		}
 	}
 	return result, nil
+}
+
+func MeasureTwoClientResponsiveness(sessionFactory func() *simulation.Session, window time.Duration, direction simulation.Vector) (TwoClientResponsivenessMeasurement, error) {
+	if sessionFactory == nil {
+		return TwoClientResponsivenessMeasurement{}, fmt.Errorf("sessionFactory must not be nil")
+	}
+	if window <= 0 {
+		return TwoClientResponsivenessMeasurement{}, fmt.Errorf("window must be positive")
+	}
+	if direction.X == 0 && direction.Y == 0 {
+		direction = simulation.Vector{X: 1, Y: 0}
+	}
+
+	oneActiveOneIdle, err := MeasureMultiClientTransportWithConfig(sessionFactory(), MultiClientTransportConfig{
+		ClientCount:       2,
+		Window:            window,
+		MovingClientCount: 1,
+		MovementDirection: direction,
+	})
+	if err != nil {
+		return TwoClientResponsivenessMeasurement{}, err
+	}
+
+	twoActive, err := MeasureMultiClientTransportWithConfig(sessionFactory(), MultiClientTransportConfig{
+		ClientCount:       2,
+		Window:            window,
+		MovingClientCount: 2,
+		MovementDirection: direction,
+	})
+	if err != nil {
+		return TwoClientResponsivenessMeasurement{}, err
+	}
+
+	measurement := TwoClientResponsivenessMeasurement{
+		Window:              window,
+		ExpectedTickEvery:   DefaultTickEvery,
+		OneActiveOneIdle:    oneActiveOneIdle,
+		TwoActive:           twoActive,
+		IdlePathReachable:   len(oneActiveOneIdle.PerClientSnapshots) >= 2 && oneActiveOneIdle.PerClientSnapshots[1] < oneActiveOneIdle.PerClientSnapshots[0],
+		ActivePathPreserved: len(oneActiveOneIdle.PerClientSnapshots) >= 1 && oneActiveOneIdle.PerClientSnapshots[0] >= int(window/DefaultTickEvery),
+	}
+
+	return measurement, nil
 }
 
 func MeasureMultiClientTransport(session *simulation.Session, clientCount int, window time.Duration) (MultiClientTransportMeasurement, error) {

@@ -449,3 +449,7 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - taken together with the user-observed slowdown when opening a second browser, the likeliest current pressure source is concurrent server-side tick/broadcast load or active fanout under real local multi-client use, rather than a single-client browser render bottleneck
 - idle browser clients now suppress unchanged neutral movement intents and unchanged repeated movement intents; the sender loop emits only on effective direction change, including one explicit stop intent when movement returns to neutral
 - this keeps active movement behavior intact while making the intended passive-client transport path reachable for truly idle browsers
+- post-idle-intent two-client reassessment is now explicit over the same bounded `300ms` window:
+  - one active browser plus one idle browser now measures `12276` aggregate bytes across `5` snapshots with per-client snapshots `[4 1]`, about `40920` bytes/sec aggregate
+  - two active browsers measure `17884` aggregate bytes across `8` snapshots with per-client snapshots `[4 4]`, about `59613` bytes/sec aggregate
+  - this confirms the idle path is now actually reachable for the second browser and that the remaining two-client pressure is more plausibly the active path than passive idle churn
