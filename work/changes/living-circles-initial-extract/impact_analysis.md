@@ -4401,3 +4401,18 @@ That points to a bounded client slice:
 - keep the current cue vocabulary
 - reduce glow-field work under one simple deterministic rule
 - leave transport, gameplay, and non-glow overlays unchanged
+## Pressure: Offscreen Overlay Render Cost Reduction
+
+The browser now exposes narrower overlay render families, and glow work has already been reduced. That makes offscreen awareness the next repeated overlay family that can likely be narrowed without changing gameplay or transport.
+
+The new pressure is:
+
+- reduce repeated offscreen marker work without removing basic orientation support
+- preserve the combined readability of viewport edge cues, minimap, and heading aid
+- avoid a broader minimap or camera redesign before this bounded overlay family is narrowed
+
+That points to a bounded client slice:
+
+- keep the current offscreen cue vocabulary
+- reduce offscreen marker work under one simple deterministic rule
+- leave transport, gameplay, minimap, and non-offscreen overlays unchanged
