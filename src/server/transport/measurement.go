@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -21,6 +22,16 @@ type SnapshotTransportMeasurement struct {
 	PayloadBytes         int
 	SnapshotsPerSecond   float64
 	ApproxBytesPerSecond float64
+}
+
+type ActiveTransportComponentMeasurement struct {
+	Full               SnapshotTransportMeasurement
+	WithoutPlayer      SnapshotTransportMeasurement
+	WithoutAutonomous  SnapshotTransportMeasurement
+	WithoutFoods       SnapshotTransportMeasurement
+	WithoutOrientation SnapshotTransportMeasurement
+	WithoutInteraction SnapshotTransportMeasurement
+	DominantComponent  string
 }
 
 type MultiClientTransportMeasurement struct {
@@ -65,6 +76,64 @@ func MeasureSnapshotTransport(snapshot any, tickEvery time.Duration) (SnapshotTr
 		PayloadBytes:         len(payload),
 		SnapshotsPerSecond:   snapshotsPerSecond,
 		ApproxBytesPerSecond: float64(len(payload)) * snapshotsPerSecond,
+	}, nil
+}
+
+func MeasureActiveTransportComponents(snapshot simulation.Snapshot) (ActiveTransportComponentMeasurement, error) {
+	fullSnapshot := BuildViewportSnapshot(snapshot, true)
+
+	full, err := MeasureSnapshotTransport(fullSnapshot, DefaultTickEvery)
+	if err != nil {
+		return ActiveTransportComponentMeasurement{}, err
+	}
+
+	withoutPlayerSnapshot := fullSnapshot
+	withoutPlayerSnapshot.Player = nil
+	withoutPlayer, err := MeasureSnapshotTransport(withoutPlayerSnapshot, DefaultTickEvery)
+	if err != nil {
+		return ActiveTransportComponentMeasurement{}, err
+	}
+
+	withoutAutonomousSnapshot := fullSnapshot
+	withoutAutonomousSnapshot.AutonomousCircles = []simulation.AutonomousCircle{}
+	withoutAutonomous, err := MeasureSnapshotTransport(withoutAutonomousSnapshot, DefaultTickEvery)
+	if err != nil {
+		return ActiveTransportComponentMeasurement{}, err
+	}
+
+	withoutFoodsSnapshot := fullSnapshot
+	withoutFoodsSnapshot.Foods = []simulation.Food{}
+	withoutFoods, err := MeasureSnapshotTransport(withoutFoodsSnapshot, DefaultTickEvery)
+	if err != nil {
+		return ActiveTransportComponentMeasurement{}, err
+	}
+
+	withoutOrientationSnapshot := fullSnapshot
+	withoutOrientationSnapshot.OrientationFresh = false
+	withoutOrientationSnapshot.MinimapAutonomousCircles = nil
+	withoutOrientationSnapshot.MinimapFoods = nil
+	withoutOrientation, err := MeasureSnapshotTransport(withoutOrientationSnapshot, DefaultTickEvery)
+	if err != nil {
+		return ActiveTransportComponentMeasurement{}, err
+	}
+
+	withoutInteractionSnapshot := fullSnapshot
+	withoutInteractionSnapshot.Interaction = nil
+	withoutInteraction, err := MeasureSnapshotTransport(withoutInteractionSnapshot, DefaultTickEvery)
+	if err != nil {
+		return ActiveTransportComponentMeasurement{}, err
+	}
+
+	dominantComponent := dominantActiveComponent(full.PayloadBytes, withoutPlayer.PayloadBytes, withoutAutonomous.PayloadBytes, withoutFoods.PayloadBytes, withoutOrientation.PayloadBytes, withoutInteraction.PayloadBytes)
+
+	return ActiveTransportComponentMeasurement{
+		Full:               full,
+		WithoutPlayer:      withoutPlayer,
+		WithoutAutonomous:  withoutAutonomous,
+		WithoutFoods:       withoutFoods,
+		WithoutOrientation: withoutOrientation,
+		WithoutInteraction: withoutInteraction,
+		DominantComponent:  dominantComponent,
 	}, nil
 }
 
@@ -276,6 +345,7 @@ func isClosedConnection(err error) bool {
 	return websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) ||
 		errors.As(err, &closeErr) ||
 		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, syscall.ECONNRESET) ||
 		errors.Is(err, io.EOF)
 }
 
@@ -359,4 +429,25 @@ func MeasureActiveClientFanoutScaling(sessionFactory func() *simulation.Session,
 		Window:            window,
 		ExpectedTickEvery: DefaultTickEvery,
 	}, nil
+}
+
+func dominantActiveComponent(full, withoutPlayer, withoutAutonomous, withoutFoods, withoutOrientation, withoutInteraction int) string {
+	type component struct {
+		name   string
+		saving int
+	}
+	components := []component{
+		{name: "player", saving: full - withoutPlayer},
+		{name: "autonomous", saving: full - withoutAutonomous},
+		{name: "foods", saving: full - withoutFoods},
+		{name: "orientation", saving: full - withoutOrientation},
+		{name: "interaction", saving: full - withoutInteraction},
+	}
+	best := components[0]
+	for _, candidate := range components[1:] {
+		if candidate.saving > best.saving {
+			best = candidate
+		}
+	}
+	return best.name
 }

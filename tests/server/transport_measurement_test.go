@@ -37,6 +37,52 @@ func TestDefaultExpandedSnapshotTransportMeasurementIsDeterministic(t *testing.T
 	}
 }
 
+func TestActiveTransportComponentMeasurementIsDeterministic(t *testing.T) {
+	first, err := transport.MeasureActiveTransportComponents(simulation.NewSession().Snapshot())
+	if err != nil {
+		t.Fatalf("measure first active transport components: %v", err)
+	}
+
+	second, err := transport.MeasureActiveTransportComponents(simulation.NewSession().Snapshot())
+	if err != nil {
+		t.Fatalf("measure second active transport components: %v", err)
+	}
+
+	if first != second {
+		t.Fatalf("expected deterministic active transport component measurement, first=%+v second=%+v", first, second)
+	}
+}
+
+func TestActiveTransportComponentMeasurementKeepsFullPayloadAboveMajorSubsets(t *testing.T) {
+	measurement, err := transport.MeasureActiveTransportComponents(simulation.NewSession().Snapshot())
+	if err != nil {
+		t.Fatalf("measure active transport components: %v", err)
+	}
+
+	if measurement.Full.PayloadBytes <= measurement.WithoutAutonomous.PayloadBytes {
+		t.Fatalf("expected full payload %d to exceed payload without autonomous detail %d", measurement.Full.PayloadBytes, measurement.WithoutAutonomous.PayloadBytes)
+	}
+	if measurement.Full.PayloadBytes <= measurement.WithoutFoods.PayloadBytes {
+		t.Fatalf("expected full payload %d to exceed payload without food detail %d", measurement.Full.PayloadBytes, measurement.WithoutFoods.PayloadBytes)
+	}
+	if measurement.Full.PayloadBytes <= measurement.WithoutOrientation.PayloadBytes {
+		t.Fatalf("expected full payload %d to exceed payload without orientation support %d", measurement.Full.PayloadBytes, measurement.WithoutOrientation.PayloadBytes)
+	}
+}
+
+func TestActiveTransportComponentMeasurementReportsDominantComponent(t *testing.T) {
+	measurement, err := transport.MeasureActiveTransportComponents(simulation.NewSession().Snapshot())
+	if err != nil {
+		t.Fatalf("measure active transport components: %v", err)
+	}
+
+	switch measurement.DominantComponent {
+	case "player", "autonomous", "foods", "orientation", "interaction":
+	default:
+		t.Fatalf("expected explicit dominant active component, got %+v", measurement)
+	}
+}
+
 func TestLargerWorldScenarioTransportMeasurementExceedsDefaultExpandedBaseline(t *testing.T) {
 	defaultMeasurement, err := transport.MeasureSnapshotTransport(simulation.NewSession().Snapshot(), transport.DefaultTickEvery)
 	if err != nil {

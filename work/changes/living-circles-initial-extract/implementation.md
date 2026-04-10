@@ -344,6 +344,7 @@ The slice needed these implementation choices not fully specified in the refined
 - passive observer transport now refreshes on observer-relevant change plus a slower fallback interval, instead of resending the same observer-oriented snapshot whenever the passive cadence timer alone elapses
 - passive observer transport now uses a coarse observer state signature: interaction changes still refresh immediately, food state now refreshes by coarse abundance bucket instead of exact minimap motion, and population loss still refreshes by total autonomous count
 - the transport measurement harness now also measures deterministic active-client fanout scaling across an explicit moving-client ladder
+- the transport measurement helpers now also measure deterministic active payload component cost across the current major active-detail families without changing runtime behavior
 - the repository now includes a deterministic multi-client websocket measurement harness for aggregate bytes/sec, per-client bytes/sec, aggregate snapshot count, and observed inter-snapshot gap under bounded local load
 - the multi-client transport harness now also compares deterministic idle and moving-client runs so active-play pressure can be distinguished from passive observer fanout
 - the multi-client transport harness now also measures passive client-count fanout scaling across an explicit count ladder
@@ -399,3 +400,11 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - `2` active clients: `26258` aggregate bytes, about `87527` bytes/sec, `102ms` max gap, `8` snapshots
   - `4` active clients: `52516` aggregate bytes, about `175053` bytes/sec, `104ms` max gap, `16` snapshots
 - under this bounded ladder, active fanout now scales almost linearly with client count while per-client throughput stays flat at about `43763` bytes/sec, which makes the active local-detail path the clearest remaining transport pressure
+- deterministic active payload component measurement on the current default active snapshot now measures:
+  - full active payload: `3333` bytes
+  - without player detail: `3097` bytes
+  - without local autonomous detail: `2946` bytes
+  - without local food detail: `3105` bytes
+  - without orientation support: `1176` bytes
+  - without interaction detail: `3333` bytes in the current no-interaction baseline
+- under this bounded breakdown, orientation support is the dominant serialized active payload family in the current default snapshot
