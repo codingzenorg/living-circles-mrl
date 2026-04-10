@@ -110,6 +110,9 @@ const CAMERA_DEADZONE_Y_RATIO = 0.2;
 const CAMERA_LOOKAHEAD_X_RATIO = 0.1;
 const CAMERA_LOOKAHEAD_Y_RATIO = 0.08;
 const OFFSCREEN_AWARENESS_DISTANCE = 260;
+const OFFSCREEN_MARKER_DISTANCE = 220;
+const OFFSCREEN_CIRCLE_LIMIT = 4;
+const OFFSCREEN_FOOD_LIMIT = 4;
 const OFFSCREEN_EDGE_INSET = 18;
 const NAME_ADJECTIVES = ["brave", "calm", "eager", "gentle", "keen", "lucky", "mellow", "nimble", "quiet", "solar", "swift", "vivid"];
 const NAME_NOUNS = ["badger", "comet", "falcon", "harbor", "lantern", "meadow", "otter", "panda", "reef", "sable", "thunder", "willow"];
@@ -915,12 +918,12 @@ function drawOffscreenAwareness(snapshot, camera) {
   const viewportBottom = camera.y + camera.height;
   const nearby = snapshot.autonomous_circles.filter((circle) => {
     const distance = distanceBetween(circle, snapshot.player);
-    if (distance > OFFSCREEN_AWARENESS_DISTANCE) {
+    if (distance > OFFSCREEN_MARKER_DISTANCE) {
       return false;
     }
 
     return circle.x < viewportLeft || circle.x > viewportRight || circle.y < viewportTop || circle.y > viewportBottom;
-  }).slice(0, 6);
+  }).slice(0, OFFSCREEN_CIRCLE_LIMIT);
 
   for (const circle of nearby) {
     const relation = playerRiskState(circle, snapshot.player, snapshot.interaction);
@@ -953,12 +956,12 @@ function drawOffscreenFoodAwareness(snapshot, camera) {
   const viewportBottom = camera.y + camera.height;
   const nearbyFoods = localFoods(snapshot).filter((food) => {
     const distance = distanceBetween(food, snapshot.player);
-    if (distance > OFFSCREEN_AWARENESS_DISTANCE) {
+    if (distance > OFFSCREEN_MARKER_DISTANCE) {
       return false;
     }
 
     return food.x < viewportLeft || food.x > viewportRight || food.y < viewportTop || food.y > viewportBottom;
-  }).slice(0, 6);
+  }).slice(0, OFFSCREEN_FOOD_LIMIT);
 
   for (const food of nearbyFoods) {
     const relativeX = clamp(food.x, viewportLeft + OFFSCREEN_EDGE_INSET, viewportRight - OFFSCREEN_EDGE_INSET) - camera.x;
