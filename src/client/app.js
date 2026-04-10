@@ -95,6 +95,10 @@ const FOOD_OPPORTUNITY_RADIUS = 170;
 const FOOD_CUE_DISTANCE = 260;
 const NPC_LABEL_DISTANCE = 190;
 const SCARCITY_THRESHOLD = 1;
+const GLOW_CUE_DISTANCE = 220;
+const CROWDING_GLOW_RADIUS = 72;
+const FOOD_PLAYER_GLOW_RADIUS = 96;
+const FOOD_SLOT_GLOW_RADIUS = 34;
 const INTENT_CUE_DISTANCE = 260;
 const MIN_MOVEMENT_FOR_INTENT = 1.5;
 const AFTERGLOW_TTL = 10;
@@ -1049,13 +1053,13 @@ function drawCrowdingZones(circles, player) {
       continue;
     }
 
-    const gradient = context.createRadialGradient(circle.x, circle.y, circle.radius + 8, circle.x, circle.y, 92);
+    const gradient = context.createRadialGradient(circle.x, circle.y, circle.radius + 8, circle.x, circle.y, CROWDING_GLOW_RADIUS);
     gradient.addColorStop(0, "rgba(255, 170, 61, 0.18)");
     gradient.addColorStop(0.65, "rgba(255, 128, 61, 0.08)");
     gradient.addColorStop(1, "rgba(255, 128, 61, 0)");
     context.fillStyle = gradient;
     context.beginPath();
-    context.arc(circle.x, circle.y, 92, 0, Math.PI * 2);
+    context.arc(circle.x, circle.y, CROWDING_GLOW_RADIUS, 0, Math.PI * 2);
     context.fill();
   }
 }
@@ -1068,13 +1072,13 @@ function drawFoodZones(foods, player) {
   const playerFoodPressure = foodPressureAt(player, foods);
 
   if (playerFoodPressure.opportunity) {
-    const gradient = context.createRadialGradient(player.x, player.y, 16, player.x, player.y, 120);
+    const gradient = context.createRadialGradient(player.x, player.y, 16, player.x, player.y, FOOD_PLAYER_GLOW_RADIUS);
     gradient.addColorStop(0, "rgba(103, 221, 129, 0.12)");
     gradient.addColorStop(0.7, "rgba(103, 221, 129, 0.06)");
     gradient.addColorStop(1, "rgba(103, 221, 129, 0)");
     context.fillStyle = gradient;
     context.beginPath();
-    context.arc(player.x, player.y, 120, 0, Math.PI * 2);
+    context.arc(player.x, player.y, FOOD_PLAYER_GLOW_RADIUS, 0, Math.PI * 2);
     context.fill();
   }
 
@@ -1087,16 +1091,16 @@ function drawFoodZones(foods, player) {
   }
 
   for (const food of foods) {
-    if (!shouldRenderFoodOpportunityCue(food, foods, player)) {
+    if (!shouldRenderFoodOpportunityCue(food, foods, player) || distanceBetween(food, player) > GLOW_CUE_DISTANCE) {
       continue;
     }
 
-    const gradient = context.createRadialGradient(food.x, food.y, food.radius + 4, food.x, food.y, 46);
+    const gradient = context.createRadialGradient(food.x, food.y, food.radius + 4, food.x, food.y, FOOD_SLOT_GLOW_RADIUS);
     gradient.addColorStop(0, "rgba(103, 221, 129, 0.18)");
     gradient.addColorStop(1, "rgba(103, 221, 129, 0)");
     context.fillStyle = gradient;
     context.beginPath();
-    context.arc(food.x, food.y, 46, 0, Math.PI * 2);
+    context.arc(food.x, food.y, FOOD_SLOT_GLOW_RADIUS, 0, Math.PI * 2);
     context.fill();
   }
 }

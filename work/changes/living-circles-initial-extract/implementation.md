@@ -429,3 +429,5 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 - detailed NPC identity and state still remain fully available in the support panels, so canvas labeling is lighter without losing the main information path
 - the broad `overlay` render bucket is now also split into rolling subfamilies: `glows`, `offscreen`, `effects`, and `cues`
 - the existing render-pressure indicator tooltip now exposes top-level, world, and overlay render breakdowns together, keeping the next overlay optimization target evidence-backed
+- ambient glow work is now narrower: crowding glows use a smaller radius, player food-opportunity glow uses a smaller radius, and per-food opportunity glows now render only within a tighter nearby distance with a smaller radius
+- non-glow overlays, support panels, transport, and gameplay behavior remain unchanged
