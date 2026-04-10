@@ -4266,3 +4266,18 @@ That points to a bounded measurement slice:
 - compare deterministic active-client fanout counts under the current protocol
 - record aggregate bytes/sec, per-client bytes/sec, snapshot counts, and max inter-snapshot gap
 - leave protocol shape and gameplay behavior unchanged
+## Pressure: Active Transport Component Measurement
+
+The active fanout ladder now makes the remaining transport bottleneck clearer: the active local-detail path is the main source of cost. What is still unclear is which active payload families actually dominate that cost.
+
+The new pressure is:
+
+- identify the dominant serialized components inside the current active payload
+- avoid optimizing the wrong active field family
+- keep active responsiveness unchanged until the next step is evidence-backed
+
+That points to a bounded measurement slice:
+
+- compare the serialized size of the current active payload with major detail families removed or isolated
+- record the resulting breakdown in the implementation artifact
+- leave protocol shape and gameplay behavior unchanged
