@@ -32,6 +32,24 @@ let renderPressure = {
   avgMs: 0,
   maxMs: 0,
 };
+let renderComponentPressure = {
+  world: {
+    samples: 0,
+    avgMs: 0,
+  },
+  overlay: {
+    samples: 0,
+    avgMs: 0,
+  },
+  support: {
+    samples: 0,
+    avgMs: 0,
+  },
+  minimap: {
+    samples: 0,
+    avgMs: 0,
+  },
+};
 
 const movementKeys = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown", "w", "a", "s", "d"]);
 const CROWDING_RADIUS = 120;
@@ -54,6 +72,14 @@ const OFFSCREEN_AWARENESS_DISTANCE = 260;
 const OFFSCREEN_EDGE_INSET = 18;
 const NAME_ADJECTIVES = ["brave", "calm", "eager", "gentle", "keen", "lucky", "mellow", "nimble", "quiet", "solar", "swift", "vivid"];
 const NAME_NOUNS = ["badger", "comet", "falcon", "harbor", "lantern", "meadow", "otter", "panda", "reef", "sable", "thunder", "willow"];
+
+function nowMs() {
+  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+    return performance.now();
+  }
+
+  return Date.now();
+}
 
 function normalizeKey(key) {
   return key.toLowerCase();
@@ -446,7 +472,21 @@ function renderNpcCard(circles) {
   `).join("");
 }
 
-function recordRenderPressure(durationMs) {
+function nextRollingAverage(metric, durationMs) {
+  const clampedDuration = Math.max(0, durationMs);
+  const windowSize = 30;
+  const previousSamples = metric.samples;
+  const nextSamples = Math.min(windowSize, previousSamples + 1);
+  const carriedWeight = nextSamples === windowSize ? windowSize - 1 : previousSamples;
+  const nextAverage = ((metric.avgMs * carriedWeight) + clampedDuration) / nextSamples;
+
+  return {
+    samples: nextSamples,
+    avgMs: nextAverage,
+  };
+}
+
+function recordRenderPressure(durationMs, componentDurations = null) {
   const clampedDuration = Math.max(0, durationMs);
   const windowSize = 30;
   const previousSamples = renderPressure.samples;
@@ -462,7 +502,34 @@ function recordRenderPressure(durationMs) {
     avgMs: nextAverage,
     maxMs: nextMax,
   };
-  renderPressureNode.textContent = `Render ${nextAverage.toFixed(1)}ms · max ${nextMax.toFixed(1)}ms`;
+
+  if (componentDurations) {
+    renderComponentPressure = {
+      world: nextRollingAverage(renderComponentPressure.world, componentDurations.world ?? 0),
+      overlay: nextRollingAverage(renderComponentPressure.overlay, componentDurations.overlay ?? 0),
+      support: nextRollingAverage(renderComponentPressure.support, componentDurations.support ?? 0),
+      minimap: nextRollingAverage(renderComponentPressure.minimap, componentDurations.minimap ?? 0),
+    };
+  }
+
+  const componentAverages = Object.entries(renderComponentPressure).map(([name, metric]) => ({
+    name,
+    avgMs: metric.avgMs,
+  }));
+  componentAverages.sort((left, right) => right.avgMs - left.avgMs);
+  const dominant = componentAverages[0];
+  const abbreviated = {
+    world: "W",
+    overlay: "O",
+    support: "S",
+    minimap: "M",
+  };
+  const breakdownSummary = componentAverages
+    .map((entry) => `${abbreviated[entry.name]} ${entry.avgMs.toFixed(1)}`)
+    .join(" · ");
+
+  renderPressureNode.textContent = `Render ${nextAverage.toFixed(1)}ms · ${dominant.name} ${dominant.avgMs.toFixed(1)}ms`;
+  renderPressureNode.title = `max ${nextMax.toFixed(1)}ms\n${breakdownSummary}`;
 }
 
 function pushEventLog(message) {
@@ -604,7 +671,13 @@ function cameraRect(snapshot, viewport) {
 }
 
 function draw(snapshot) {
-  const drawStartedAt = performance.now();
+  const drawStartedAt = nowMs();
+  const componentDurations = {
+    world: 0,
+    overlay: 0,
+    support: 0,
+    minimap: 0,
+  };
   const observerTransport = isObserverTransport(snapshot);
   const foods = localFoods(snapshot);
   const circles = snapshot.player ? [snapshot.player, ...snapshot.autonomous_circles] : [...snapshot.autonomous_circles];
@@ -620,6 +693,7 @@ function draw(snapshot) {
   canvas.style.width = `${viewport.width}px`;
   canvas.style.height = `${viewport.height}px`;
 
+  const worldStartedAt = nowMs();
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
   context.translate(-camera.x, -camera.y);
@@ -631,12 +705,6 @@ function draw(snapshot) {
   context.lineWidth = 2;
   context.strokeRect(1, 1, snapshot.world.width - 2, snapshot.world.height - 2);
 
-  drawRecentEffects();
-  drawCrowdingZones(circles, snapshot.player);
-  drawFoodZones(foods, snapshot.player);
-  drawLineageLinks(circles, snapshot.interaction);
-
-  context.fillStyle = "#ff8a5b";
   for (const food of foods) {
     const nearbyOpportunity = snapshot.player && distanceBetween(food, snapshot.player) <= FOOD_CUE_DISTANCE;
     if (nearbyOpportunity) {
@@ -661,19 +729,44 @@ function draw(snapshot) {
 
   if (snapshot.player) {
     drawCircle(snapshot.player, true, snapshot.player, circles, foods);
+  }
+  componentDurations.world = nowMs() - worldStartedAt;
+
+  const overlayStartedAt = nowMs();
+  drawRecentEffects();
+  drawCrowdingZones(circles, snapshot.player);
+  drawFoodZones(foods, snapshot.player);
+  drawLineageLinks(circles, snapshot.interaction);
+
+  if (snapshot.player) {
     drawPlayerHeadingCue(snapshot.player);
+  }
+  previousAutonomousById = new Map(snapshot.autonomous_circles.map((circle) => [circle.id, { x: circle.x, y: circle.y }]));
+  previousPlayerPosition = snapshot.player ? { x: snapshot.player.x, y: snapshot.player.y } : null;
+  recentEffects = recentEffects
+    .map((effect) => ({ ...effect, ttl: effect.ttl - 1 }))
+    .filter((effect) => effect.ttl > 0);
+  drawOffscreenFoodAwareness(snapshot, camera);
+  drawOffscreenAwareness(snapshot, camera);
+  componentDurations.overlay = nowMs() - overlayStartedAt;
+  context.restore();
+
+  const minimapStartedAt = nowMs();
+  drawMinimap(snapshot, camera);
+  componentDurations.minimap = nowMs() - minimapStartedAt;
+
+  const supportStartedAt = nowMs();
+  if (snapshot.player) {
     const pressure = isCrowded(snapshot.player, circles) ? "pressure" : "";
     const foodState = playerFoodPressure?.scarcity ? "scarce" : playerFoodPressure?.opportunity ? "food-rich" : "";
     energyNode.textContent = `${displayName(snapshot.player.id)}`;
     renderPlayerCard(snapshot.player, pressure, foodState);
+  } else if (observerTransport) {
+    energyNode.textContent = "observer";
+    renderPlayerCard("observer", "", "");
   } else {
-    if (observerTransport) {
-      energyNode.textContent = "observer";
-      renderPlayerCard("observer", "", "");
-    } else {
-      energyNode.textContent = "defeated";
-      renderPlayerCard(null, "", "");
-    }
+    energyNode.textContent = "defeated";
+    renderPlayerCard(null, "", "");
   }
 
   renderNpcCard(snapshot.autonomous_circles);
@@ -682,16 +775,9 @@ function draw(snapshot) {
   const totalAutonomousCircles = snapshot.total_autonomous_circles ?? minimapAutonomousCircles(snapshot).length;
   tickNode.textContent = `${snapshot.tick} · ${totalFoods}f · ${totalAutonomousCircles}o`;
   pushEventLog(interactionSummary(snapshot.interaction));
-  previousAutonomousById = new Map(snapshot.autonomous_circles.map((circle) => [circle.id, { x: circle.x, y: circle.y }]));
-  previousPlayerPosition = snapshot.player ? { x: snapshot.player.x, y: snapshot.player.y } : null;
-  recentEffects = recentEffects
-    .map((effect) => ({ ...effect, ttl: effect.ttl - 1 }))
-    .filter((effect) => effect.ttl > 0);
-  drawOffscreenFoodAwareness(snapshot, camera);
-  drawOffscreenAwareness(snapshot, camera);
-  context.restore();
-  drawMinimap(snapshot, camera);
-  recordRenderPressure(performance.now() - drawStartedAt);
+  componentDurations.support = nowMs() - supportStartedAt;
+
+  recordRenderPressure(nowMs() - drawStartedAt, componentDurations);
 }
 
 function drawPlayerHeadingCue(player) {

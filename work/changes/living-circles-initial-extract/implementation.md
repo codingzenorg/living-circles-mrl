@@ -419,3 +419,6 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 - deterministic active orientation usability over a `300ms` movement window now measures `4` total active snapshots with `2` fresh and `2` stale orientation snapshots at the current optimized cadence
 - under that bounded movement window, active local detail remained continuous while orientation support was stale on half the snapshots
 - client render pressure is now measured live in the browser as rolling average and max draw duration over recent draws, which makes viewport rendering pressure explicit without changing transport or gameplay behavior
+- client render pressure is now also broken into rolling major render families: `world`, `overlay`, `minimap`, and `support`
+- the HUD now shows the current dominant render family and exposes the rolling family breakdown through the existing render-pressure indicator
+- this keeps default runtime behavior unchanged while making the next client render optimization target evidence-backed during ordinary play
