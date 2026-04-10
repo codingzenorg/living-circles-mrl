@@ -2,6 +2,61 @@
 
 ## Change
 
+Remeasure the active transport payload composition after the recent active-path reductions so the next optimization target is chosen from current evidence rather than from stale pre-reduction numbers.
+
+## Why This Matters
+
+The repo has already landed several bounded active-path reductions:
+
+- active orientation support is no longer present on every tick
+- local autonomous detail is now refreshed less often under real fanout
+- local food detail is already change-driven
+- observer-mode fixes clarified concurrent responsiveness behavior without expanding the active path again
+
+Those changes materially alter the active payload shape. That means the earlier active component breakdown, which identified orientation support as dominant, may no longer be the right basis for the next decision.
+
+The next pressure is therefore reassessment, not another blind optimization. Before cutting another active payload family, the repo should make the current dominant remaining family explicit.
+
+## Impacted Areas
+
+### Transport measurement path
+
+- the active component measurement should be rerun or updated against the current post-reduction transport path
+- the result should remain directly comparable to the earlier active component breakdown
+
+### Active-path optimization strategy
+
+- no new transport change is justified yet
+- the next optimization should target whatever is dominant now, not whatever was dominant before the recent reductions
+
+### Runtime evidence
+
+- the current two-active-client pressure remains the motivation
+- this slice narrows the decision from “active path is still costly” to “which current active family still matters most”
+
+### Browser client
+
+- browser behavior remains unchanged in this slice
+- the slice is about transport composition, not rendering
+
+## Recommended Decision Pressure
+
+The next implementation-facing decision should explicitly choose:
+
+- whether player detail, local autonomous detail, local food detail, orientation support, or interaction detail is now the dominant active payload family
+- whether the next active-path slice should be another reduction or a stopping point
+- whether further responsiveness work should stay on transport or move elsewhere
+
+## Risks If Ignored
+
+- the repo may optimize the wrong active payload family next
+- a previously dominant component could be treated as current fact after the code path has changed
+- the next responsiveness slice would still rely on stale evidence
+
+---
+
+## Change
+
 Measure whether observer-mode render pressure is genuinely higher than active-mode render pressure under the current two-browser setup, or whether the apparent difference is mostly browser scheduling noise.
 
 ## Why This Matters
