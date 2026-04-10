@@ -4311,3 +4311,18 @@ That points to a bounded measurement slice:
 - record deterministic active orientation freshness under movement
 - preserve the current transport and client behavior unchanged
 - use the result to decide whether to keep, tune, or revisit the optimization
+## Pressure: Client Render Pressure Measurement
+
+The transport path is now materially leaner, and active orientation usability has an explicit baseline. That shifts the next uncertainty again: the browser client may now be a more plausible source of roughness than another transport field.
+
+The new pressure is:
+
+- determine whether the current viewport client draw path is now a plausible bottleneck
+- compare future rendering work against a recorded baseline rather than vague perception
+- choose the next optimization direction from evidence, not just transport habit
+
+That points to a bounded measurement slice:
+
+- instrument one or two bounded client render-pressure metrics
+- record the result during ordinary active movement
+- leave transport and gameplay behavior unchanged
