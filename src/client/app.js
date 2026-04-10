@@ -11,6 +11,7 @@ const energyNode = document.getElementById("energy");
 const tickNode = document.getElementById("tick");
 const renderPressureNode = document.getElementById("render-pressure");
 const detailsNode = document.getElementById("details");
+const playerCardTitleNode = document.getElementById("player-card-title");
 const playerCardNode = document.getElementById("player-card");
 const npcCardNode = document.getElementById("npc-card");
 const resetButton = document.getElementById("reset");
@@ -469,6 +470,7 @@ function renderEventLog() {
 
 function renderPlayerCard(player, pressure, foodState, observerMode = false) {
   if (player === "observer") {
+    playerCardTitleNode.textContent = "Observer";
     playerCardNode.innerHTML = `
       <div class="player-stat">
         <div class="player-identity">
@@ -481,6 +483,7 @@ function renderPlayerCard(player, pressure, foodState, observerMode = false) {
   }
 
   if (!player) {
+    playerCardTitleNode.textContent = "Defeated";
     playerCardNode.innerHTML = `
       <div class="player-stat">
         <div class="player-identity">
@@ -492,6 +495,7 @@ function renderPlayerCard(player, pressure, foodState, observerMode = false) {
     return;
   }
 
+  playerCardTitleNode.textContent = observerMode ? "Observer" : "Player";
   const state = pressure || foodState ? `${pressure}${pressure && foodState ? " · " : ""}${foodState}` : "stable";
   const modeState = observerMode ? `observer · ${state}` : state;
 
