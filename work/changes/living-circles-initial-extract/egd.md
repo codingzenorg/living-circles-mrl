@@ -4,171 +4,184 @@
 
 - reviewed against [model_hypothesis.md](/home/henrique/repos/github/codingzen/living-circles-mrl/docs/semantics/model_hypothesis.md)
 - reviewed against [domain_background_knowledge.md](/home/henrique/repos/github/codingzen/living-circles-mrl/docs/semantics/domain_background_knowledge.md)
-- reviewed against the current slice [initial_event_driven_local_food_transport.md](/home/henrique/repos/github/codingzen/living-circles-mrl/docs/slices/initial_event_driven_local_food_transport.md)
+- reviewed against the current slice [initial_post_overlay_render_reassessment.md](/home/henrique/repos/github/codingzen/living-circles-mrl/docs/slices/initial_post_overlay_render_reassessment.md)
 - reviewed against the current implementation summary in [implementation.md](/home/henrique/repos/github/codingzen/living-circles-mrl/work/changes/living-circles-initial-extract/implementation.md)
-- validated with `go test ./...` and `npm run test:contracts` on April 8, 2026
+- reviewed as a lightweight artifact-led EGD rather than an Ollama-backed scenario packet
+- validated with `go test ./... -timeout 60s` and `npm run test:contracts` on April 10, 2026
 
 ## Summary
 
-This slice is a good optimization slice, and it succeeds on its own terms. The transport path is now materially less chatty than the earlier full-snapshot baseline, and the current optimization ladder remains coherent:
+This optimization track has reached a sensible stopping point.
 
-- viewport culling
-- lower-cadence orientation summaries
-- compact minimap summaries
-- reduced local precision
-- event-driven orientation refresh
-- event-driven local food refresh
+The recent sequence of client-side render slices succeeded on its own terms:
 
-That is a real systems improvement. The browser client/server boundary now better matches the genre expectation of an authoritative server without wasting as much bandwidth on obviously static payload.
+- render pressure became visible
+- the browser path was broken into major families
+- world and overlay buckets were further decomposed
+- several bounded overlay and label costs were reduced
+- the post-reduction read now shows a materially calmer render path
 
-But this EGD also makes a useful distinction: this slice improves transport efficiency, not domain meaning. It reduces overhead and helps responsiveness headroom, yet it does not materially advance the ecological or lineage distinctiveness questions that earlier EGDs identified. So the main gap is no longer “this optimization is missing”; the main gap remains what kind of world behavior should be strengthened next.
+That is a real implementation improvement. The browser-side presentation is more disciplined and less speculative than before.
+
+The important EGD conclusion is that the main remaining gap is no longer “keep trimming overlays.” The current live read now shows:
+
+- `world` as the top-level dominant family at about `1.5ms`
+- `overlay` materially below it at about `0.6ms`
+- `support` and `minimap` already small
+- world-side labels and circle drawing as the largest remaining client costs
+
+So this EGD does not point to another obvious overlay optimization. It points to a change in priority: either stop the render-optimization track for now, or only continue if the goal is a specific world-side presentation change such as label/circle drawing. Relative to the broader model hypothesis, the more meaningful remaining gaps are still ecological and experiential rather than raw browser overlay cost.
 
 ## Main Findings
 
-### 1. The transport path is now meaningfully more disciplined
+### 1. The render optimization sequence was disciplined and successful
 
 This is the strongest positive finding.
 
-The system no longer treats all snapshot data as equally deserving of the same cadence. It now distinguishes between:
+The recent work did not just “make things lighter” in an ad hoc way. It followed an evidence path:
 
-- local circles, which remain high-cadence and interaction-relevant
-- orientation summaries, which are now event-driven with fallback refresh
-- local food detail, which is now also event-driven with fallback refresh
+- total render measurement
+- family measurement
+- world subfamily measurement
+- overlay subfamily measurement
+- bounded reductions
+- reassessment
 
-That better matches actual information volatility. In genre terms, this is a healthier authoritative-update model than a uniformly chatty full-state stream.
+That is exactly the right shape for client-side optimization work in this repository. The current browser path is now better understood and more intentionally shaped.
 
-### 2. The client contract remains understandable despite the optimization
+### 2. Overlay trimming no longer looks like the highest-value next step
 
-This matters because transport optimization often creates brittle or opaque state-sync behavior.
+This is the main decision-level finding.
 
-The current design avoided that failure mode:
+The reassessment result shows that the overlay path is now materially smaller than the world path. That matters because the recent slice history could otherwise have drifted into optimization inertia.
 
-- stale ticks are explicit through freshness flags
-- the browser client reuses the last valid data instead of inventing prediction
-- the transport still looks like one readable snapshot shape rather than a generalized delta protocol
+Instead, the current evidence says:
 
-That keeps inspectability intact, which is aligned with the lab’s architectural goals.
+- overlay work is now present but not obviously dominant
+- the remaining top client cost is world-side drawing
+- further overlay trimming is likely to deliver smaller gains while risking legibility erosion
 
-### 3. Responsiveness headroom likely improved, but the project still lacks a stronger runtime-pressure evaluation artifact
+That is a healthy place to stop.
 
-The transport cost trend is clearly moving in the right direction. That helps the domain background expectation of low perceived latency and trustworthy authority.
+### 3. The browser path is calmer, but the project still lacks a stronger play-feel evaluation artifact
 
-But this EGD can only infer likely responsiveness gains from payload reductions and passing tests. It still does not have:
+The current render instrumentation makes browser draw cost visible, which is useful. But this EGD still cannot say much about felt responsiveness beyond inference.
 
-- a sustained multi-client pressure scenario
-- a browser-side frame/jank observation artifact
-- a measured end-to-end latency or update-staleness report
+What is still missing:
 
-So the optimization is plausible and valuable, but still not fully evaluated under stronger real-time pressure.
+- a direct play-feel or responsiveness evaluation artifact
+- a browser-side frame stability artifact over a longer movement window
+- a stronger comparison between measured draw cost and actual perceived roughness
 
-### 4. The slice improves technical coherence more than ecosystem coherence
+So the render work is technically coherent, but still not the same thing as a user-facing responsiveness evaluation.
 
-This is not a criticism of the slice; it is a scope observation.
+### 4. The main semantic gaps remain outside this optimization track
 
-Relative to the model hypothesis, this transport work:
+This is not a criticism of the slices; it is a scope boundary.
 
-- supports the intended client/server architecture
-- supports authoritative-server fairness
-- supports real-time browser play
+Relative to the model hypothesis and background knowledge, the current render work improves:
 
-But it does not change:
+- visual discipline
+- measurement quality
+- confidence about client cost families
+- the likelihood that browser rendering is not the immediate weak point
 
-- regional ecological consequence
-- long-horizon population dynamics
-- lineage significance
-- autonomous niche formation
+But it does not materially advance:
 
-So the major semantic gaps identified by earlier EGDs still remain the main gaps after this slice.
+- long-horizon ecological consequence
+- population dynamics
+- lineage significance beyond inspectability
+- stronger user-facing evaluation of fairness and emergence
 
-### 5. The protocol is now approaching a point where blind optimization becomes less attractive than targeted measurement
+So the largest remaining gaps are still domain and experience questions, not client overlay cost questions.
 
-The current optimization path has stayed disciplined because each step had a clear local pressure and measurable effect.
+### 5. If client render work continues, it should now target world-side drawing or stop entirely
 
-That is still good. But the slice history suggests a new risk:
+The post-reduction read gives a clear boundary.
 
-- continuing to optimize transport mechanically without a stronger pressure model
+If another client render slice is chosen, the most defensible next targets are:
 
-The next transport slice should probably come from one of two clearer pressures:
+- world-side label drawing
+- world-side circle drawing density or style
 
-- real observed runtime pressure, such as multi-client load or visible browser lag
-- a remaining large redundant category in the current transport shape
+What no longer looks justified by default:
 
-Without that, additional optimization may start chasing smaller wins while semantic work remains more valuable.
+- another overlay-specific trim
+- more browser micro-optimizations without fresh evidence of actual roughness
+
+That means the current track has reached a point where a stop-or-switch decision is healthier than automatic continuation.
 
 ## Secondary Findings
 
-- The current transport strategy still preserves a strong authoritative-server feel without introducing prediction complexity.
-- The minimap-oriented worldview remains coherent after these optimizations; the client still has enough orientation data to navigate the larger world.
-- The protocol is becoming more asymmetric by volatility, which is a good sign that the boundary is being shaped by meaning rather than by naive completeness.
+- The render HUD and tooltip now provide enough live evidence to support local review without introducing a heavier profiling system.
+- The support panels successfully carried more identity/detail load while canvas work became lighter.
+- The minimap remained intact through the optimization sequence, which helps preserve whole-world orientation while local overlays became cheaper.
 
 ## Main Expectation Gaps
 
-1. Transport efficiency is improving, but runtime-pressure evaluation is still weaker than the optimization work itself.
-2. The largest remaining gaps are still ecological and experiential, not raw transport shape.
-3. The current build still lacks stronger evidence of long-horizon population dynamics and lineage consequence.
-4. Further transport work should now be justified by either measured pressure or a clearly dominant remaining redundant payload class.
+1. The repository still lacks a stronger play-feel evaluation artifact that relates measured render cost to perceived responsiveness.
+2. The main remaining client cost appears to have moved from overlays to world-side drawing, but that may no longer be the most valuable project problem.
+3. The larger remaining gaps are still ecological and experiential rather than purely graphical.
+4. Continuing client render optimization by default would now risk diminishing returns.
 
 ## Recommendation
 
-Return to `refine`, but choose deliberately between two directions instead of continuing transport work by default.
-
-### Direction A: one more bounded transport measurement or optimization slice
-
-Choose this only if the goal is still network/runtime headroom.
-
-Best candidates:
-
-1. measure or simulate multi-client transport pressure
-2. identify whether high-cadence local circle detail is now the dominant remaining cost
-3. only then decide whether a new transport slice is still worth it
-
-### Direction B: return to ecological or experiential meaning
-
-Choose this if the goal is still to strengthen Living Circles as a model rather than mainly as a transport system.
-
-Best candidates:
-
-1. a longer-run population-dynamics evaluation slice
-2. a stronger lineage-consequence slice
-3. a play-feel evaluation slice focused on responsiveness and readability in the larger world
-
-## Best Next Slice Directions
-
-### Option A: Multi-client transport pressure measurement
-
-Add a bounded measurement slice that estimates bytes/sec and snapshot behavior across several simultaneous clients under the current optimized transport path.
-
-Why this fits:
-
-- it would tell you whether more transport optimization is truly justified
-- it keeps scope smaller than a new protocol redesign
-- it converts current intuition about lag into evidence
-
-### Option B: Longer-run ecosystem evaluation
-
-Add a bounded evaluation slice that observes a larger world for longer runs and records whether current ecological pressures produce visible regional dominance, collapse, recovery, or stable niches.
-
-Why this fits:
-
-- the main semantic gaps are still ecological
-- the current build now has enough structural pressure to justify stronger observation
-- it can reveal whether gameplay/model work is more urgent than more transport work
-
-### Option C: Player responsiveness evaluation
-
-Add a bounded experience-oriented evaluation slice that records whether the larger map, viewport, minimap, and current transport policy still feel responsive and legible at play speed.
-
-Why this fits:
-
-- the domain background explicitly says responsiveness matters
-- transport optimization is currently being used as a proxy for responsiveness
-- a direct evaluation artifact would reduce that guesswork
-
-## Return-To-Loop Recommendation
+Do not continue the current overlay-optimization track by inertia.
 
 Recommended next phase: `refine`
 
 Recommended intent:
 
-- if the immediate concern is lag, refine a measurement slice before more transport redesign
-- otherwise, switch back toward ecosystem or play evaluation instead of continuing optimization by inertia
+- either switch to a broader evaluation or domain-pressure direction
+- or, if client performance is still the explicit concern, refine one world-side render slice rather than another overlay slice
+
+## Best Next Slice Directions
+
+### Option A: Player responsiveness or play-feel evaluation
+
+Add a bounded evaluation slice that relates the current transport and render measurements to actual play responsiveness and readability during ordinary movement.
+
+Why this fits:
+
+- the domain background explicitly says responsiveness matters
+- transport and render work are currently being used as proxies for play feel
+- the project now needs a more direct experience-oriented read
+
+### Option B: Return to ecological or lineage meaning
+
+Switch back toward the model’s stronger differentiators instead of continuing optimization work.
+
+Best candidates:
+
+- longer-run ecosystem evaluation
+- regional or population-dynamics consequence
+- stronger lineage consequence
+
+Why this fits:
+
+- the main semantic gaps are still there
+- the current optimization track no longer shows one glaring technical hotspot
+- this is more aligned with Living Circles’ distinct identity than more browser trimming
+
+### Option C: One world-side render slice
+
+Choose this only if client rendering is still the explicit concern.
+
+Best candidates:
+
+- world label/circle drawing reduction or restyling
+- a world-side draw simplification that keeps play-surface readability intact
+
+Why this fits:
+
+- the current live read points to world-side work, not overlay work, as the largest remaining client cost
+- it is the only clearly evidence-backed continuation of the current render track
+
+## Return-To-Loop Recommendation
+
+Recommended next phase: `refine`
+
+Recommended direction:
+
+- prefer a play-feel or ecological direction next
+- only continue client render optimization if there is a specific reason to target world-side drawing
