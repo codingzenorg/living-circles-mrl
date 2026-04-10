@@ -4476,3 +4476,18 @@ That points to a bounded measurement slice:
 - run a two-client responsiveness measurement against the current build
 - record bounded server-side and client-side signals relevant to the slowdown
 - leave transport, gameplay, and visual behavior unchanged
+## Pressure: Idle Intent Suppression For Passive Clients
+
+The two-client responsiveness evidence now points to a concrete likely coherence gap in the current implementation: browsers keep sending movement intents at the fixed sender cadence even when the direction is neutral, which likely keeps idle clients classified as active and defeats the intended passive transport path.
+
+The new pressure is:
+
+- restore the intended distinction between active movers and passive observers
+- stop neutral idle intent churn from keeping a browser on the active path
+- preserve active movement responsiveness while making the passive transport savings real in ordinary multi-client use
+
+That points to a bounded mitigation slice:
+
+- suppress or ignore redundant neutral movement intents for idle clients
+- preserve the current transport contract shape and gameplay rules
+- validate that movers stay responsive while idle observers fall back to the passive path
