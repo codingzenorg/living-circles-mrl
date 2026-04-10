@@ -2,6 +2,64 @@
 
 ## Change
 
+Measure server tick and broadcast pressure explicitly for the remaining two-active-client slowdown after passive idle churn has been removed from the baseline.
+
+## Why This Matters
+
+The latest reassessment closed the earlier ambiguity around passive idle browsers:
+
+- one active browser plus one idle browser now measures `12276` aggregate bytes over `300ms`
+- two active browsers measure `17884` aggregate bytes over the same window
+- the idle second browser now clearly reaches the passive path
+
+That means the recent idle-intent suppression slice likely did the job it was supposed to do. The remaining slowdown pressure is now more plausibly on the active path itself. But the repo still does not know whether the remaining degradation is dominated by:
+
+- active payload size
+- websocket broadcast fanout work
+- server tick workload under concurrent active clients
+
+The next pressure is therefore timing-oriented measurement, not another transport-shape guess.
+
+## Impacted Areas
+
+### Server measurement path
+
+- the repo should make the two-active-client timing signal explicit
+- bounded timing evidence should sit beside the existing byte and snapshot counts
+
+### Runtime evidence
+
+- the prior two-browser observation remains important, but the new decision baseline should become explicit server-side timing evidence
+- the current post-idle-intent active-path state is the right baseline under test
+
+### Transport strategy
+
+- no transport change is justified yet
+- the next mitigation should depend on whether timing pressure or payload pressure dominates
+
+### Browser client
+
+- runtime behavior remains unchanged in this slice
+- this slice is only about identifying the real remaining server-side pressure
+
+## Recommended Decision Pressure
+
+The next implementation-facing decision should explicitly choose:
+
+- whether active slowdown is primarily tick/broadcast timing pressure
+- whether a payload reduction would still be the highest-leverage next move
+- whether the next step should target scheduling/fanout rather than snapshot content
+
+## Risks If Ignored
+
+- the repo may continue optimizing bytes when the real bottleneck is timing pressure
+- the next active-path mitigation could target the wrong transport family
+- the observed two-browser slowdown would remain only partially explained
+
+---
+
+## Change
+
 Reassess the observed two-browser slowdown after idle-intent suppression made the passive-client transport path reachable for truly idle browsers.
 
 ## Why This Matters
