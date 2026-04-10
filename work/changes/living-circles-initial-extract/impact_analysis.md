@@ -2,6 +2,64 @@
 
 ## Change
 
+Reduce the remaining active-path payload fanout by trimming serialized player-detail precision while keeping active cadence, transport shape, and active readability intact.
+
+## Why This Matters
+
+The latest active-path mitigation already achieved its intended scope:
+
+- the concurrent two-active baseline dropped from `17884` bytes to `17008`
+- the single-client active path stayed effectively intact
+- timing still stayed flat near one tick
+
+That confirms the active path still has room for bounded payload trimming without needing a broader transport redesign yet.
+
+The next pressure is therefore another small active payload reduction that does not change cadence or shape. Player-centric active detail is the cleanest next target:
+
+- it is present on every active tick
+- it still carries serialized numeric detail for player and attached-child geometry
+- it is likely still more precise on the wire than the current viewport visibly uses
+
+## Impacted Areas
+
+### Transport boundary
+
+- active player detail serialization may adopt a tighter explicit precision rule
+- measurement should compare the resulting baseline against the current `9038` one-active and `17008` two-active readings
+
+### Runtime contract
+
+- contract shape should remain unchanged
+- only the wire precision of existing numeric fields should change
+
+### Browser client
+
+- the client should continue rendering player motion, children, and overlays clearly
+- no client-side transport redesign should be necessary
+
+### Simulation model
+
+- authoritative simulation remains unchanged
+- only serialized active player precision changes
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- which player-centric fields can be rounded more aggressively
+- what precision remains display-sufficient for the current viewport
+- whether the resulting byte reduction is still worth the added complexity
+
+## Risks If Ignored
+
+- the repo may leave a repeated active payload family untrimmed even after the current cadence reductions
+- later optimization work may jump to heavier mechanisms before exhausting one more simple wire-representation win
+- the next active-path target would stay chosen by intuition instead of bounded pressure
+
+---
+
+## Change
+
 Reduce the remaining active-path payload fanout by thinning local autonomous-circle detail inside active snapshots while keeping player-critical responsiveness unchanged.
 
 ## Why This Matters
