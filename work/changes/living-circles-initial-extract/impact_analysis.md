@@ -4446,3 +4446,18 @@ That points to a bounded client slice:
 - keep the current recent-effect cue vocabulary
 - reduce recent-effect overlay work under one simple deterministic rule
 - leave transport, gameplay, minimap, and non-recent-effect overlays unchanged
+## Pressure: Post Overlay Render Reassessment
+
+The repository has now applied several bounded client-side render-cost reductions in sequence. That means the earlier optimization priorities may no longer be the current bottleneck.
+
+The new pressure is:
+
+- re-establish the current dominant render families after the recent reductions
+- avoid continuing the render-optimization track on outdated assumptions
+- decide whether the next work should still be render-focused or return to broader evaluation
+
+That points to a bounded measurement slice:
+
+- reuse the existing live render instrumentation
+- record the current dominant top-level and subfamily render buckets
+- leave transport, gameplay, and visual behavior unchanged
