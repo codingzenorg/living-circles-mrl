@@ -437,3 +437,9 @@ These keep the loop deterministic and prevent energy drift while staying aligned
 - glow, offscreen awareness, minimap, transport, and gameplay behavior remain unchanged
 - recent-effect afterglow is now lighter: effect persistence is shorter and the rendered glow radius is smaller, while the same recent fight, reproduction, and continuity outcome vocabulary remains visible
 - glow, offscreen awareness, cue overlays, minimap, transport, and gameplay behavior remain unchanged
+- post-overlay reassessment from the current live browser instrumentation now reads:
+  - top-level dominant family: `world` at about `1.5ms`
+  - next top-level families: `overlay` about `0.6ms`, `support` about `0.3ms`, `minimap` about `0.2ms`
+  - dominant world subfamilies: labels about `0.4ms` and circles about `0.3ms`
+  - dominant overlay subfamilies: glows about `0.2ms` and offscreen awareness about `0.2ms`
+- under that post-reduction read, the render path is materially calmer than before and the current optimization track no longer has one obviously large remaining overlay hotspot; if client render work continues, the most defensible next target is world-side label/circle drawing rather than more overlay trimming by default
