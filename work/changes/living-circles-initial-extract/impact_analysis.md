@@ -4386,3 +4386,18 @@ That points to a bounded measurement slice:
 - split the `overlay` render family into a few major subfamilies
 - record the dominant overlay-draw subfamilies in the implementation artifact
 - leave transport and gameplay behavior unchanged
+## Pressure: Glow Overlay Render Cost Reduction
+
+The browser now exposes narrower overlay render families, which makes glow-field cost a bounded optimization target instead of a vague visual suspicion. Glow work is broad ambient canvas work and is less structurally essential than the simpler offscreen, cue, and recent-effect markers.
+
+The new pressure is:
+
+- reduce broad ambient glow rendering without changing gameplay or transport
+- preserve the strongest local crowding and food-legibility cues
+- avoid a broader overlay redesign before the heaviest ambient family is narrowed
+
+That points to a bounded client slice:
+
+- keep the current cue vocabulary
+- reduce glow-field work under one simple deterministic rule
+- leave transport, gameplay, and non-glow overlays unchanged
