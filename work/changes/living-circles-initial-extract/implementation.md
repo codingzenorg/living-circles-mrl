@@ -410,7 +410,14 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - without local food detail: `3105` bytes
   - without orientation support: `1176` bytes
   - without interaction detail: `3333` bytes in the current no-interaction baseline
-- under this bounded breakdown, orientation support is the dominant serialized active payload family in the current default snapshot
+- post-reduction active transport reassessment now records the current default active snapshot breakdown:
+  - full active payload: `3357` bytes
+  - without player detail: `3121` bytes
+  - without local autonomous detail: `2970` bytes
+  - without local food detail: `3129` bytes
+  - without orientation support: `1200` bytes
+  - without interaction detail: `3357` bytes in the current no-interaction baseline
+- under the current post-reduction breakdown, orientation support is still the dominant serialized active payload family in the default snapshot, so the earlier direction remains valid even though the absolute numbers changed materially
 - deterministic optimized active transport over `300ms` now measures:
   - `1` active client: `8942` aggregate bytes, about `29807` bytes/sec, `102ms` max gap, `4` snapshots
   - `2` active clients: `17884` aggregate bytes, about `59613` bytes/sec, `102ms` max gap, `8` snapshots
