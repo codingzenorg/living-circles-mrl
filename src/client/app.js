@@ -467,7 +467,7 @@ function renderEventLog() {
   detailsNode.innerHTML = eventLog.map((entry) => `<li>${entry}</li>`).join("");
 }
 
-function renderPlayerCard(player, pressure, foodState) {
+function renderPlayerCard(player, pressure, foodState, observerMode = false) {
   if (player === "observer") {
     playerCardNode.innerHTML = `
       <div class="player-stat">
@@ -493,12 +493,13 @@ function renderPlayerCard(player, pressure, foodState) {
   }
 
   const state = pressure || foodState ? `${pressure}${pressure && foodState ? " · " : ""}${foodState}` : "stable";
+  const modeState = observerMode ? `observer · ${state}` : state;
 
   playerCardNode.innerHTML = `
     <div class="player-stat">
       <div class="player-identity">
         <span class="player-name">${displayName(player.id)}</span>
-        <span class="player-state">${state}</span>
+        <span class="player-state">${modeState}</span>
       </div>
       <div class="player-meta">
         <span class="player-meta-item"><strong>${player.shape}</strong> shape</span>
@@ -861,14 +862,20 @@ function draw(snapshot) {
   componentDurations.minimap = nowMs() - minimapStartedAt;
 
   const supportStartedAt = nowMs();
-  if (snapshot.player) {
+  if (observerTransport) {
+    energyNode.textContent = "observer";
+    if (snapshot.player) {
+      const pressure = isCrowded(snapshot.player, circles) ? "pressure" : "";
+      const foodState = playerFoodPressure?.scarcity ? "scarce" : playerFoodPressure?.opportunity ? "food-rich" : "";
+      renderPlayerCard(snapshot.player, pressure, foodState, true);
+    } else {
+      renderPlayerCard("observer", "", "");
+    }
+  } else if (snapshot.player) {
     const pressure = isCrowded(snapshot.player, circles) ? "pressure" : "";
     const foodState = playerFoodPressure?.scarcity ? "scarce" : playerFoodPressure?.opportunity ? "food-rich" : "";
     energyNode.textContent = `${displayName(snapshot.player.id)}`;
     renderPlayerCard(snapshot.player, pressure, foodState);
-  } else if (observerTransport) {
-    energyNode.textContent = "observer";
-    renderPlayerCard("observer", "", "");
   } else {
     energyNode.textContent = "defeated";
     renderPlayerCard(null, "", "");
@@ -1427,8 +1434,16 @@ function connect() {
       snapshot.minimap_foods = cachedMinimapFoods;
     }
     if (isObserverTransport(snapshot)) {
-      snapshot.player = cachedLocalPlayer;
-      snapshot.autonomous_circles = cachedLocalAutonomousCircles;
+      if (snapshot.player) {
+        cachedLocalPlayer = snapshot.player;
+      } else {
+        snapshot.player = cachedLocalPlayer;
+      }
+      if (snapshot.autonomous_fresh ?? true) {
+        cachedLocalAutonomousCircles = snapshot.autonomous_circles ?? [];
+      } else {
+        snapshot.autonomous_circles = cachedLocalAutonomousCircles;
+      }
       snapshot.foods = cachedLocalFoods;
     } else {
       if (snapshot.player) {

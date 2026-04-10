@@ -622,18 +622,18 @@ func TestViewportTransportSnapshotKeepsMinimapOrientationWhileCullingLocalDetail
 	}
 }
 
-func TestObserverTransportSnapshotKeepsOrientationWhileOmittingLocalDetail(t *testing.T) {
+func TestObserverTransportSnapshotKeepsOrientationWhileKeepingNpcDetail(t *testing.T) {
 	fullSnapshot := simulation.NewSession().Snapshot()
 	transportSnapshot := transport.BuildObserverSnapshot(fullSnapshot, true)
 
 	if transportSnapshot.TransportMode != "observer_orientation_only" {
 		t.Fatalf("expected observer transport mode, got %+v", transportSnapshot)
 	}
-	if transportSnapshot.Player != nil {
-		t.Fatalf("expected observer snapshot to omit player detail, got %+v", transportSnapshot.Player)
+	if transportSnapshot.Player == nil {
+		t.Fatalf("expected observer snapshot to keep player detail, got %+v", transportSnapshot)
 	}
-	if len(transportSnapshot.AutonomousCircles) != 0 {
-		t.Fatalf("expected observer snapshot to omit local autonomous detail, got %d", len(transportSnapshot.AutonomousCircles))
+	if len(transportSnapshot.AutonomousCircles) == 0 {
+		t.Fatalf("expected observer snapshot to keep local autonomous detail, got %+v", transportSnapshot)
 	}
 	if len(transportSnapshot.Foods) != 0 {
 		t.Fatalf("expected observer snapshot to omit local food detail, got %d", len(transportSnapshot.Foods))

@@ -55,6 +55,13 @@ func (c *clientConnection) RecordMovementIntent(currentTick int64) {
 	c.lastMovementIntentTick = currentTick
 }
 
+func (c *clientConnection) ClearMovementIntent() {
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+
+	c.hasRecentMovementIntent = false
+}
+
 func (c *clientConnection) IsActiveAtTick(currentTick int64) bool {
 	c.stateMu.Lock()
 	defer c.stateMu.Unlock()
@@ -193,6 +200,10 @@ func (s *Server) readMessages(connection *websocket.Conn) {
 		}
 
 		s.session.ApplyIntent(message.Direction)
+		if message.Direction.X == 0 && message.Direction.Y == 0 {
+			s.clearMovementIntent(connection)
+			continue
+		}
 		s.recordMovementIntent(connection)
 	}
 }
@@ -301,6 +312,18 @@ func (s *Server) recordMovementIntent(connection *websocket.Conn) {
 	}
 
 	client.RecordMovementIntent(s.lastBroadcastTick)
+}
+
+func (s *Server) clearMovementIntent(connection *websocket.Conn) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	client := s.conns[connection]
+	if client == nil {
+		return
+	}
+
+	client.ClearMovementIntent()
 }
 
 func (s *Server) removeConnection(connection *websocket.Conn) {

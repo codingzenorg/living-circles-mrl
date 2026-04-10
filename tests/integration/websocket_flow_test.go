@@ -528,11 +528,11 @@ func TestPassiveObserverReceivesOrientationOnlyTransportAndReactivates(t *testin
 		if passiveSnapshot.TransportMode != "observer_orientation_only" {
 			t.Fatalf("expected observer transport mode, got %+v", passiveSnapshot)
 		}
-		if passiveSnapshot.Player != nil {
-			t.Fatalf("expected observer snapshot to omit player detail, got %+v", passiveSnapshot.Player)
+		if passiveSnapshot.Player == nil {
+			t.Fatalf("expected observer snapshot to keep player detail, got %+v", passiveSnapshot)
 		}
-		if len(passiveSnapshot.AutonomousCircles) != 0 {
-			t.Fatalf("expected observer snapshot to omit autonomous detail, got %d", len(passiveSnapshot.AutonomousCircles))
+		if len(passiveSnapshot.AutonomousCircles) == 0 {
+			t.Fatalf("expected observer snapshot to keep autonomous detail, got %+v", passiveSnapshot)
 		}
 		if len(passiveSnapshot.Foods) != 0 {
 			t.Fatalf("expected observer snapshot to omit food detail, got %d", len(passiveSnapshot.Foods))
@@ -575,6 +575,98 @@ func TestPassiveObserverReceivesOrientationOnlyTransportAndReactivates(t *testin
 		}
 		if len(resumedSnapshot.AutonomousCircles) == 0 {
 			t.Fatalf("expected resumed active snapshot to restore fresh local autonomous detail, got %+v", resumedSnapshot)
+		}
+		return
+	}
+}
+
+func TestActiveClientReturnsToObserverModeAfterExplicitStopIntent(t *testing.T) {
+	server := transport.NewServerWithSession(simulation.NewSession())
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = server.Run(ctx)
+	}()
+
+	websocketURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	observerCandidate, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial observer candidate websocket: %v", err)
+	}
+	defer observerCandidate.Close()
+
+	anchorConnection, _, err := websocket.DefaultDialer.Dial(websocketURL, nil)
+	if err != nil {
+		t.Fatalf("dial anchor websocket: %v", err)
+	}
+	defer anchorConnection.Close()
+
+	if _, _, err := observerCandidate.ReadMessage(); err != nil {
+		t.Fatalf("read observer candidate initial snapshot: %v", err)
+	}
+	if _, _, err := anchorConnection.ReadMessage(); err != nil {
+		t.Fatalf("read anchor initial snapshot: %v", err)
+	}
+
+	if err := observerCandidate.WriteJSON(map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 1,
+			"y": 0,
+		},
+	}); err != nil {
+		t.Fatalf("write activation movement intent: %v", err)
+	}
+
+	_ = observerCandidate.SetReadDeadline(time.Now().Add(2 * time.Second))
+	sawActive := false
+	for {
+		var snapshot transport.Snapshot
+		if err := observerCandidate.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read active snapshot: %v", err)
+		}
+
+		if snapshot.Tick == 0 || snapshot.TransportMode != "active_local_detail" {
+			continue
+		}
+		if snapshot.Player == nil {
+			t.Fatalf("expected active snapshot to include player detail, got %+v", snapshot)
+		}
+		sawActive = true
+		break
+	}
+	if !sawActive {
+		t.Fatal("expected observer candidate to become active after movement intent")
+	}
+
+	if err := observerCandidate.WriteJSON(map[string]any{
+		"type": "movement_intent",
+		"direction": map[string]float64{
+			"x": 0,
+			"y": 0,
+		},
+	}); err != nil {
+		t.Fatalf("write stop movement intent: %v", err)
+	}
+
+	_ = observerCandidate.SetReadDeadline(time.Now().Add(2 * time.Second))
+	for {
+		var snapshot transport.Snapshot
+		if err := observerCandidate.ReadJSON(&snapshot); err != nil {
+			t.Fatalf("read observer snapshot after stop intent: %v", err)
+		}
+
+		if snapshot.Tick == 0 {
+			continue
+		}
+		if snapshot.TransportMode != "observer_orientation_only" {
+			continue
+		}
+		if snapshot.Player == nil {
+			t.Fatalf("expected observer snapshot after stop intent to keep player detail, got %+v", snapshot)
 		}
 		return
 	}

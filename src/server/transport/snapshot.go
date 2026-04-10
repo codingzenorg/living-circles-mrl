@@ -59,9 +59,6 @@ func BuildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 func BuildObserverSnapshot(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
 	observerSnapshot := buildViewportSnapshot(snapshot, includeOrientation, true, true)
 	observerSnapshot.TransportMode = "observer_orientation_only"
-	observerSnapshot.Player = nil
-	observerSnapshot.AutonomousCircles = []simulation.AutonomousCircle{}
-	observerSnapshot.AutonomousFresh = false
 	observerSnapshot.Foods = []simulation.Food{}
 	observerSnapshot.FoodsFresh = false
 	return observerSnapshot
