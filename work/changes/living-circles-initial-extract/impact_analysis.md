@@ -4251,3 +4251,18 @@ That points to a bounded transport slice:
 - refine the observer refresh signature to include coarse observer-relevant state, not exact minimap motion
 - preserve the current observer-oriented snapshot shape
 - remeasure passive fanout after the signature change
+## Pressure: Active Client Fanout Scaling Measurement
+
+The passive observer path is now materially cheaper and more disciplined. That shifts the main remaining transport question again: the active local-detail path is now the clearest likely remaining source of cost, but its scaling under several simultaneously moving clients is still not explicit.
+
+The new pressure is:
+
+- determine whether multiple active clients are already acceptable on the current local-detail transport
+- separate active fanout pressure from the now-optimized passive observer path
+- justify the next optimization, if any, from measured active-client evidence instead of assumption
+
+That points to a bounded measurement slice:
+
+- compare deterministic active-client fanout counts under the current protocol
+- record aggregate bytes/sec, per-client bytes/sec, snapshot counts, and max inter-snapshot gap
+- leave protocol shape and gameplay behavior unchanged
