@@ -2,6 +2,64 @@
 
 ## Change
 
+Measure whether observer-mode render pressure is genuinely higher than active-mode render pressure under the current two-browser setup, or whether the apparent difference is mostly browser scheduling noise.
+
+## Why This Matters
+
+The latest observer-mode fixes changed the runtime in an important way:
+
+- passive tabs now stay visibly live instead of going blank or frozen
+- observer mode still uses cheaper transport than the active path
+- yet manual use now suggests the observer tab can show a noticeably higher `render/world` timing than the active tab
+
+That observation is not self-explanatory. It could mean:
+
+- observer mode really does render a costlier scene than expected
+- the observer tab is paying a hidden draw penalty in the current client path
+- or the local browser is simply giving the background tab different scheduling and compositor treatment
+
+The next pressure is therefore measurement, not another optimization guess. The repo now needs a direct active-versus-observer render comparison before deciding whether another client render slice is justified.
+
+## Impacted Areas
+
+### Browser measurement path
+
+- the repo may need a bounded comparison helper or a clearer way to capture active and observer render readings side by side
+- the existing render instrumentation should remain the primary source when possible
+
+### Observer-mode interpretation
+
+- observer mode is intentionally transport-lighter, but not necessarily render-lighter
+- the next decision depends on whether that distinction is actually showing up as meaningful extra draw cost
+
+### Client optimization strategy
+
+- no optimization should be chosen yet
+- the next client-side decision should depend on whether the observed difference is stable and attributable to real draw work
+
+### Runtime evidence
+
+- the prior two-browser slowdown evidence remains valid
+- this slice narrows one specific ambiguity inside that broader responsiveness pressure
+
+## Recommended Decision Pressure
+
+The next implementation-facing decision should explicitly choose:
+
+- whether observer-mode render pressure is a real optimization target
+- whether the higher observer reading is mostly a measurement artifact of browser scheduling
+- whether the next loop should stay on responsiveness measurement or return to transport/play/ecology work
+
+## Risks If Ignored
+
+- the repo may optimize the observer render path for the wrong reason
+- a suspicious live metric could be mistaken for a stable bottleneck
+- the next responsiveness decision would still rely on anecdote instead of bounded comparison evidence
+
+---
+
+## Change
+
 Reduce the remaining active-path payload fanout by trimming serialized player-detail precision while keeping active cadence, transport shape, and active readability intact.
 
 ## Why This Matters
