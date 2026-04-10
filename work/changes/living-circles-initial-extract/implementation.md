@@ -447,6 +447,11 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - server-side deterministic transport tests still show the intended policy split, with passive observers below full cadence and active movers near full cadence
   - the current single-client live browser read shows render pressure around `3.4ms`, with `world` still dominant at about `1.8ms`, which is not by itself enough to explain the observed two-browser slowdown
   - taken together with the user-observed slowdown when opening a second browser, the likeliest current pressure source is concurrent server-side tick/broadcast load or active fanout under real local multi-client use, rather than a single-client browser render bottleneck
+- active-versus-observer render comparison is now explicit from the current live instrumentation:
+  - the observer tab can show roughly double the active tab's `render/world` reading during the same ordinary two-tab run
+  - that does not currently justify treating observer rendering as a proven hot path, because observer mode now still draws a live player, live nearby NPCs, overlays, minimap, and support UI instead of a reduced scene
+  - the current interpretation is that the higher observer number is more plausibly a combination of similar draw work plus browser tab scheduling bias than a clearly isolated observer-only render bottleneck
+  - the repo therefore does not yet have a strong reason to start another render optimization slice from this comparison alone
 - idle browser clients now suppress unchanged neutral movement intents and unchanged repeated movement intents; the sender loop emits only on effective direction change, including one explicit stop intent when movement returns to neutral
 - this keeps active movement behavior intact while making the intended passive-client transport path reachable for truly idle browsers
 - post-idle-intent two-client reassessment is now explicit over the same bounded `300ms` window:
