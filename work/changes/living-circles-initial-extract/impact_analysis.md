@@ -2,6 +2,64 @@
 
 ## Change
 
+Reduce the size of active local food detail on fresh food ticks while keeping the now-stable active orientation path unchanged.
+
+## Why This Matters
+
+The latest active orientation-summary compaction succeeded materially:
+
+- one-active aggregate bytes dropped from `8942` to `7524`
+- two-active aggregate bytes dropped from `17884` to `13980`
+- orientation support is still dominant, but much less so than before
+
+That changes the next pressure. The repo no longer needs to keep hammering the orientation path by default. The cleaner next move is to reduce the next repeated active payload family while preserving the new stable orientation baseline.
+
+Local food detail is the best bounded next target:
+
+- it still appears in active local-detail snapshots
+- it already refreshes on change, so the remaining pressure is per-refresh payload weight rather than cadence
+- nearby food awareness matters, but the active wire representation likely has room to become lighter without harming play
+
+## Impacted Areas
+
+### Active transport boundary
+
+- active local food detail should remain present on fresh food ticks
+- the serialized shape of active local food detail may become coarser or lighter
+
+### Browser client
+
+- the client should continue rendering nearby food clearly enough for active play
+- active food awareness should remain plausible under the lighter payload
+
+### Transport measurement
+
+- the active payload breakdown should be refreshed after the change
+- one-active and two-active baselines should be compared against the current `7524` and `13980` readings
+
+### Passive observer path
+
+- passive observer behavior should remain unchanged
+- this slice targets only the active local-food payload family
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- how much local food detail can be compacted while staying usable
+- whether local food becomes the next reduced active family in practice
+- whether a successful reduction here would justify pausing active-path transport work
+
+## Risks If Ignored
+
+- the repo may stay focused on the already-reduced orientation path longer than needed
+- the next active-path slice could miss a simpler remaining payload family
+- the current active transport optimization track could lose momentum after a successful orientation reduction
+
+---
+
+## Change
+
 Reduce the size of active orientation support itself by making the active minimap summary coarser, while keeping the current stable active cadence and freshness policy unchanged.
 
 ## Why This Matters
