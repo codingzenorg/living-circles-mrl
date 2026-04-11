@@ -2,6 +2,59 @@
 
 ## Change
 
+Reduce the size of active orientation support itself by making the active minimap summary coarser, while keeping the current stable active cadence and freshness policy unchanged.
+
+## Why This Matters
+
+The latest active-path work clarified two important facts:
+
+- orientation support is still the dominant remaining active payload family
+- the attempted event-driven active-orientation refresh did not help; in the bounded movement window it refreshed on every active snapshot and worsened the active baseline instead of lowering it
+
+That means the next orientation-focused slice should not try another cadence-policy experiment immediately. The clearer remaining pressure is payload weight per active orientation refresh, not refresh timing.
+
+The next clean move is therefore to compact the active orientation summary itself while leaving the stable active cadence untouched.
+
+## Impacted Areas
+
+### Active transport boundary
+
+- active orientation support should remain present on the current cadence
+- the active minimap summary may become coarser than the current compact baseline
+
+### Browser client
+
+- the client should continue rendering active minimap orientation from the existing summary shape
+- minimap usability should remain plausible even with a coarser active summary
+
+### Transport measurement
+
+- one-active and two-active baselines should be remeasured after the compaction
+- the result should be compared against the current stable active baseline, not the failed event-driven experiment
+
+### Passive observer path
+
+- passive observer behavior should remain unchanged
+- this slice targets only active orientation summary payload weight
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- how much coarser the active orientation summary can become while still supporting the minimap
+- whether that compaction produces enough reduction to justify stopping further active orientation work
+- whether orientation remains the right next active target after the compaction
+
+## Risks If Ignored
+
+- the repo may keep carrying the dominant active payload family at its current per-refresh size even after identifying it clearly
+- the next transport slice could jump to a less important active family
+- the failed event-driven attempt would not be converted into a clearer next direction
+
+---
+
+## Change
+
 Replace the current fixed active-orientation cadence with a change-driven refresh policy plus deterministic fallback, so the still-dominant active orientation payload is sent when needed rather than every short timer interval.
 
 ## Why This Matters
