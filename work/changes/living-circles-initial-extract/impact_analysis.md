@@ -2,6 +2,64 @@
 
 ## Change
 
+Reduce the size of active local autonomous detail on fresh autonomous ticks while keeping the now-stable active orientation path unchanged.
+
+## Why This Matters
+
+The latest active-path state now says:
+
+- orientation compaction succeeded materially
+- local-food compaction was attempted next and produced no measurable change in the active baseline
+- the remaining active optimization path should therefore move to a different repeated local family instead of repeating a non-win
+
+Local autonomous detail is the best bounded next target:
+
+- it still appears on fresh autonomous ticks
+- it is a richer repeated local family than food detail
+- nearby NPC awareness matters, but the wire representation may still be heavier than the viewport visibly needs
+
+The next pressure is therefore a local-autonomous payload reduction, not another orientation slice and not another local-food attempt.
+
+## Impacted Areas
+
+### Active transport boundary
+
+- active local autonomous detail should remain present on fresh autonomous ticks
+- the serialized shape of active local autonomous detail may become coarser or lighter
+
+### Browser client
+
+- the client should continue rendering nearby autonomous circles clearly enough for active play
+- active NPC awareness should remain plausible under the lighter payload
+
+### Transport measurement
+
+- the active payload breakdown should be refreshed after the change
+- one-active and two-active baselines should be compared against the current `7524` and `13980` readings
+
+### Passive observer path
+
+- passive observer behavior should remain unchanged
+- this slice targets only the active local-autonomous payload family
+
+## Recommended Decision Pressure
+
+The next implementation-facing slice should explicitly choose:
+
+- how much local autonomous detail can be compacted while staying usable
+- whether local autonomous detail becomes the next reduced active family in practice
+- whether a successful reduction here would justify pausing active-path transport work
+
+## Risks If Ignored
+
+- the repo may keep testing the wrong remaining active payload family
+- the current active optimization track could stall after a no-op local-food attempt
+- the next active slice could drift back to already-reduced areas instead of targeting the next plausible family
+
+---
+
+## Change
+
 Reduce the size of active local food detail on fresh food ticks while keeping the now-stable active orientation path unchanged.
 
 ## Why This Matters
