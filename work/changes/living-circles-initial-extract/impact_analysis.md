@@ -2,6 +2,61 @@
 
 ## Change
 
+Reassess whether the current active transport optimization track has reached a sensible stop point, now that recent bounded compaction attempts are no longer producing measurable wins.
+
+## Why This Matters
+
+The recent active-path history now has enough evidence to justify a stop-point decision:
+
+- active orientation-summary compaction produced a real reduction
+- active local-food compaction produced no measurable improvement
+- active local-autonomous compaction produced no measurable improvement
+- player-only precision reduction previously produced no measurable improvement
+- event-driven active-orientation refresh regressed the active path instead of improving it
+
+That pattern matters because it changes the decision pressure. The repo is no longer missing obvious first-order active transport cuts. Continuing to guess at more micro-optimizations is now more likely to create churn than meaningful gain.
+
+The next pressure is therefore not “find another tiny payload family immediately.” It is to decide whether:
+
+- the current active transport path is good enough for the present scale
+- the next responsiveness work should pivot to another bottleneck
+- or a larger transport redesign is needed instead of more bounded compaction slices
+
+## Impacted Areas
+
+### Active transport strategy
+
+- the repo needs an explicit stop/continue judgment for the current active optimization track
+- future active transport work should only continue if a clearer next target emerges
+
+### Runtime evidence
+
+- the existing measurements and non-wins should now be treated as decision evidence, not just as transient experiment notes
+- the repo should avoid repeating already-tested low-yield directions
+
+### Broader responsiveness work
+
+- if active transport is near a sensible stop point, the next meaningful responsiveness slice may need to move elsewhere
+- possible pivots include server scheduling, broader multi-client behavior, or play-feel evaluation rather than more payload compaction
+
+## Recommended Decision Pressure
+
+The next implementation-facing decision should explicitly choose:
+
+- whether active transport work should pause
+- whether a larger redesign is warranted
+- whether responsiveness work should pivot to another bottleneck instead of repeating recent non-wins
+
+## Risks If Ignored
+
+- the repo may continue committing time to low-yield transport tweaks
+- recent non-wins may be forgotten and repeated
+- the next responsiveness loop may optimize the wrong layer simply because it is familiar
+
+---
+
+## Change
+
 Reduce the size of active local autonomous detail on fresh autonomous ticks while keeping the now-stable active orientation path unchanged.
 
 ## Why This Matters
