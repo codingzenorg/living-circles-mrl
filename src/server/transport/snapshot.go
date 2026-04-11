@@ -19,6 +19,7 @@ const (
 	DefaultLocalFoodFallbackTicks    = int64(20)
 	DefaultObserverFallbackTicks     = int64(12)
 	DefaultMinimapClusterSize        = 480.0
+	DefaultActiveMinimapClusterSize  = 960.0
 )
 
 type MinimapAutonomousCircle struct {
@@ -53,11 +54,11 @@ type Snapshot struct {
 }
 
 func BuildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
-	return buildViewportSnapshot(snapshot, includeOrientation, true, true)
+	return buildViewportSnapshot(snapshot, includeOrientation, true, true, DefaultActiveMinimapClusterSize)
 }
 
 func BuildObserverSnapshot(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
-	observerSnapshot := buildViewportSnapshot(snapshot, includeOrientation, true, true)
+	observerSnapshot := buildViewportSnapshot(snapshot, includeOrientation, true, true, DefaultMinimapClusterSize)
 	observerSnapshot.TransportMode = "observer_orientation_only"
 	observerSnapshot.Foods = []simulation.Food{}
 	observerSnapshot.FoodsFresh = false
@@ -65,11 +66,11 @@ func BuildObserverSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 }
 
 func BuildViewportSnapshotExactOrientation(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
-	return buildViewportSnapshot(snapshot, includeOrientation, false, true)
+	return buildViewportSnapshot(snapshot, includeOrientation, false, true, DefaultMinimapClusterSize)
 }
 
 func BuildViewportSnapshotCompactFullPrecision(snapshot simulation.Snapshot, includeOrientation bool) Snapshot {
-	return buildViewportSnapshot(snapshot, includeOrientation, true, false)
+	return buildViewportSnapshot(snapshot, includeOrientation, true, false, DefaultActiveMinimapClusterSize)
 }
 
 func OrientationSummarySignature(snapshot Snapshot) string {
@@ -223,7 +224,7 @@ func ShouldRefreshLocalFoods(lastSignature string, lastRefreshTick, currentTick 
 	return currentTick-lastRefreshTick >= DefaultLocalFoodFallbackTicks
 }
 
-func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool, compactOrientation bool, reducePrecision bool) Snapshot {
+func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool, compactOrientation bool, reducePrecision bool, orientationClusterSize float64) Snapshot {
 	focusX := snapshot.World.Width / 2
 	focusY := snapshot.World.Height / 2
 	if snapshot.Player != nil {
@@ -263,7 +264,7 @@ func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 	for _, circle := range snapshot.AutonomousCircles {
 		if includeOrientation {
 			if compactOrientation {
-				key, x, y := minimapClusterKey(circle.X, circle.Y, snapshot.World)
+				key, x, y := minimapClusterKey(circle.X, circle.Y, snapshot.World, orientationClusterSize)
 				clusterKey := circle.Shape + ":" + key
 				cluster := autonomousClusters[clusterKey]
 				if cluster == nil {
@@ -302,7 +303,7 @@ func buildViewportSnapshot(snapshot simulation.Snapshot, includeOrientation bool
 	for _, food := range snapshot.Foods {
 		if includeOrientation {
 			if compactOrientation {
-				key, x, y := minimapClusterKey(food.X, food.Y, snapshot.World)
+				key, x, y := minimapClusterKey(food.X, food.Y, snapshot.World, orientationClusterSize)
 				cluster := foodClusters[key]
 				if cluster == nil {
 					foodClusters[key] = &MinimapFood{
@@ -360,8 +361,7 @@ func minFloat(a, b float64) float64 {
 	return b
 }
 
-func minimapClusterKey(x, y float64, bounds simulation.Bounds) (string, float64, float64) {
-	cellSize := DefaultMinimapClusterSize
+func minimapClusterKey(x, y float64, bounds simulation.Bounds, cellSize float64) (string, float64, float64) {
 	column := int(x / cellSize)
 	row := int(y / cellSize)
 	centerX := minFloat(bounds.Width, float64(column)*cellSize+cellSize/2)

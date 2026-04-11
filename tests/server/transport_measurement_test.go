@@ -761,15 +761,15 @@ func TestOrientationRefreshPolicySkipsUnchangedSummaryAndFallsBackLater(t *testi
 	}
 }
 
-func TestOrientationRefreshPolicyTriggersOnCompactSummaryChange(t *testing.T) {
+func TestOrientationRefreshPolicyTriggersOnSummaryChange(t *testing.T) {
 	baseSnapshot := simulation.NewSession().Snapshot()
-	baseTransportSnapshot := transport.BuildViewportSnapshot(baseSnapshot, true)
+	baseTransportSnapshot := transport.BuildViewportSnapshotExactOrientation(baseSnapshot, true)
 	baseSignature := transport.OrientationSummarySignature(baseTransportSnapshot)
 
 	changedSnapshot := baseSnapshot
 	changedSnapshot.AutonomousCircles = append([]simulation.AutonomousCircle{}, baseSnapshot.AutonomousCircles...)
 	changedSnapshot.AutonomousCircles[0].X += transport.DefaultMinimapClusterSize
-	changedTransportSnapshot := transport.BuildViewportSnapshot(changedSnapshot, true)
+	changedTransportSnapshot := transport.BuildViewportSnapshotExactOrientation(changedSnapshot, true)
 	changedSignature := transport.OrientationSummarySignature(changedTransportSnapshot)
 
 	if changedSignature == baseSignature {

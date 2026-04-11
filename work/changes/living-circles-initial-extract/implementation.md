@@ -411,18 +411,17 @@ These keep the loop deterministic and prevent energy drift while staying aligned
   - without orientation support: `1176` bytes
   - without interaction detail: `3333` bytes in the current no-interaction baseline
 - post-reduction active transport reassessment now records the current default active snapshot breakdown:
-  - full active payload: `3357` bytes
-  - without player detail: `3121` bytes
-  - without local autonomous detail: `2970` bytes
-  - without local food detail: `3129` bytes
+  - full active payload: `2586` bytes
+  - without player detail: `2350` bytes
+  - without local autonomous detail: `2199` bytes
+  - without local food detail: `2358` bytes
   - without orientation support: `1200` bytes
-  - without interaction detail: `3357` bytes in the current no-interaction baseline
-- under the current post-reduction breakdown, orientation support is still the dominant serialized active payload family in the default snapshot, so the earlier direction remains valid even though the absolute numbers changed materially
+  - without interaction detail: `2586` bytes in the current no-interaction baseline
+- under the current post-compaction breakdown, orientation support is still the dominant serialized active payload family in the default snapshot, but its absolute cost is materially lower than the prior compact-active baseline
 - deterministic optimized active transport over `300ms` now measures:
-  - `1` active client: `8942` aggregate bytes, about `29807` bytes/sec, `102ms` max gap, `4` snapshots
-  - `2` active clients: `17884` aggregate bytes, about `59613` bytes/sec, `102ms` max gap, `8` snapshots
-  - `4` active clients: `35768` aggregate bytes, about `119227` bytes/sec, `102ms` max gap, `16` snapshots
-- under this bounded ladder, reducing active orientation support cuts the `1`-client active baseline from `13129` bytes to `8942` and the `4`-client active baseline from `52516` to `35768` while keeping full active snapshot cadence
+  - `1` active client: `7524` aggregate bytes, about `25080` bytes/sec, `102ms` max gap, `4` snapshots
+  - `2` active clients: `13980` aggregate bytes, about `46600` bytes/sec, `102ms` max gap, `8` snapshots
+- under this bounded ladder, active orientation-summary compaction cuts the `1`-client active baseline from `8942` bytes to `7524` and the `2`-client active baseline from `17884` to `13980` while keeping full active snapshot cadence
 - deterministic active orientation usability over a `300ms` movement window now measures `4` total active snapshots with `2` fresh and `2` stale orientation snapshots at the current optimized cadence
 - under that bounded movement window, active local detail remained continuous while orientation support was stale on half the snapshots
 - client render pressure is now measured live in the browser as rolling average and max draw duration over recent draws, which makes viewport rendering pressure explicit without changing transport or gameplay behavior
