@@ -8,8 +8,9 @@ Code
 
 Artifacts and documentation
 
-- Repository-level MRL artifacts, prompts, planning material, and documentation are licensed under the MIT License unless a file states otherwise.
-- This includes the root strategic documents and the material under `docs/`.
+- Repository-level MRL framework artifacts, prompts, and planning material are licensed under the MIT License unless a file states otherwise.
+- Root strategic documents are MIT-licensed unless a file states otherwise.
+- Materials under `docs/` are not classified by directory alone; generic MRL framework docs follow MIT, while Living Circles project-specific semantic, slice, evaluation, and design documents should be classified by file intent unless a file states otherwise.
 - The MIT license text is available in `LICENSES/MIT.txt`.
 
 Copyright notices
@@ -20,4 +21,4 @@ Copyright notices
 Practical rule
 
 - Do not copy MIT-licensed artifact text verbatim into MPL-licensed source files unless you preserve the required notice for the copied material.
-- Prefer keeping planning and semantic artifacts in MIT files and implementation in MPL files.
+- Prefer keeping generic MRL planning artifacts in MIT files and implementation in MPL files.

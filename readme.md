@@ -154,6 +154,7 @@ The important point is that MRL is here to serve the evolution of Living Circles
 This repository uses split licensing.
 
 - Code under `src/` and `tests/` is licensed under `MPL-2.0`.
-- MRL artifacts, prompts, planning material, and documentation in `docs/` and the repository root are licensed under `MIT`, unless a file states otherwise.
+- Generic MRL framework artifacts, prompts, and planning material are licensed under `MIT`, unless a file states otherwise.
+- Living Circles project-specific semantic, slice, evaluation, and design documents are not automatically treated as generic MRL artifacts just because they live under `docs/`; treat file-level intent as authoritative when classifying those materials.
 
 See `LICENSE`, `LICENSES/MPL-2.0.txt`, and `LICENSES/MIT.txt`.
