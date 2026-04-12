@@ -73,6 +73,8 @@ When bootstrapping MRL in a fresh repository, use `docs/operating/mrl_starter.md
 
 Starter repositories should include `work/sources/` up front as the canonical location for curated raw evidence and original source material so extract does not have to invent that convention later.
 
+If a repository wants lightweight operational feedback on how MRL work is progressing, track session metrics in `docs/session_metrics.md` alongside normal artifact review.
+
 ---
 
 ## Execution Model
