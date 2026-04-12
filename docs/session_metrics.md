@@ -91,3 +91,34 @@ They are operational hints for the shape of the work, not truth about the value 
 * productivity is interpreted cumulatively from repository start through `2026-04-05`
 * `git log --until 2026-04-05` shows sixty-one `feat:` commits and sixty-seven `docs:` commits in that cumulative window
 * this was a high-volume shaping period, so the session note is best read as a coarse operational snapshot rather than as a per-slice benchmark
+
+---
+
+## Session - 20260412
+
+### Raw
+
+* total_tokens: 34176248
+* input_tokens: 32729933
+* cached_tokens: 496361984
+* output_tokens: 1446315
+* reasoning_tokens: 249263
+
+### Derived
+
+* output_efficiency: 4.23%
+* reasoning_efficiency: 17.23%
+* cache_ratio: 15.17x
+
+### Productivity
+
+* slices_applied: 133
+* tokens_per_slice: 256965
+* docs_commits: 163
+
+### Notes
+
+* historical measurement recorded for `living-circles-mrl`
+* productivity is interpreted cumulatively from repository start through `2026-04-12`
+* `git log --until 2026-04-12` shows one hundred thirty-three `feat:` commits and one hundred sixty-three `docs:` commits in that cumulative window
+* output efficiency is now below the preferred `5% - 10%` band, so this should be treated as a prompt to inspect context growth and session size rather than as a quality judgment on the work itself
