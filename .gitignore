@@ -7,6 +7,5 @@ __pycache__/
 runs/
 tmp/
 .codex
-.codex-session
 .notes
 .DS_Store
