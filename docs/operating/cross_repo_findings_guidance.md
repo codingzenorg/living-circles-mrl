@@ -5,6 +5,7 @@ This repository follows the global `cross-repo-findings` skill.
 Keep the local guidance short:
 
 - write the finding under `work/findings/<date>-<short-name>/finding.md`
+- apply the `finding` label to the issue
 - open a GitHub issue in this repository
 - post a note to Discord `#findings` (`1502715067186024628`)
 - close the issue when the finding is resolved
